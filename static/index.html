@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<!--
+* _______ _
+* |__   __(_)
+*    | |   ___   ___   _  __ _
+*    | |  | \ \ / / | | |/ _` |
+*    | |  | |\ V /| |_| | (_| |
+*    |_|  |_| \_/  \__,_|\__,_|
+*
+* (c)  2019  Andreas Stoeckel -  https://github.com/astoeckel/tivua
+-->
+<html lang="en">
+	<head>
+		<meta charset="UTF-8">
+
+		<title>Tivua</title>
+
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+		<link rel="icon" type="image/svg+xml" href="images/favicon.svg" />
+		<link rel="icon" type="image/png" href="images/favicon.png" />
+		<link rel="apple-touch-icon" href="images/touch-icon.png" />
+		<link rel="apple-touch-icon" sizes="152x152" href="images/touch-icon-152x152.png" />
+		<link rel="apple-touch-icon" sizes="180x180" href="images/touch-icon-180x180.png" />
+		<link rel="apple-touch-icon" sizes="167x167" href="images/touch-icon-167x167.png" />
+
+		<link rel="manifest" href="manifest.manifest" />
+
+		<link rel="stylesheet" href="styles/style.css" />
+			<link rel="stylesheet" href="lib/codemirror.css" />
+			<link rel="stylesheet" href="lib/codemirror_tango.css" />
+
+		<!-- MAIN VIEW -->
+		<template id="tmpl_main_view">
+			<header>
+				<button id="btn_add" title="Add a new diary entry"><span class="icon"></span><span class="caption">Add entry</span></button>
+				<div class="search">
+					<span class="icon"></span>
+					<input id="inp_search" type="search" placeholder="Filter by author, date, or content">
+					<button id="btn_clear" class="icon" title="Clear the currently active filter"></button>
+				</div>
+				<button id="btn_view" class="table subtle" title="Toggle between continuous view and card view"><span class="icon"></span></button>
+			</header>
+			<main class="cards"></main>
+			<footer>
+				<div>Post&nbsp;<span id="lbl_post_start"></span>&nbsp;to&nbsp;<span id="lbl_post_end"></span>&nbsp;of&nbsp;<span id="lbl_post_total"></span></div>
+				<div class="spacer"></div>
+				<div>
+					<button id="btn_page_first" title="First page"><span class="icon"></span></button>
+					<button id="btn_page_prev" title="Previous page"><span class="icon"></span></button>
+					<select id="sel_page" title="Jump to page"></select>
+					<button id="btn_page_next" title="Next page"><span class="icon"></span></button>
+					<button id="btn_page_last" title="Last page"><span class="icon"></span></button>
+				</div>
+				<div class="spacer"></div>
+				<div>
+					<select id="sel_entry_count"></select>
+				</div>
+			</footer>
+		</template>
+
+		<!-- MAIN VIEW - WEEK SEPARATOR -->
+		<template id="tmpl_main_view_week">
+			<div class="week">
+				<hr/>
+				<span class="week"></span>
+				<hr/>
+				<span class="date_from"></span>&nbsp;to&nbsp;<span class="date_to"></span>
+				<hr/>
+				<span class="year"></span>
+				<hr/>
+			</div>
+		</template>
+
+		<!-- MAIN VIEW - CARD -->
+		<template id="tmpl_main_view_card">
+			<div class="entry">
+				<div class="meta">
+					<span class="author"></span>
+					<span class="date"></span>
+					<button class="icon edit"></button>
+				</div>
+				<div class="content">
+				</div>
+			</div>
+		</template>
+
+		<!-- EDITOR VIEW -->
+		<template id="tmpl_editor_view">
+			<header>
+				<button id="btn_back" class="subtle" title="Back to the main view"><span class="icon"></span></button>
+				<h1>New entry</h1>
+				<button id="btn_delete" class="subtle" title="Delete this entry"><span class="icon"></span><span class="caption">Delete</span></button>
+				<button id="btn_save" title="Create new entry"><span class="icon"></span><span class="caption">Create & Save</span></button>
+			</header>
+
+			<main class="editor">
+				<div class="row">
+					<label for="author">Author</label>
+					<label for="date">Date</label>
+				</div>
+				<div class="row">
+					<input id="author" list="authors" placeholder="Your name">
+					<input type="date" id="date" placeholder="Today's date">
+				</div>
+				<datalist id="authors">
+					<option value="Andreas Stöckel">
+					<option value="Chris Eliasmith">
+					<option value="Peter Duggins">
+					<option value="Aaron Voelker">
+				</datalist>
+				<label for="inp_keywords">Keywords</label>
+				<input id="inp_keywords" placeholder="Optional comma separated list of keywords">
+				<label for="inp_content">Content</label>
+				<textarea id="inp_content"></textarea>
+			</main>
+		</template>
+	</head>
+	<body>
+		<!-- LOADING SCREEN -->
+		<div class="loading">
+			<!-- Download all font variants ahead of time -->
+			<span style="-webkit-user-select: none; opacity: 0.1; font-size: 1pt; color: white;">
+				<span style="font-weight: normal; font-style: normal;">aäαĀ</span>
+				<span style="font-weight: bold; font-style: normal;">aäαĀ</span>
+				<span style="font-weight: normal; font-style: italic;">aäαĀ</span>
+				<span style="font-weight: bold; font-style: italic;">aäαĀ</span>
+				<span class="icon">&#xF002;</span>
+			</span>
+
+			<!-- Display the animated logo -->
+			<svg width="40.88mm" height="40.88mm" version="1.1" viewBox="0 0 40.88 40.88" xmlns="http://www.w3.org/2000/svg">
+				<g transform="translate(-30.49 -21.45)">
+					<g transform="translate(-54.07 13.23)">
+						<rect x="86.56" y="10.22" width="36.88" height="36.88" ry="6" fill="#75507b"/>
+						<g transform="translate(79.2)">
+							<path d="m22.49 16.54v7.938l-7.938 15.88h22.49l-7.938-15.88v-7.938l1.058 4.3e-5h-8.731z" fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+							<path d="m18.52 32.42h14.55l3.969 7.937h-22.49z" fill="#fff"/>
+							<g class="bubbles">
+								<circle cx="23.13" cy="36.93" r="2.835" fill="#75507b"/>
+								<circle cx="27.73" cy="29.87" r="1.819" fill="#fff"/>
+								<circle cx="28.84" cy="34.99" r="1.677" fill="#75507b"/>
+							</g>
+						</g>
+					</g>
+				</g>
+			</svg>
+
+			<div class="copyright">Tivua. © 2019, Andreas Stöckel. Licensed under the <a href="https://www.gnu.org/licenses/agpl-3.0.en.html">AGPL 3.0</a>. Report bugs at <a href="https://github.com/astoeckel/tivua/">https://github.com/astoeckel/tivua/</a>.</div>
+		</div>
+
+		<!-- LOAD ALL SCRIPTS -->
+		<script type="text/javascript" src="data/data.js" defer></script>
+		<script type="text/javascript" src="lib/typo.js" defer></script>
+		<script type="text/javascript" src="lib/codemirror.js" defer></script>
+		<script type="text/javascript" src="lib/codemirror_markdown.js" defer></script>
+		<script type="text/javascript" src="lib/codemirror_spell_checker.js" defer></script>
+		<script type="text/javascript" src="scripts/api.js" defer></script>
+		<script type="text/javascript" src="scripts/colors.js" defer></script>
+		<script type="text/javascript" src="scripts/time.js" defer></script>
+		<script type="text/javascript" src="scripts/utils.js" defer></script>
+		<script type="text/javascript" src="scripts/main.js" defer></script>
+	</body>
+</html>

@@ -1,0 +1,953 @@
+/*
+ *  TIVUA -- Shared research blog
+ *  Copyright (C) 2019  Andreas Stöckel
+ *
+ *  https://github.com/astoeckel/tivua
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU Affero General Public License as
+ *  published by the Free Software Foundation, either version 3 of the
+ *  License, or (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Affero General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Affero General Public License
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+/******************************************************************************
+ * CSS RESET                                                                  *
+ ******************************************************************************/
+
+/* http://meyerweb.com/eric/tools/css/reset/ 
+   v2.0 | 20110126
+   License: none (public domain)
+*/
+
+html, body, div, span, applet, object, iframe,
+h1, h2, h3, h4, h5, h6, p, blockquote, pre,
+a, abbr, acronym, address, big, cite, code,
+del, dfn, em, img, ins, kbd, q, s, samp,
+small, strike, strong, sub, sup, tt, var,
+b, u, i, center,
+dl, dt, dd, ol, ul, li,
+fieldset, form, label, legend,
+table, caption, tbody, tfoot, thead, tr, th, td,
+article, aside, canvas, details, embed, 
+figure, figcaption, footer, header, hgroup, 
+menu, nav, output, ruby, section, summary,
+time, mark, audio, video {
+	margin: 0;
+	padding: 0;
+	border: 0;
+	font-size: 100%;
+	font: inherit;
+	vertical-align: baseline;
+}
+/* HTML5 display-role reset for older browsers */
+article, aside, details, figcaption, figure, 
+footer, header, hgroup, menu, nav, section {
+	display: block;
+}
+body {
+	line-height: 1;
+}
+ol, ul {
+	list-style: none;
+}
+blockquote, q {
+	quotes: none;
+}
+blockquote:before, blockquote:after,
+q:before, q:after {
+	content: '';
+	content: none;
+}
+table {
+	border-collapse: collapse;
+	border-spacing: 0;
+}
+
+/******************************************************************************
+ * FONTS                                                                      *
+ ******************************************************************************/
+
+/* greek */
+@font-face {
+	font-family: 'Roboto';
+	font-style: italic;
+	font-weight: 400;
+	src: local('Roboto Italic'), local('Roboto-Italic'), url('../fonts/ro-greek-italic-400.woff2') format('woff2');
+	unicode-range: U+0370-03FF;
+}
+
+/* latin-ext */
+@font-face {
+	font-family: 'Roboto';
+	font-style: italic;
+	font-weight: 400;
+	src: local('Roboto Italic'), local('Roboto-Italic'), url('../fonts/ro-latin-ext-italic-400.woff2') format('woff2');
+	unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* latin */
+@font-face {
+	font-family: 'Roboto';
+	font-style: italic;
+	font-weight: 400;
+	src: local('Roboto Italic'), local('Roboto-Italic'), url('../fonts/ro-latin-italic-400.woff2') format('woff2');
+	unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* greek */
+@font-face {
+	font-family: 'Roboto';
+	font-style: italic;
+	font-weight: 700;
+	src: local('Roboto Bold Italic'), local('Roboto-BoldItalic'), url('../fonts/ro-greek-italic-700.woff2') format('woff2');
+	unicode-range: U+0370-03FF;
+}
+
+/* latin-ext */
+@font-face {
+	font-family: 'Roboto';
+	font-style: italic;
+	font-weight: 700;
+	src: local('Roboto Bold Italic'), local('Roboto-BoldItalic'), url('../fonts/ro-latin-ext-italic-700.woff2') format('woff2');
+	unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* latin */
+@font-face {
+	font-family: 'Roboto';
+	font-style: italic;
+	font-weight: 700;
+	src: local('Roboto Bold Italic'), local('Roboto-BoldItalic'), url('../fonts/ro-latin-italic-700.woff2') format('woff2');
+	unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* greek */
+@font-face {
+	font-family: 'Roboto';
+	font-style: normal;
+	font-weight: 400;
+	src: local('Roboto'), local('Roboto-Regular'), url('../fonts/ro-greek-400.woff2') format('woff2');
+	unicode-range: U+0370-03FF;
+}
+
+/* latin-ext */
+@font-face {
+	font-family: 'Roboto';
+	font-style: normal;
+	font-weight: 400;
+	src: local('Roboto'), local('Roboto-Regular'), url('../fonts/ro-latin-ext-400.woff2') format('woff2');
+	unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* latin */
+@font-face {
+	font-family: 'Roboto';
+	font-style: normal;
+	font-weight: 400;
+	src: local('Roboto'), local('Roboto-Regular'), url('../fonts/ro-latin-400.woff2') format('woff2');
+	unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* greek */
+@font-face {
+	font-family: 'Roboto';
+	font-style: normal;
+	font-weight: 700;
+	src: local('Roboto Bold'), local('Roboto-Bold'), url('../fonts/ro-greek-700.woff2') format('woff2');
+	unicode-range: U+0370-03FF;
+}
+
+/* latin-ext */
+@font-face {
+	font-family: 'Roboto';
+	font-style: normal;
+	font-weight: 700;
+	src: local('Roboto Bold'), local('Roboto-Bold'), url('../fonts/ro-latin-ext-700.woff2') format('woff2');
+	unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* latin */
+@font-face {
+	font-family: 'Roboto';
+	font-style: normal;
+	font-weight: 700;
+	src: local('Roboto Bold'), local('Roboto-Bold'), url('../fonts/ro-latin-700.woff2') format('woff2');
+	unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+	font-family: 'Font Awesome 5 Free';
+	font-style: normal;
+	font-weight: 900;
+	src: url('../fonts/fa-solid-900.woff2') format('woff2');
+}
+
+/******************************************************************************
+ * STANDARD TEXT LAYOUT ELEMENTS                                              *
+ ******************************************************************************/
+
+b, strong {
+	font-weight: bold;
+}
+
+i, em {
+	font-style: italic;
+}
+
+ol, ul {
+	margin-left: -2rem;
+	padding-left: 2rem;
+}
+
+ol ul, ul ol, ul ul, ol ol {
+	margin-left: 0;
+}
+
+ul {
+	list-style: disc outside;
+}
+
+ul ul {
+	list-style: circle outside;
+}
+
+ol {
+	list-style: decimal outside;
+}
+
+li {
+}
+
+code {
+	font-family: monospace;
+	background-color: #f0f0f0;
+}
+
+.spacer {
+	flex: 1 1 0;
+}
+
+a:link,
+a:visited {
+	transition: 0.1s;
+	color: #666;
+	text-decoration: underline;
+}
+
+a:hover {
+	background-color: #333;
+	color: white;
+}
+
+a:visited:hover {
+	background-color: #333;
+	color: white !important;
+}
+
+/******************************************************************************
+ * ICONS                                                                      *
+ ******************************************************************************/
+
+.icon {
+	-moz-osx-font-smoothing: grayscale;
+	-webkit-font-smoothing: antialiased;
+	font-family: 'Font Awesome 5 Free';
+	font-weight: 900;
+	font-style: normal;
+	font-variant: normal;
+	text-rendering: auto;
+}
+
+/******************************************************************************
+ * OVERALL GRID LAYOUT                                                        *
+ ******************************************************************************/
+
+html, body {
+	margin: 0;
+	padding: 0;
+	width: 100%;
+	height: 100%;
+
+	/* Main font and colour */
+	background-color: #f0f0f0;
+	background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQAAAAEACAAAAAB5Gfe6AAAACXBIWXMAAC4jAAAuIwF4pT92AAAAB3RJTUUH4gwWFyIiTGFHWgAAAW5JREFUeNrt2LENACEMBEEM/ffrBInYtHBD9oSj10ls9co+1Wde3LDvHf4DAAAAAAAAAAAAAAAAAEDqc1gP0ANsAAAAAAAAAAAAAAAAAADoAXqAHmADAAAAAAAAAAAAAAAAAEAP0AP0ABsAAAAAAAAAAAAAAAAAAHqAHqAH2AAAAAAAAAAAAAAAAAAA0AP0AD3ABgAAAAAAAAAAAAAAAACAHqAH6AE2AAAAAAAAAAAAAAAAAAD0AD1AD7ABAAAAAAAAAAAAAAAAAKAH6AF6gA0AAAAAAAAAAAAAAAAAAD1AD9ADbAAAAAAAAAAAAAAAAAAA6AF6gB5gAwAAAAAAAAAAAAAAAABAD9AD9AAbAAAAAAAAAAAAAAAAAAB6gB6gB9gAAAAAAAAAAAAAAAAAANAD9AA9wAYAAAAAAAAAAAAAAAAAgB6gB+gBNgAAAAAAAAAAAAAAAAAA9AA9QA+wAQAAAAAAAAAAAAAAAADwnwdCrhEg0vFPZgAAAABJRU5ErkJggg==');
+	color: #333;
+	font-family: Roboto, sans-serif;
+	font-size: 12pt;
+}
+
+button {
+	color: #333;
+	cursor: pointer;
+}
+
+body {
+	position: relative;
+	min-height: 100%;
+}
+
+body > * {
+	padding: 1rem;
+	margin: 0;
+}
+
+header, footer {
+	position: fixed;
+	overflow: hidden;
+	left: 0;
+	right: 0;
+	background-color: white;
+	box-sizing: border-box;
+}
+
+header {
+	height: 5rem;
+	top: 0;
+}
+
+footer {
+	height: 3rem;
+	bottom: 0;
+}
+
+header, footer {
+	z-index: 1;
+	box-shadow: rgba(100, 120, 140, 0.25) 0 0 5px;
+}
+
+/******************************************************************************
+ * FORM ELEMENT                                                               *
+ ******************************************************************************/
+
+input,
+textarea,
+main.editor div.CodeMirror {
+	background-color: #f0f0f0;
+	border: #f0f0f0 2px solid;
+
+	padding: 0.5rem;
+	font-size: inherit;
+	font-family: inherit;
+	color: inherit;
+	border-radius: 3px;
+}
+
+main.editor div.CodeMirror,
+textarea {
+	font-family: monospace;
+	line-height: 1.5;
+	background-color: white;
+	resize: none;
+}
+
+input:focus,
+textarea:focus,
+main.editor div.CodeMirror-focused {
+	background-color: white;
+	box-shadow: rgba(100, 120, 140, 0.25) 2px 2px 5px;
+	border: #5c3566 2px solid;
+}
+
+
+/******************************************************************************
+ * HEADER MENU                                                                *
+ ******************************************************************************/
+
+header {
+	display: flex;
+	align-items: stretch;
+}
+
+header h1 {
+	flex: 1 0 auto;
+	line-height: 3rem;
+	color: #5c3566;
+	font-weight: normal;
+	font-size: 200%;
+}
+
+header > button {
+	transition: 0.1s;
+	flex: 0 0 auto;
+	display: flex;
+	align-items: center;
+	background-color: #5c3566;
+	color: white;
+	box-shadow: rgba(100, 120, 140, 0.25) 2px 2px 5px;
+	font-weight: bold;
+	border: none;
+	border-radius: 2rem;
+	padding: 0 1rem;
+}
+
+header > button .caption {
+	margin-left: 0.6rem;
+}
+
+header > button:hover {
+	opacity: 0.75;
+}
+
+header > button:active {
+	position: relative;
+	top: 1px;
+	left: 1px;
+	box-shadow: rgba(100, 120, 140, 0.25) 1px 1px 5px;
+}
+
+header > button > span.icon::before {
+	display: inline-block;
+	position: relative;
+	font-size: 150%;
+}
+
+header > :not(:last-child) {
+	margin-right: 1rem;
+}
+
+
+/******************************************************************************
+ * HEADER MENU -- SPECIFIC BUTTONS                                            *
+ ******************************************************************************/
+
+header button.subtle {
+	background-color: white;
+	border: 1px solid #5c3566;
+	color: #5c3566;
+	font-weight: normal;
+}
+
+header button#btn_add .icon::before {
+	font-size: 200%;
+	content: "\f067";
+}
+
+header button#btn_view {
+	display: none;
+}
+
+header button#btn_view.grid .icon::before {
+	content: "\f009";
+}
+
+header button#btn_view.table .icon::before {
+	content: "\f039";
+}
+
+header button#btn_delete .icon::before {
+	content: "\f2ed";
+}
+
+header button#btn_save .icon::before {
+	content: "\f058";
+}
+
+header button#btn_back .icon::before {
+	content: "\f0a8";
+}
+
+
+/******************************************************************************
+ * HEADER MENU -- SEARCHBOX                                                   *
+ ******************************************************************************/
+
+header div.search {
+	position: relative;
+	flex: 1 0 auto;
+}
+
+header div.search input#inp_search {
+	width: 100%;
+	height: 100%;
+	transition: 0.1s;
+	padding: 0 3rem 0 2.5rem;
+	box-sizing: border-box;
+}
+
+header div.search input#inp_search:focus {
+	background-color:  white;
+	border: #5c3566 2px solid;
+	box-shadow: rgba(100, 120, 140, 0.25) 2px 2px 5px;
+}
+
+header div.search > span.icon,
+header div.search > button#btn_clear {
+	display: block;
+	position: absolute;
+	top: calc(50% - 1rem);
+	text-align: center;
+	height: 2rem;
+	line-height: 2rem;
+}
+
+header div.search > span.icon {
+	left: 1rem;
+	width: 1rem;
+}
+
+header div.search > span.icon::before {
+	color: #666;
+	content: "\F002";
+}
+
+header div.search button#btn_clear {
+	right: 0.5rem;
+	width: 2rem;
+
+	background: none;
+	border: none;
+}
+
+header div.search button#btn_clear::before {
+	content: "\F00D";
+}
+
+/******************************************************************************
+ * FOOTER MENU                                                                *
+ ******************************************************************************/
+
+footer, footer > div {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+
+footer {
+	padding: 0.5rem;
+}
+
+footer > div {
+	padding: 0;
+	margin: 0;
+}
+
+footer button,
+footer select {
+	background-color: #f0f0f0;
+	border: 2px solid #f0f0f0;
+	border-radius: 3px;
+}
+
+footer select {
+	-webkit-appearance: button;
+	-moz-appearance: button;
+	padding-left: 0.25rem;
+	padding-right: 1rem;
+	background: url("data:image/svg+xml;utf8,%3Csvg%20width%3D'4mm'%20height%3D'2.646mm'%20version%3D'1.1'%20viewBox%3D'0%200%204%202.646'%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%3E%3Cg%20transform%3D'translate(-1.323%20-1.99)'%3E%3Cpath%20d%3D'm1.323%204.635%201.323-2.646%201.323%202.646z'%20fill%3D'%23333'%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E") no-repeat right #f0f0f0;
+}
+
+footer select::after {
+	font-family: "Font Awesom 5.0 Free";
+	font-weight: 900;
+	content: "AAAA";
+}
+
+footer select:hover:not(:disabled),
+footer button:hover:not(:disabled) {
+	border: 2px solid #75507b;
+	box-shadow: rgba(100, 120, 140, 0.25) 2px 2px 5px;
+}
+
+footer select:active:not(:disabled),
+footer button:activenot(:disabled) {
+	box-shadow: rgba(100, 120, 140, 0.25) 1px 1px 5px;
+}
+
+footer select:disabled,
+footer button:disabled {
+	cursor: default;
+	color: #666;
+	text-shadow: 1px 1px 0 white;
+}
+
+footer button {
+	font-weight: inherit;
+	color: inherit;
+	width: 2rem;
+	height: 2rem;
+	margin: 0 0.1rem;
+	padding: 0;
+}
+
+footer select {
+	height: 2rem;
+}
+
+footer button#btn_page_first .icon::before {
+	content: "\f100";
+}
+
+footer button#btn_page_prev .icon::before {
+	content: "\f104";
+}
+
+footer button#btn_page_next .icon::before {
+	content: "\f105";
+}
+
+footer button#btn_page_last .icon::before {
+	content: "\f101";
+}
+
+/******************************************************************************
+ * MAIN CARD VIEW                                                             *
+ ******************************************************************************/
+
+main.cards {
+	overflow: auto;
+	display: flex;
+	flex-flow: row wrap;
+	align-items: center;
+	justify-content: center;
+	padding: 5rem 1rem 4rem 1rem;
+}
+
+/******************************************************************************
+ * MAIN CARD VIEW -- WEEK SEPARATORS                                          *
+ ******************************************************************************/
+
+main.cards > div.week {
+	font-family: Georgia, Palatino, serif;
+	font-size: 110%;
+/*	color: #555753;*/
+	display: flex;
+	height: 1em;
+	padding: 0.5rem 1rem;
+	margin: 1rem;
+	width: 100%;
+	align-items: center;
+	text-transform: uppercase;
+	font-weight: normal;
+	letter-spacing: 0.05em;
+	border-radius: 5px;
+	color: #555753;
+}
+
+main.cards > div.week > hr {
+	flex: 0 0 1rem;
+	height: 0px;
+	border: none;
+	border-bottom: 3px double #888a85;
+}
+
+main.cards > div.week > hr:first-child,
+main.cards > div.week > hr:last-child {
+	flex: 1 1 auto;
+}
+
+main.cards > div.week > span {
+	font-weight: bold;
+	margin: 0 0.2rem 0 0.2rem;
+}
+
+/******************************************************************************
+ * MAIN CARD VIEW -- CARDS                                                    *
+ ******************************************************************************/
+
+/* Single column mode (mostly for mobile) */
+main.cards div.card_container {
+	flex: 1 1 65rem;
+	display: grid;
+	grid-template-columns: 100%;
+	max-width: 75rem;
+}
+
+/* Multi column modes. Use a grid, enable maximum card height with scrolling. */
+@media (min-width: 65rem) {
+header button#btn_view {
+	display: inline-block;
+}
+
+main.cards:not(.continuous) div.card_container {
+	grid-template-columns: 50% 50%;
+	max-width: none;
+}
+
+main.cards:not(.continuous) div.entry > div.content {
+	max-height: 40rem;
+	overflow: auto;
+}
+
+main.cards:not(.continuous) div.entry > div.content:after {
+	content: ' ';
+	display: block;
+	height: 1rem;
+}
+}
+
+@media (min-width: 95rem) {
+main.cards:not(.continuous) div.card_container {
+	grid-template-columns: 33.3% 33.3% 33.3%;
+}
+}
+
+@media (min-width: 125rem) {
+main.cards:not(.continuous) div.card_container {
+	grid-template-columns: 25% 25% 25% 25%;
+}
+}
+
+@media (min-width: 155rem) {
+main.cards:not(.continuous) div.card_container {
+	grid-template-columns: 20% 20% 20% 20% 20%;
+}
+}
+
+@media (min-width: 185rem) {
+main.cards:not(.continuous) div.card_container {
+	grid-template-columns: 16.6% 16.6% 16.6% 16.6% 16.6% 16.6%;
+}
+}
+
+main.cards div.entry {
+	display: inline-block;
+	justify-self: stretch;
+	align-self: stretch;
+	background-color: white;
+	box-shadow: rgba(100, 120, 140, 0.25) 2px 2px 5px;
+	border-radius: 10px 10px 3px 3px;
+	padding: 0;
+	min-width: 25rem;
+	max-width: 75rem; 
+	margin: 1rem;
+	text-align: left;
+	hyphens: auto;
+}
+
+main.cards div.entry > div.meta {
+	display: flex;
+	align-items: center;
+	padding: 0.5rem 0;
+	border-radius: 5px 5px 0px 0px;
+	border-bottom: 1px solid #f0f0f0;
+	line-height: 1.5;
+	text-shadow: 1px 1px 2px rgba(128, 128, 128, 0.4);
+}
+
+main.cards div.entry > div.meta > .author {
+	font-weight: bold;
+	margin-left: 2rem;
+	flex: 1 0 auto;
+}
+
+main.cards div.entry > div.meta > .date {
+	flex: 0 0 auto;
+}
+
+main.cards div.entry > div.meta > button.edit {
+	background: none;
+	border: none;
+}
+
+main.cards div.entry > div.meta > button.edit::before {
+	transition: 0.1s;
+	flex: 0 0 auto;
+	content: "\f303";
+	width: 1rem;
+	opacity: 0;
+	color: inherit;
+}
+
+main.cards div.entry:hover > div.meta > button.edit::before,
+main.cards div.entry > div.meta > button.edit:focus::before {
+	opacity: 1;
+}
+
+main.cards div.entry > div.content {
+	padding: 1rem 2rem;
+	line-height: 1.75;
+}
+
+/******************************************************************************
+ * MAIN EDITOR VIEW                                                           *
+ ******************************************************************************/
+
+main.editor {
+	overflow: auto;
+	display: flex;
+	flex-direction: row;
+	align-items: stretch;
+	justify-content: space-evenly;
+	padding: 5rem 1rem 4rem 1rem;
+}
+
+main.editor,
+main.editor input,
+main.editor label,
+main.editor textarea,
+main.editor pre {
+	box-sizing: border-box;
+}
+
+main.editor {
+	display: flex;
+	flex-direction: column;
+	background-color: white;
+	height: 100%;
+	padding-bottom: 1rem;
+}
+
+main.editor label {
+	font-weight: bold;
+	margin-top: 1rem;
+	margin-bottom: 0.25rem;
+}
+
+main.editor > label {
+	flex: 0 0 auto;
+}
+
+main.editor > div.row {
+	display: flex;
+	flex-direction: row;
+	align-items: stretch;
+}
+
+main.editor input[type="date"] {
+	flex: 0 0 10rem;
+}
+
+main.editor > div.row > input,
+main.editor > div.row > label,
+main.editor textarea,
+main.editor pre,
+main.editor div.CodeMirror {
+	flex: 1 0 10rem;
+}
+
+main.editor > div.row > input:not(:first-child),
+main.editor > div.row > label:not(:first-child) {
+	margin-left: 0.5rem;
+}
+
+main.editor input[type="date"],
+main.editor label[for="date"] {
+	flex: 0 0 10rem !important;
+}
+
+
+/******************************************************************************
+ * LOADING SCREEN                                                             *
+ ******************************************************************************/
+
+body div.loading {
+	padding: 0;
+	margin: 0;
+	width: 100%;
+	height: 100%;
+	overflow: none;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+}
+
+body div.loading svg {
+	width: 10rem;
+	height: 10rem;
+}
+
+body div.loading svg .bubbles {
+	animation: spin 2s linear infinite;
+	transform-origin: 62% 84%;
+}
+
+body div.loading .copyright {
+	position: fixed;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	padding: 1rem;
+	color: #666;
+	font-size: 80%;
+	text-align: center;
+}
+
+@keyframes spin {
+	0% { transform: rotate(0deg); }
+	100% { transform: rotate(360deg); }
+}
+
+/******************************************************************************
+ * MOBILE LAYOUT                                                              *
+ ******************************************************************************/
+
+@media screen and (max-width: 600px), screen and (max-height: 600px) {
+
+	body {
+		font-size: 10pt;
+	}
+
+	body > * {
+		padding: 0.5rem;
+	}
+
+	header {
+		height: 3rem;
+	}
+
+	header h1 {
+		line-height: 2rem;
+	}
+
+	main.cards {
+		padding: 3rem 0 4rem 0;
+	}
+
+	main.editor {
+		padding: 3rem 0.5rem 0.5rem 0.5rem;
+	}
+
+	main.editor label {
+		margin-top: 0.5rem;
+	}
+
+	header > button > span.icon::before {
+		margin-left: -0.4rem;
+		margin-right: -0.4rem;
+		font-size: 100% !important;
+	}
+
+	header > button > span.caption {
+		display: none;
+	}
+
+	header > :not(:last-child) {
+		margin-right: 0.5rem;
+	}
+
+	main.cards div.entry {
+		min-width: 15rem;
+	}
+
+	main.cards div.entry > div.meta > .author {
+		margin-left: 1rem;
+	}
+
+	main.cards div.entry > div.meta > button.edit {
+		margin-right: 0rem;
+	}
+
+	main .cards div.entry > div.text {
+		padding: 0.5rem 1rem;
+		line-height: 1.75;
+	}
+
+	main.cards > div.week {
+		margin-top: 0.5rem;
+		margin-bottom: 0.5rem;
+	}
+
+	footer .page_counter {
+		display: none;
+	}
+}
+

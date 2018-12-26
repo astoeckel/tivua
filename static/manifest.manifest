@@ -1,0 +1,29 @@
+{
+  "name": "Tivua Research Diary",
+  "short_name": "TIVUA",
+  "start_url": ".",
+  "display": "fullscreen",
+  "lang": "en",
+  "icons": [
+    {
+      "src": "images/touch-icon.png",
+      "sizes": "58x58",
+      "type": "image/png"
+    },
+    {
+      "src": "images/touch-icon-152x152.png",
+      "sizes": "152x152",
+      "type": "image/png"
+    },
+    {
+      "src": "images/touch-icon-167x167.png",
+      "sizes": "167x167",
+      "type": "image/png"
+    },
+    {
+      "src": "images/touch-icon-180x180.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ]
+}
