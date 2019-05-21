@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="32" height="32" version="1.1" viewBox="0 0 8.4666665 8.4666669" xmlns="http://www.w3.org/2000/svg">
+ <g transform="translate(0 -288.53)" fill="none" stroke="#fff" stroke-opacity=".75" stroke-width="1.5">
+  <path d="m-1.3229 298.32 10.583-10.583"/>
+  <path transform="translate(-1.5875 -1.5875)" d="m-1.3229 293.03 6.6146-6.6146"/>
+  <path transform="translate(1.5875 1.5875)" d="m3.9688 298.32 6.6146-6.6146"/>
+  <path transform="translate(-2.1167 -2.1167)" d="m-1.3229 298.32 10.583-10.583"/>
+  <path transform="translate(2.1167 2.1167)" d="m-1.3229 298.32 10.583-10.583"/>
+ </g>
+</svg>

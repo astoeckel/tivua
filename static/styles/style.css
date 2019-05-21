@@ -71,6 +71,10 @@ table {
 	border-spacing: 0;
 }
 
+button, input[type="submit"] {
+	cursor: pointer;
+}
+
 /******************************************************************************
  * FONTS                                                                      *
  ******************************************************************************/
@@ -530,13 +534,13 @@ footer > div {
 }
 
 footer button,
-footer select {
+select {
 	background-color: #f0f0f0;
 	border: 2px solid #f0f0f0;
 	border-radius: 3px;
 }
 
-footer select {
+select {
 	-webkit-appearance: button;
 	-moz-appearance: button;
 	padding-left: 0.25rem;
@@ -544,25 +548,28 @@ footer select {
 	background: url("data:image/svg+xml;utf8,%3Csvg%20width%3D'4mm'%20height%3D'2.646mm'%20version%3D'1.1'%20viewBox%3D'0%200%204%202.646'%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%3E%3Cg%20transform%3D'translate(-1.323%20-1.99)'%3E%3Cpath%20d%3D'm1.323%204.635%201.323-2.646%201.323%202.646z'%20fill%3D'%23333'%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E") no-repeat right #f0f0f0;
 }
 
-footer select::after {
+select::after {
 	font-family: "Font Awesom 5.0 Free";
 	font-weight: 900;
 	content: "AAAA";
 }
 
-footer select:hover:not(:disabled),
-footer button:hover:not(:disabled) {
+select:hover:not(:disabled),
+input:hover:not(:disabled),
+button:hover:not(:disabled) {
 	border: 2px solid #75507b;
 	box-shadow: rgba(100, 120, 140, 0.25) 2px 2px 5px;
 }
 
-footer select:active:not(:disabled),
-footer button:activenot(:disabled) {
+select:active:not(:disabled),
+input:active:not(:disabled),
+button:active:not(:disabled) {
 	box-shadow: rgba(100, 120, 140, 0.25) 1px 1px 5px;
 }
 
-footer select:disabled,
-footer button:disabled {
+input:disabled,
+select:disabled,
+button:disabled {
 	cursor: default;
 	color: #666;
 	text-shadow: 1px 1px 0 white;
@@ -577,7 +584,7 @@ footer button {
 	padding: 0;
 }
 
-footer select {
+select {
 	height: 2rem;
 }
 
@@ -596,6 +603,158 @@ footer button#btn_page_next .icon::before {
 footer button#btn_page_last .icon::before {
 	content: "\f101";
 }
+
+/******************************************************************************
+ * MAIN LOGIN VIEW                                                            *
+ ******************************************************************************/
+
+div.login_container {
+	padding: 0;
+	margin: 0;
+	width: 100%;
+	height: 100%;
+	overflow: auto;
+	display: flex;
+	flex-direction: column;
+}
+
+main.login {
+	overflow: hidden;
+	background-color: white;
+	border: 2px solid #5c3566;
+	max-width: 30rem;
+	margin: auto;
+	padding: 2rem;
+	flex: 0 0 auto;
+	box-sizing: border-box;
+
+	display: grid;
+	grid-gap: 2rem 0;
+
+	line-height: 1.5;
+}
+
+main.login .container {
+	position: relative;
+	overflow: hidden;
+	display: flex;
+}
+
+main.login .page {
+	position: relative;
+	flex: 0 0 100%;
+	width: 100%;
+}
+
+main.login .page
+{
+	display: grid;
+	grid-gap: 1rem 0;
+	min-height: 18.5rem;
+}
+
+main.login form {
+	display: grid;
+	grid-gap: 0.5rem 0;
+}
+
+main.login form label {
+	margin-bottom: -0.5rem;
+}
+
+main.login form input[type="text"],
+main.login form input[type="password"] {
+	margin-bottom: 0.5rem;
+}
+
+main.login form input.error {
+	border: 2px dashed #a40000;
+}
+
+main.login form label {
+	position: relative;
+}
+
+main.login span.error {
+	color: #a40000;
+	font-style: italic;
+}
+
+main.login form label span.error {
+	position: absolute;
+	right: 0%;
+}
+
+.busy {
+	background-image: url("data:image/svg+xml;utf8,%3Csvg%20width%3D%2232%22%20height%3D%2232%22%20version%3D%221.1%22%20viewBox%3D%220%200%208.4666665%208.4666669%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cg%20transform%3D%22translate(0%20-288.53)%22%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-opacity%3D%22.75%22%20stroke-width%3D%221.5%22%3E%3Cpath%20d%3D%22m-1.3229%20298.32%2010.583-10.583%22%2F%3E%3Cpath%20transform%3D%22translate(-1.5875%20-1.5875)%22%20d%3D%22m-1.3229%20293.03%206.6146-6.6146%22%2F%3E%3Cpath%20transform%3D%22translate(1.5875%201.5875)%22%20d%3D%22m3.9688%20298.32%206.6146-6.6146%22%2F%3E%3Cpath%20transform%3D%22translate(-2.1167%20-2.1167)%22%20d%3D%22m-1.3229%20298.32%2010.583-10.583%22%2F%3E%3Cpath%20transform%3D%22translate(2.1167%202.1167)%22%20d%3D%22m-1.3229%20298.32%2010.583-10.583%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E");
+	background-repeat: repeat;
+	background-size: 32px 32px;
+
+	animation-name: MOVE-BG;
+	animation-duration: 1s;
+	animation-timing-function: linear;
+	animation-iteration-count: infinite;
+}
+
+@keyframes MOVE-BG {
+	from {
+		background-position: 0px 0px;
+	}
+	to { 
+		background-position: 32px 0px;
+	}
+}
+
+main.login img {
+	width: 100%;
+}
+
+main.login h1 {
+	text-align: center;
+	color: #5c3566;
+	font-weight: bold;
+	font-size: 200%;
+	text-transform: uppercase;
+}
+
+main.login h1 span {
+	display: block;
+	font-size: 50%;
+}
+
+main.login h2 {
+	text-align: center;
+	text-transform: uppercase;
+}
+
+main.login button span {
+	display: block;
+	font-weight: normal;
+	font-size: 75%;
+	padding-top: 0.5rem;
+}
+
+main.login button,
+main.login input[type="submit"] {
+	border: 2px solid #5c3566;
+	padding: 1rem 2rem;
+	background-color: white;
+	font: inherit;
+}
+
+main.login button.preferred,
+main.login input[type="submit"] {
+	background-color: #5c3566;
+	color: white;
+	font-weight: bold;
+}
+
+main.login .copyright {
+	line-height: 1.5em;
+	font-size: 75%;
+	color: gray;
+}
+
 
 /******************************************************************************
  * MAIN CARD VIEW                                                             *
@@ -882,6 +1041,10 @@ body div.loading .copyright {
 
 @media screen and (max-width: 600px), screen and (max-height: 600px) {
 
+	main.cards > div.week {
+		font-size: 100%;
+	}
+
 	body {
 		font-size: 10pt;
 	}
@@ -947,6 +1110,10 @@ body div.loading .copyright {
 	}
 
 	footer .page_counter {
+		display: none;
+	}
+
+	footer #lbl_post {
 		display: none;
 	}
 }

@@ -57,9 +57,28 @@ this.tivua.api = (function (window) {
 		});
 	}
 
+	function get_session() {
+		return new Promise((resolve, reject) => {
+			resolve(null);
+		});
+	}
+
+	function get_configuration() {
+		return new Promise((resolve, reject) => {
+			resolve({
+				"login_methods": {
+					"username_password": true,
+					"cas": true
+				}
+			});
+		});
+	}
+
 	return {
 		"list_authors": list_authors,
 		"list_posts": list_posts,
-		"count_posts": count_posts
+		"count_posts": count_posts,
+		"get_session": get_session,
+		"get_configuration": get_configuration
 	}
 })(this);

@@ -7,6 +7,8 @@
 *    | |  | |\ V /| |_| | (_| |
 *    |_|  |_| \_/  \__,_|\__,_|
 *
+* Shared research blog
+*
 * (c)  2019  Andreas Stoeckel -  https://github.com/astoeckel/tivua
 -->
 <html lang="en">
@@ -27,8 +29,39 @@
 		<link rel="manifest" href="manifest.manifest" />
 
 		<link rel="stylesheet" href="styles/style.css" />
-			<link rel="stylesheet" href="lib/codemirror.css" />
-			<link rel="stylesheet" href="lib/codemirror_tango.css" />
+		<link rel="stylesheet" href="lib/codemirror.css" />
+		<link rel="stylesheet" href="lib/codemirror_tango.css" />
+
+		<!-- LOGIN VIEW -->
+		<template id="tmpl_login_view">
+			<div class="login_container">
+				<main class="login">
+					<div class="header">
+						<img src="images/branding/logo.svg"/>
+						<h1>%sign_in</h1>
+					</div>
+					<div class="container">
+						<div id="pg_login_sel_method" class="page">
+							<button id="btn_cas" class="preferred">%via_cas<span>%via_cas_descr</span></button>
+							<button id="btn_username_password">%via_username_password<span>%via_username_password_descr</span></button>
+							<div id="lbl_no_method"><p><strong>%error</strong></p><p>%error_msg_no_login_methods</p></div>
+						</div>
+						<div id="pg_login_username_password" class="page">
+							<form id="frm_username_password">
+								<label for="username">%username<span class="error"></span></label>
+								<input id="username" type="text"/>
+								<label for="password">%password<span class="error"></span></label>
+								<input id="password" type="password"/>
+								<input id="btn_login" type="submit" value="%login"/>
+								<button id="btn_username_password_back">%back</button>
+							</form>
+						</div>
+					</div>
+					<select id="language"></select>
+					<div class="copyright">%copyright_string_begin<a href="https://www.gnu.org/licenses/agpl-3.0.en.html">AGPL 3.0</a>%copyright_string_middle<a href="https://github.com/astoeckel/tivua/">https://github.com/astoeckel/tivua/</a>%copyright_string_end</div>
+				</main>
+			</div>
+		</template>
 
 		<!-- MAIN VIEW -->
 		<template id="tmpl_main_view">
@@ -43,7 +76,7 @@
 			</header>
 			<main class="cards"></main>
 			<footer>
-				<div>Post&nbsp;<span id="lbl_post_start"></span>&nbsp;to&nbsp;<span id="lbl_post_end"></span>&nbsp;of&nbsp;<span id="lbl_post_total"></span></div>
+				<div id="lbl_post">Post&nbsp;<span id="lbl_post_start"></span>&nbsp;to&nbsp;<span id="lbl_post_end"></span>&nbsp;of&nbsp;<span id="lbl_post_total"></span></div>
 				<div class="spacer"></div>
 				<div>
 					<button id="btn_page_first" title="First page"><span class="icon"></span></button>
@@ -150,15 +183,22 @@
 		</div>
 
 		<!-- LOAD ALL SCRIPTS -->
-		<script type="text/javascript" src="data/data.js" defer></script>
-		<script type="text/javascript" src="lib/typo.js" defer></script>
-		<script type="text/javascript" src="lib/codemirror.js" defer></script>
-		<script type="text/javascript" src="lib/codemirror_markdown.js" defer></script>
-		<script type="text/javascript" src="lib/codemirror_spell_checker.js" defer></script>
-		<script type="text/javascript" src="scripts/api.js" defer></script>
-		<script type="text/javascript" src="scripts/colors.js" defer></script>
-		<script type="text/javascript" src="scripts/time.js" defer></script>
-		<script type="text/javascript" src="scripts/utils.js" defer></script>
-		<script type="text/javascript" src="scripts/main.js" defer></script>
+		<!-- SCRIPTS STUB BEGIN -->
+		<script type="text/javascript" src="data/data.js"></script>
+		<script type="text/javascript" src="scripts/api.js"></script>
+		<!-- SCRIPTS STUB END -->
+		<!-- SCRIPTS BEGIN -->
+		<script type="text/javascript" src="lib/l10n.js"></script>
+		<script type="text/javascript" src="lib/typo.js"></script>
+		<script type="text/javascript" src="lib/codemirror.js"></script>
+		<script type="text/javascript" src="lib/codemirror_markdown.js"></script>
+		<script type="text/javascript" src="lib/codemirror_spell_checker.js"></script>
+		<script type="text/javascript" src="scripts/colors.js"></script>
+		<script type="text/javascript" src="scripts/time.js"></script>
+		<script type="text/javascript" src="scripts/utils.js"></script>
+		<script type="text/javascript" src="scripts/view.js"></script>
+		<script type="text/javascript" src="scripts/main.js"></script>
+		<script type="text/javascript" src="l10n/l10n_data.js"></script>
+		<!-- SCRIPTS END -->
 	</body>
 </html>
