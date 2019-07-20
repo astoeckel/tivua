@@ -22,8 +22,8 @@ this.tivua = this.tivua || {};
 this.tivua.colors = (function () {
 	"use strict";
 
-	/* HSL color palette used for the entires. For each entry, the hue value
-	   is randomly generated. The S/L entries are computed by linear
+	/* HSL color palette used for the entires. For each user, the hue value
+	   is pseudo-randomly generated. The S/L entries are computed by linear
 	   interpolation between the palette entries. */
 	const author_colors_hsl = [
 		[0, 255, 82],
@@ -41,7 +41,7 @@ this.tivua.colors = (function () {
 	function author_id_to_hue(id) {
 		// Compute the hue using the golden ratio
 		const gr = 1.618033987;
-		return ((256 * id * gr + 80) | 0) % 256;
+		return ((256 * id * gr + 120) | 0) % 256;
 	}
 
 	function author_id_to_color(id, is_bg) {
@@ -60,13 +60,10 @@ this.tivua.colors = (function () {
 				if (is_bg) {
 					return "hsl("
 							+ ((h * 360 / 255) | 0) + ","
-							+ "15%,"
-							+ "90%)";
-				} else {
-					return "hsl("
-							+ ((h * 360 / 255) | 0) + ","
 							+ ((s * 100 / 255) | 0) + "%,"
 							+ ((l * 100 / 255) | 0) + "%)";
+				} else {
+					return "white";
 				}
 			}
 		}

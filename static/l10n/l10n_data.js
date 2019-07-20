@@ -104,7 +104,7 @@ this.tivua.l10n = (function () {
 			"%copyright_string_begin":
 				"Tivua. © 2019, Andreas Stöckel. Lizensiert unter der ",
 			"%copyright_string_middle":
-				". Bitte berichten Sie Bugs unter ",
+				". Bitte berichten Sie Fehler unter ",
 			"%copyright_string_end":
 				"."
 		},

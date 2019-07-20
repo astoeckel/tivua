@@ -28,6 +28,7 @@
 
 		<link rel="manifest" href="manifest.manifest" />
 
+		<link rel="stylesheet" href="styles/system-font.css" />
 		<link rel="stylesheet" href="styles/style.css" />
 		<link rel="stylesheet" href="lib/codemirror.css" />
 		<link rel="stylesheet" href="lib/codemirror_tango.css" />
@@ -63,8 +64,8 @@
 			</div>
 		</template>
 
-		<!-- MAIN VIEW -->
-		<template id="tmpl_main_view">
+		<!-- CARD VIEW -->
+		<template id="tmpl_card_view">
 			<header>
 				<button id="btn_add" title="Add a new diary entry"><span class="icon"></span><span class="caption">Add entry</span></button>
 				<div class="search">
@@ -93,7 +94,7 @@
 		</template>
 
 		<!-- MAIN VIEW - WEEK SEPARATOR -->
-		<template id="tmpl_main_view_week">
+		<template id="tmpl_card_view_week">
 			<div class="week">
 				<hr/>
 				<span class="week"></span>
@@ -106,7 +107,7 @@
 		</template>
 
 		<!-- MAIN VIEW - CARD -->
-		<template id="tmpl_main_view_card">
+		<template id="tmpl_card_view_card">
 			<div class="entry">
 				<div class="meta">
 					<span class="author"></span>
@@ -185,18 +186,24 @@
 		<!-- LOAD ALL SCRIPTS -->
 		<!-- SCRIPTS STUB BEGIN -->
 		<script type="text/javascript" src="data/data.js"></script>
-		<script type="text/javascript" src="scripts/api.js"></script>
+		<script type="text/javascript" src="scripts/xhr_stub.js"></script>
 		<!-- SCRIPTS STUB END -->
 		<!-- SCRIPTS BEGIN -->
 		<script type="text/javascript" src="lib/l10n.js"></script>
+		<script type="text/javascript" src="lib/sjcl.js"></script>
 		<script type="text/javascript" src="lib/typo.js"></script>
 		<script type="text/javascript" src="lib/codemirror.js"></script>
 		<script type="text/javascript" src="lib/codemirror_markdown.js"></script>
 		<script type="text/javascript" src="lib/codemirror_spell_checker.js"></script>
+		<script type="text/javascript" src="lib/auto-complete.js"></script>
 		<script type="text/javascript" src="scripts/colors.js"></script>
 		<script type="text/javascript" src="scripts/time.js"></script>
 		<script type="text/javascript" src="scripts/utils.js"></script>
-		<script type="text/javascript" src="scripts/view.js"></script>
+		<script type="text/javascript" src="scripts/xhr.js"></script>
+		<script type="text/javascript" src="scripts/api.js"></script>
+		<script type="text/javascript" src="scripts/view/cards.js"></script>
+		<script type="text/javascript" src="scripts/view/editor.js"></script>
+		<script type="text/javascript" src="scripts/view/login.js"></script>
 		<script type="text/javascript" src="scripts/main.js"></script>
 		<script type="text/javascript" src="l10n/l10n_data.js"></script>
 		<!-- SCRIPTS END -->

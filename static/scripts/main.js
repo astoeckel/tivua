@@ -26,6 +26,9 @@ this.tivua.main = (function () {
 	const view = tivua.view;
 	const api = tivua.api;
 
+	// Fetch the application root element
+	const root = document.querySelector('body');
+
 	const observer = {
 		"on_login_cas":  () => {
 			return new Promise((resolve, reject) => {
@@ -35,14 +38,8 @@ this.tivua.main = (function () {
 			});
 		},
 		"on_login_username_password": (username, password) => {
-			return new Promise((resolve, reject) => {
-				window.setTimeout(() => {
-					if (username == "demo" && password == "demo") {
-						resolve();
-					} else {
-						reject("%error_invalid_username_password");
-					}
-				}, 500);
+			return api.post_login(username, password).then(() => {
+				_switch_view(api, root, view.cards.create);
 			});
 		},
 	};
@@ -52,15 +49,17 @@ this.tivua.main = (function () {
 	 * Views implemented at the moment are the login view, the editor view and
 	 * the main view.
 	 */
-	function _switch_view(root, ctor) {
+	function _switch_view(api, root, ctor) {
 		// Calls the constructor with the root element
 		let construct_new_view = () => {
 			root.current_view = null;
-			return ctor(root).then(view => {
+			return ctor(api, root).then(view => {
 				// Listen to all view events the controller knows about
-				for (let key in observer) {
-					if (key in view) {
-						view[key] = observer[key];
+				if (view) {
+					for (let key in observer) {
+						if (key in view) {
+							view[key] = observer[key];
+						}
 					}
 				}
 
@@ -79,17 +78,21 @@ this.tivua.main = (function () {
 	}
 
 	function init() {
-		// Fetch the application root element
-		const root = document.querySelector('body');
-
 		// Determine whether we're currently logged in -- depending on the
 		// result of this API call we'll either display the login view or the
 		// main view.
-		api.get_session().then((session) => {
-			const ctor = session ? view.create_main_view : view.create_login_view;
-			return _switch_view(root, ctor);
-		});
-
+		api.get_session_data()
+			.then(session => {
+				return _switch_view(api, root, view.cards.create);
+			}).catch(() => {
+				return _switch_view(api, root, view.login.create);
+			}).finally(() => {
+				// After we've shown the login screen for the first time, link
+				// "access denied" messages to the login view
+				tivua.api.on_access_denied = () => {
+					_switch_view(api, root, view.login.create);
+				};
+			});
 	}
 
 	return {
