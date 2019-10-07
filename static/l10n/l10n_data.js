@@ -63,7 +63,13 @@ this.tivua.l10n = (function () {
 			"%copyright_string_middle":
 				". Report bugs at ",
 			"%copyright_string_end":
-				"."
+				".",
+
+			// Logout dialogue
+			"%logout_title":
+				"Logout successful",
+			"%logout_message":
+				"You have been successfully logged out. You will now be redirected to the homepage.",
 		},
 		"de-DE": {
 			// Language metadata
@@ -106,7 +112,13 @@ this.tivua.l10n = (function () {
 			"%copyright_string_middle":
 				". Bitte berichten Sie Fehler unter ",
 			"%copyright_string_end":
-				"."
+				".",
+
+			// Logout dialogue
+			"%logout_title":
+				"Abmelden erfolgreich",
+			"%logout_message":
+				"Sie wurden erfolgreich abgemeldet. Sie werden nun auf die Startseite weitergeleitet.",
 		},
 	}
 

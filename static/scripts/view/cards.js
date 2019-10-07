@@ -137,7 +137,11 @@ this.tivua.view.cards = (function() {
 			  "color: " + colors.author_id_to_color(post["author"], false) + ";"
 			+ "background-color: " + colors.author_id_to_color(post["author"], true) + ";");
 		tmpl.querySelector(".date").innerText = _format_date(post["date"]);
-		tmpl.querySelector("div.content").innerHTML = post["content"]; // XXX XSS prevention, parse markdown
+
+		const div_content = tivua.render(post["content"]);
+		div_content.setAttribute("class", "content");
+		tmpl.querySelector(".entry").appendChild(div_content);
+
 		return tmpl;
 	}
 
@@ -160,24 +164,33 @@ this.tivua.view.cards = (function() {
 		const autocomplete = new autoComplete({
 			"selector": input,
 			"source": (term, response) => {
-				response([
-					"test1",
-					"test2",
-					"test3"
-				]);
+				const matches = (x) => (x.toLowerCase().includes(term.toLowerCase()));
+				api.get_author_list().then((data) => {
+					const res = [];
+					for (let author of data.authors) {
+						if (matches(author["display_name"]) || matches(author["user_name"])) {
+							res.push(author["display_name"] + " (" + author["user_name"] + ")");
+						}
+					}
+					response(res);
+				});
 			},
 			"offsetTop": -7,
 			"root": root
 		});
 	}
 
-	function show_card_view(api, root, page) {
-		// Bind "api" and "root" to this function
-		const cback = page => show_card_view(api, root, page);
+	function show_card_view(api, root, events, page) {
+		// Bind "api", "root", and "events" to this function
+		const cback = page => show_card_view(api, root, events, page);
 
 		// Update the navigation part of the card view
 		const view = utils.import_template('tmpl_card_view');
 		const main = view.querySelector("main");
+
+		// Get the "add" button
+		const btn_add = view.getElementById("btn_add");
+		btn_add.addEventListener('click', (e) => events.on_add(e));
 
 		// Attach the autocomplete to the search bar
 		_init_autocomplete(api, main, view.getElementById('inp_search'))
@@ -260,7 +273,10 @@ this.tivua.view.cards = (function() {
 				main.appendChild(container);
 
 				for (let post of posts_) {
-					container.appendChild(_create_card_view_card(post));
+					const card = _create_card_view_card(post);
+					const btn_edit = card.querySelector(".meta > button");
+					btn_edit.addEventListener("click", _ => events.on_edit(post["id"]));
+					container.appendChild(card);
 				}
 			}
 
@@ -288,8 +304,12 @@ this.tivua.view.cards = (function() {
 	 */
 	function create_card_view(api, root, page=0) {
 		return new Promise((resolve, reject) => {
-			show_card_view(api, root, page);
-			resolve(null);
+			const events = {
+				"on_edit": () => { throw "Not implemented"},
+				"on_add": () => { throw "Not implemented"},
+			};
+			show_card_view(api, root, events, page);
+			resolve(events);
 		});
 	}
 

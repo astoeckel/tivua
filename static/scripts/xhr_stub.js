@@ -43,7 +43,7 @@ this.tivua.xhr = (function (window) {
 
 	/* List of active sessions */
 	const sessions = {
-		"default": 0 // XXX
+		"anonymous": 0
 	}
 
 	function _check_session(session) {
@@ -62,6 +62,10 @@ this.tivua.xhr = (function (window) {
 			}
 		}
 		return null;
+	}
+
+	function _build_index() {
+		
 	}
 
 	challenges = {}
@@ -107,6 +111,12 @@ this.tivua.xhr = (function (window) {
 		return new Promise((resolve, reject) => {
 			_check_session(session);
 			resolve(DATA_CONTENT.length);
+		});
+	}
+
+	function get_index(session) {
+		return new Promise((resolve, reject) => {
+			
 		});
 	}
 

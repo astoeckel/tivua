@@ -284,11 +284,11 @@ header > button .caption {
 	margin-left: 0.6rem;
 }
 
-header > button:hover {
+header > button:hover:not(:disabled) {
 	opacity: 0.75;
 }
 
-header > button:active {
+header > button:active:not(:disabled) {
 	position: relative;
 	top: 1px;
 	left: 1px;
@@ -310,7 +310,7 @@ header > :not(:last-child) {
  * HEADER MENU -- SPECIFIC BUTTONS                                            *
  ******************************************************************************/
 
-header button.subtle {
+button.subtle {
 	background-color: white;
 	border: 1px solid #5c3566;
 	color: #5c3566;
@@ -318,6 +318,7 @@ header button.subtle {
 }
 
 header button#btn_add .icon::before {
+	border: 2px solid #5c3566;
 	font-size: 200%;
 	content: "\f067";
 }
@@ -442,7 +443,7 @@ select::after {
 	content: "AAAA";
 }
 
-select:hover:not(:disabled),
+select:not(:disabled),
 input:hover:not(:disabled),
 button:hover:not(:disabled) {
 	border: 2px solid #75507b;
@@ -458,9 +459,10 @@ button:active:not(:disabled) {
 input:disabled,
 select:disabled,
 button:disabled {
-	cursor: default;
-	color: #666;
-	text-shadow: 1px 1px 0 white;
+	cursor: default !important;
+	color: #666 !important;
+	border-color: #666 !important;
+	text-shadow: 1px 1px 0 white !important;
 }
 
 footer button {
@@ -878,6 +880,130 @@ main.editor label[for="date"] {
 	flex: 0 0 10rem !important;
 }
 
+/******************************************************************************
+ * USER MANAGER VIEW                                                          *
+ ******************************************************************************/
+
+main.user_manager {
+	overflow: auto;
+	display: flex;
+	flex-direction: row;
+	align-items: stretch;
+	justify-content: left;
+	padding: 5rem 0 4rem 0;
+}
+
+.colorcircle {
+	display: inline-block;
+	width: 1em;
+	height: 1em;
+	border-radius: 1em;
+	background-color: #3465a4;
+	vertical-align: middle;
+}
+
+main.user_manager table {
+	flex: 1 0 0;
+	width: 100%;
+}
+
+main.user_manager table th {
+	background-color: #2e3436;
+	font-weight: bold;
+	color: white;
+	text-transform: uppercase;
+	letter-spacing: 0.1em;
+}
+
+main.user_manager table th,
+main.user_manager table td {
+	text-align: left;
+	padding: 1rem;
+	border-bottom: 1px solid #f3f3f3;
+}
+
+main.user_manager table td {
+	background-color: white;
+}
+
+main.user_manager table tr:nth-child(2) td {
+	background-color: #fafafa;
+}
+
+
+main.user_manager table th > span,
+main.user_manager table td > span {
+	box-sizing: border-box;
+	padding: 0.5rem;
+	border: transparent 2px solid;
+}
+
+
+/******************************************************************************
+ * DIALOGUE                                                                   *
+ ******************************************************************************/
+
+div.dialogue {
+	background-color: white;
+	padding: 0rem 3rem;
+	max-width: 40rem;
+	text-align: left;
+	box-shadow: 0 0 20px #ccc;
+	line-height: 1.5em;
+}
+
+div.dialogue h1 {
+	color: #5c3566;
+	font-size: 200%;
+}
+
+div.dialogue > * {
+	margin: 2rem 0;
+}
+
+div.dialogue > div.buttons {
+	justify-content: flex-end;
+	align-items: center;
+	display: flex;
+	height: 3rem;
+}
+
+div.dialogue > div.buttons > div:last-child {
+	margin-right: 0;
+}
+
+div.dialogue > div.buttons > button {
+	transition: 0.1s;
+	flex: 0 0 auto;
+	background-color: #5c3566;
+	color: white;
+	box-shadow: rgba(100, 120, 140, 0.25) 2px 2px 5px;
+	font-weight: bold;
+	border: none;
+	padding: 0 1rem;
+	margin-right: 1rem;
+	min-width: 7rem;
+	text-align: center;
+}
+
+progress {
+	background-color: #eee;
+	border: none;
+	color: #5c3566;
+}
+
+progress::-moz-progress-bar {
+	background: #5c3566;
+}
+
+progress::-webkit-progress-value {
+	background: #5c3566;
+}
+
+div.dialogue > div.buttons > progress {
+	flex: 1 0 auto;
+	height: 0.5rem;
+}
 
 /******************************************************************************
  * LOADING SCREEN                                                             *
@@ -914,6 +1040,39 @@ body div.loading .copyright {
 	color: #666;
 	font-size: 80%;
 	text-align: center;
+}
+
+body div.overlay {
+	position: fixed;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	left: 0;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	margin: 0;
+	padding: 0;
+	z-index: 999;
+	background-color: rgba(255, 255, 255, 0.0);
+	transition: background-color 0.1s;
+}
+
+body div.overlay.opaque {
+	background-color: rgba(255, 255, 255, 0.5);
+}
+
+body div.overlay > div.busy {
+	position: absolute;
+	left: 0;
+	right: 0;
+	top: 0;
+	height: 0.5rem;
+	background-color: #5c3566;
+}
+
+body.inactive {
+	filter: grayscale(0.9) brightness(1.5);
 }
 
 @keyframes spin {
@@ -953,6 +1112,10 @@ body div.loading .copyright {
 
 	main.editor {
 		padding: 3rem 0.5rem 0.5rem 0.5rem;
+	}
+
+	main.user_manager {
+		padding: 3rem 0 0.5rem 0;
 	}
 
 	main.editor label {

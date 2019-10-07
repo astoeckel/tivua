@@ -103,7 +103,7 @@ this.tivua.view.login = (function() {
 	 * This function is responsible for removing form elements that correspond
 	 * to currently unavailble 
 	 */
-	function _show_login_view(root, callbacks, methods) {
+	function _show_login_view(root, callbacks, methods, logout) {
 		const l10n = tivua.l10n;
 
 		// Fetch the login view template
@@ -238,14 +238,19 @@ this.tivua.view.login = (function() {
 		utils.replace_content(root, main);
 	}
 
-	function create_login_view(api, root) {
+	function create_login_view(api, root, logout=false) {
 		const login_view = {
 			"on_login_cas": () => { throw "Not implemented"; },
 			"on_login_username_password": () => { throw "Not implemented"; }
 		};
 
-		return api.get_configuration().then((config) => {
-			_show_login_view(root, login_view, config.login_methods);
+		let promises = [api.get_configuration()];
+		if (logout) {
+			promises.push(api.post_logout());
+		}
+
+		return Promise.all(promises).then((data) => {
+			_show_login_view(root, login_view, data[0].login_methods, logout);
 			return login_view;
 		});
 	}

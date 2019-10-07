@@ -65,34 +65,6 @@ this.tivua.api = (function (window) {
 	}
 
 	/**
-	 * The get_session() function returns a promise returning current session
-	 * identifier in case a session is active, otherwise triggers an error.
-	 */
-	function get_session() {
-		return new Promise((resolve, reject) => {
-			let session = "default";//utils.get_cookie("session");
-			if (session === null || session === "") {
-				reject({
-					"status": "error",
-					"what": "%access_denied",
-				});
-			} else {
-				resolve(session);
-			}
-		});
-	}
-
-	/**
-	 * The get_session_data() function queries the server for the data
-	 * associated with the current session.
-	 */
-	function get_session_data() {
-		return _err(get_session().then(session => {
-			return xhr.get_session_data(session);
-		}));
-	}
-
-	/**
 	 * The get_configuration() function returns the current server
 	 * configuration. This includes available login methods.
 	 */
@@ -106,6 +78,15 @@ this.tivua.api = (function (window) {
 	function get_author_list() {
 		return _err(get_session().then(session => {
 			return xhr.get_author_list(session);
+		}));
+	}
+
+	/**
+	 * Returns the post with the given id.
+	 */
+	function get_post(id) {
+		return _err(get_session().then(session => {
+			return xhr.get_post(session, id);
 		}));
 	}
 
@@ -124,6 +105,48 @@ this.tivua.api = (function (window) {
 	function get_total_post_count() {
 		return _err(get_session().then(session => {
 			return xhr.get_total_post_count(session);
+		}));
+	}
+
+	/**************************************************************************
+	 * SEARCH AND FILTERING                                                   *
+	 **************************************************************************/
+
+	/**
+	 * Downloads the search index for the given trigram group.
+	 */
+	function get_index(initial_letter) {
+		return _err(get_session().then(session => {
+			return xhr.get_index(session, initial_letter);
+		}));
+	}
+
+	/**************************************************************************
+	 * SESSION MANAGEMENT                                                     *
+	 **************************************************************************/
+
+	/**
+	 * The get_session() function returns a promise returning current session
+	 * identifier in case a session is active, otherwise triggers an error.
+	 */
+	function get_session() {
+		return new Promise((resolve, reject) => {
+			let session = utils.get_cookie("session");
+			if (session === null || session === "") {
+				resolve("anonymous"); // XXX
+			} else {
+				resolve(session);
+			}
+		});
+	}
+
+	/**
+	 * The get_session_data() function queries the server for the data
+	 * associated with the current session.
+	 */
+	function get_session_data() {
+		return _err(get_session().then(session => {
+			return xhr.get_session_data(session);
 		}));
 	}
 
@@ -216,6 +239,7 @@ this.tivua.api = (function (window) {
 		"get_session_data": get_session_data,
 		"get_configuration": get_configuration,
 		"get_author_list": get_author_list,
+		"get_post": get_post,
 		"get_post_list": get_post_list,
 		"get_total_post_count": get_total_post_count,
 		"post_logout": post_logout,

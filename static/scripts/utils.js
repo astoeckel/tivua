@@ -38,6 +38,29 @@ this.tivua.utils = (function (window) {
 	}
 
 	/**
+	 * Normalises the given string into an ASCII search string.
+	 */
+	function to_normalised_ascii_string(str) {
+		// TODO: Use proper Unicode transliteration
+		const map = {
+			"ä": "a",
+			"ö": "o",
+			"ü": "u",
+			"ß": "s",
+			"é": "e",
+			"è": "e",
+			"ì": "i",
+			"í": "i",
+			"ú": "u",
+			"ù": "u"
+		};
+		return str.toLowerCase().replace(
+			/[^a-z0-9]/g,
+			function(x) { return map[x] || ''; }
+		);
+	}
+
+	/**
 	 * Deletes all child nodes of the given DOM element.
 	 */
 	function clear(elem) {
@@ -124,6 +147,7 @@ this.tivua.utils = (function (window) {
 		'import_template': import_template,
 		'replace_content': replace_content,
 		'get_cookie': get_cookie,
-		'set_cookie': set_cookie
+		'set_cookie': set_cookie,
+		'to_normalised_ascii_string': to_normalised_ascii_string
 	};
 })(this);

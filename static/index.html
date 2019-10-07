@@ -28,10 +28,13 @@
 
 		<link rel="manifest" href="manifest.manifest" />
 
+		<!-- STYLE BEGIN -->
 		<link rel="stylesheet" href="styles/system-font.css" />
 		<link rel="stylesheet" href="styles/style.css" />
 		<link rel="stylesheet" href="lib/codemirror.css" />
 		<link rel="stylesheet" href="lib/codemirror_tango.css" />
+		<link rel="stylesheet" href="lib/katex.css" />
+		<!-- STYLE END -->
 
 		<!-- LOGIN VIEW -->
 		<template id="tmpl_login_view">
@@ -40,6 +43,7 @@
 					<div class="header">
 						<img src="images/branding/logo.svg"/>
 						<h1>%sign_in</h1>
+						<div id="lbl_msg"></div>
 					</div>
 					<div class="container">
 						<div id="pg_login_sel_method" class="page">
@@ -114,8 +118,6 @@
 					<span class="date"></span>
 					<button class="icon edit"></button>
 				</div>
-				<div class="content">
-				</div>
 			</div>
 		</template>
 
@@ -137,18 +139,71 @@
 					<input id="author" list="authors" placeholder="Your name">
 					<input type="date" id="date" placeholder="Today's date">
 				</div>
-				<datalist id="authors">
-					<option value="Andreas Stöckel">
-					<option value="Chris Eliasmith">
-					<option value="Peter Duggins">
-					<option value="Aaron Voelker">
-				</datalist>
+				<datalist id="authors"></datalist>
 				<label for="inp_keywords">Keywords</label>
 				<input id="inp_keywords" placeholder="Optional comma separated list of keywords">
 				<label for="inp_content">Content</label>
 				<textarea id="inp_content"></textarea>
 			</main>
 		</template>
+
+		<!-- USER EDITOR -->
+		<template id="tmpl_user_manager_view">
+			<header>
+				<button id="btn_back" class="subtle" title="Back to the main view"><span class="icon"></span></button>
+				<h1>Manage Users</h1>
+				<button id="btn_add" title="Add user"><span class="icon"></span><span class="caption">Add user</span></button>
+			</header>
+
+			<main class="user_manager">
+				<table>
+					<thead>
+						<tr>
+							<th></th>
+							<th><span>Name</span></th>
+							<th><span>User ID</span></th>
+							<th><span>Role</span></th>
+							<th><span>Login type</span></th>
+							<th></th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr>
+							<td><span class="colorcircle"></span></td>
+							<td><span>Andreas Stöckel</span></td>
+							<td><span>astoecke</span></td>
+							<td><span>Admin</span></td>
+							<td><span>Password</span><button class="reset"><span class="icon"></span></button></td>
+							<td>
+								<button class="edit"><span class="icon"></span></button>
+								<button class="delete"><span class="icon"></span></button>
+							</td>
+						</tr>
+						<tr>
+							<td><span class="colorcircle" style="background-color: #4e9a06"></span></td>
+							<td><input class="edit_name" value="Andreas Stöckel"></td>
+							<td><input class="edit_id" value="astoecke"></td>
+							<td><select><option>Admin</option><option>Editor</option><option>Reader</option><option>Inactive</option></select></td>
+							<td><select><option>Password</option><option>CAS</option></select></td>
+							<td>
+								<button class="apply"><span class="icon"></span></button>
+								<button class="cancel"><span class="icon"></span></button>
+							</td>
+						</tr>
+					</tbody>
+				</table>
+			</main>
+		</template>
+
+		<!-- GENERIC DIALOGUE -->
+		<template id="tmpl_dialogue">
+			<div class="dialogue">
+				<h1></h1>
+				<div class="message"></div>
+				<div class="buttons"></div>
+			</div>
+		</template>
+
 	</head>
 	<body>
 		<!-- LOADING SCREEN -->
@@ -196,6 +251,9 @@
 		<script type="text/javascript" src="lib/codemirror_markdown.js"></script>
 		<script type="text/javascript" src="lib/codemirror_spell_checker.js"></script>
 		<script type="text/javascript" src="lib/auto-complete.js"></script>
+		<script type="text/javascript" src="lib/katex.js"></script>
+		<script type="text/javascript" src="lib/markdown-it.js"></script>
+		<script type="text/javascript" src="scripts/render.js"></script>
 		<script type="text/javascript" src="scripts/colors.js"></script>
 		<script type="text/javascript" src="scripts/time.js"></script>
 		<script type="text/javascript" src="scripts/utils.js"></script>
@@ -203,7 +261,9 @@
 		<script type="text/javascript" src="scripts/api.js"></script>
 		<script type="text/javascript" src="scripts/view/cards.js"></script>
 		<script type="text/javascript" src="scripts/view/editor.js"></script>
+		<script type="text/javascript" src="scripts/view/users.js"></script>
 		<script type="text/javascript" src="scripts/view/login.js"></script>
+		<script type="text/javascript" src="scripts/view/utils.js"></script>
 		<script type="text/javascript" src="scripts/main.js"></script>
 		<script type="text/javascript" src="l10n/l10n_data.js"></script>
 		<!-- SCRIPTS END -->

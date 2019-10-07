@@ -19,64 +19,42 @@
  */
 
 /**
- * @file editor.js
+ * @file users.js
  *
- * Implementation of the editor view.
+ * Implementation of the user manager
  *
  * @author Andreas Stöckel
  */
 
 this.tivua = this.tivua || {};
 this.tivua.view = this.tivua.view || {};
-this.tivua.view.editor = (function() {
+this.tivua.view.user_manager = (function() {
 	"use strict";
 
 	// Module aliases
 	const utils = tivua.utils;
 
-	function show_editor_view(root, events) {
+	function show_user_manager(root, events) {
 		/* Instantiate the editor view DOM nodes */
-		const main = utils.import_template('tmpl_editor_view');
+		const main = utils.import_template('tmpl_user_manager_view');
 
 		/* Setup the back button */
 		tivua.view.utils.setup_back_button(main.getElementById("btn_back"));
 
-		/* Append the indentation code to the textarea */
-		const inp_content = main.getElementById('inp_content');
-		const editor = CodeMirror.fromTextArea(inp_content, {
-			'lineNumbers': false,
-			'backdrop': 'markdown',
-			'theme': 'tango',
-			'indentWithTabs': true,
-			'electricChars': false,
-			'lineWrapping': true
-		});
-
-		tivua.spellcheck.init().then(typo => {
-			tivua.spellcheck.start(editor, typo)
-		});
-
 		/* Delete the current content of the root element and replace it with
 		   the body element. */
 		utils.replace_content(root, main);
-
-		/* Inform the editor about the DOM update */
-		editor.refresh();
 	}
 
-	function create_editor_view(api, root, id) {
+	function create_user_manager(api, root, id) {
 		return new Promise((resolve, reject) => {
-			tivua.spellcheck.init().then(() => {
-				const events = {
-					"on_back": () => { throw "Not implemented"; }
-				};
-				show_editor_view(root, events);
-				resolve(events);
-			}).catch((err) => reject(err))
+			const events = {};
+			show_user_manager(root, events);
+			resolve(events);
 		});
 	}
 
 	return {
-		'create': create_editor_view
+		'create': create_user_manager
 	};
 })();
