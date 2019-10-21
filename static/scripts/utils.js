@@ -141,6 +141,51 @@ this.tivua.utils = (function (window) {
 		return null;
 	}
 
+	function format_date(timestamp, sep="/") {
+		const date = (timestamp instanceof Date) ? timestamp : new Date(timestamp * 1000);
+		return ("0000" + date.getUTCFullYear()).slice(-4)
+		       + sep + ("00" + (1 + date.getUTCMonth())).slice(-2)
+		       + sep + ("00" + ( date.getUTCDate())).slice(-2);
+	}
+
+	function execute_action(action) {
+		/* Allow use of "bind" for event handlers */
+		if (action === undefined) {
+			action = this;
+		}
+
+		/* Transform the strings into an action object */
+		if (typeof action === "string") {
+			action = {
+				"uri": action
+			};
+		}
+
+		if (typeof action === "function") {
+			action = {
+				"callback": action
+			};
+		}
+
+		if (("uri" in action) && action["uri"]) {
+			if (action["uri"].charAt(0) == '#') {
+				tivua.main.switch_to_fragment(action.uri);
+			} else if (action["uri"] == "/") {
+				const loc = window.location.toString();
+				const hi = loc.indexOf("#")
+				window.location = loc.substr(0, hi >= 0 ? hi : loc.length);
+			} else {
+				window.location = action["uri"];
+			}
+		} else if (("callback" in action) && action["callback"]) {
+			action["callback"]();
+		}
+	}
+
+	function exec(action) {
+		return () => execute_action(action);
+	}
+
 	return {
 		'clear': clear,
 		'clean_whitespace': clean_whitespace,
@@ -148,6 +193,9 @@ this.tivua.utils = (function (window) {
 		'replace_content': replace_content,
 		'get_cookie': get_cookie,
 		'set_cookie': set_cookie,
-		'to_normalised_ascii_string': to_normalised_ascii_string
+		'to_normalised_ascii_string': to_normalised_ascii_string,
+		'format_date': format_date,
+		'execute_action': execute_action,
+		'exec': exec
 	};
 })(this);

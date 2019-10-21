@@ -34,16 +34,18 @@ this.tivua.xhr = (function (window) {
 
 	/* List of users */
 	const users = {
-		0: {
-			"user_name": "demo",
+		5: {
+			"user_name": "astoecke",
 			"password_hash": "2fef31c115173ef2abd946a4cbd35afe980d40ff80ea6ff66e31c37e1a4afe34",
-			"full_name": "Jane Doe"
+			"full_name": "Andreas Stöckel"
 		}
-	}
+	};
+
+	const user_settings = {};
 
 	/* List of active sessions */
 	const sessions = {
-		"anonymous": 0
+		"anonymous": 5
 	}
 
 	function _check_session(session) {
@@ -53,6 +55,7 @@ this.tivua.xhr = (function (window) {
 				"what": "%access_denied",
 			};
 		}
+		return sessions[session];
 	}
 
 	function _get_user_id(user_name) {
@@ -79,9 +82,43 @@ this.tivua.xhr = (function (window) {
 		});
 	}
 
+	function get_post(session, id) {
+		return new Promise((resolve, reject) => {
+			_check_session(session);
+
+			/* Make sure "id" is an integer */
+			id |= 0;
+
+			/* Fetch the post with the given id */
+			let posts = DATA_CONTENT.slice(); /* Make a copy */
+			for (let post of DATA_CONTENT) {
+				if (post.id === id) {
+					for (let key of ["user_name", "display_name"]) {
+						post["author_" + key] = DATA_AUTHORS[post["author"]][key];
+					}
+					resolve({
+						"status": "success",
+						"post": post
+					});
+					return;
+				}
+			}
+
+			/* Post was not found */
+			resolve({
+				"status": "error",
+				"what": "%post_not_found"
+			});
+		});
+	}
+
 	function get_post_list(session, start, limit) {
 		return new Promise((resolve, reject) => {
 			_check_session(session);
+
+			/* Make sure start, limit are integers */
+			start |= 0;
+			limit |= 0;
 
 			/* Select all posts */
 			if (limit < 0) {
@@ -91,10 +128,10 @@ this.tivua.xhr = (function (window) {
 			/* Copy the given slice into a new array */
 			let posts = DATA_CONTENT.slice(start, start + limit)
 
-			/* Join the author data into the entries */
+			/* Join the author data and the entries */
 			for (let post of posts) {
 				for (let key of ["user_name", "display_name"]) {
-					post["author_" + key] = DATA_AUTHORS[post["author"]][key]
+					post["author_" + key] = DATA_AUTHORS[post["author"]][key];
 				}
 			}
 
@@ -148,6 +185,45 @@ this.tivua.xhr = (function (window) {
 					"username_password": true,
 					"cas": true
 				}
+			});
+		});
+	}
+
+	function get_settings(session) {
+		return new Promise((resolve, reject) => {
+			const user_id = _check_session(session);
+			resolve({
+				"status": "success",
+				"settings": (user_id in user_settings) ? user_settings[user_id] : {},
+			});
+		});
+	}
+
+	function post_settings(session, settings) {
+		return new Promise((resolve, reject) => {
+			const user_id = _check_session(session);
+			if (!(user_id in user_settings)) {
+				user_settings[user_id] = {};
+			}
+
+			const valid_settings= {
+				"view": (x) => (x in {"list":0, "cards":1}),
+				"posts_per_page": (x) => (x === (x | 0)),
+			};
+
+			for (let key in settings) {
+				if (!(key in valid_settings) || !(valid_settings[key](settings[key]))) {
+					reject({
+						"status": "error",
+						"what": "Error while validating the request.",
+					})
+					return;
+				}
+				user_settings[user_id][key] = settings[key];
+			}
+			resolve({
+				"status": "success",
+				"settings": user_settings[user_id],
 			});
 		});
 	}
@@ -260,7 +336,7 @@ this.tivua.xhr = (function (window) {
 							console.log("xhr_stub", "X", data);
 							reject(data);
 						})
-					}, 20 + Math.random() * 200);
+					}, 100 + Math.random() * 200);
 				});
 			};
 		}
@@ -271,9 +347,12 @@ this.tivua.xhr = (function (window) {
 		"get_session_data": get_session_data,
 		"get_configuration": get_configuration,
 		"get_author_list": get_author_list,
+		"get_post": get_post,
 		"get_post_list": get_post_list,
 		"get_total_post_count": get_total_post_count,
 		"get_login_challenge": get_login_challenge,
+		"get_settings": get_settings,
+		"post_settings": post_settings,
 		"post_logout": post_logout,
 		"post_login": post_login,
 	});

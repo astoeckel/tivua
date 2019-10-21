@@ -53,7 +53,6 @@ this.tivua.main = (function () {
 	};
 
 	function _get_ctor(view_name, params) {
-		// 
 		if (params === null) {
 			params = {};
 		}
@@ -68,14 +67,15 @@ this.tivua.main = (function () {
 							[{
 								"type": "delay",
 								"value": 3,
-								"uri": "/"
+								"uri": "/",
+								"role": "cancel"
 							}],
 							true
 						);
 					});
 				};
 			case "list":
-				return view.cards.create;
+				return (api, root) => view.cards.create(api, root, params["start"] | 0);
 			case "edit":
 				return (api, root) => view.editor.create(api, root, params["id"]);
 			case "add":
@@ -114,7 +114,10 @@ this.tivua.main = (function () {
 	function _switch_to_fragment(api, root, frag) {
 		let [view_name, params] = _decode_fragment(frag);
 		if (view_name) {
-			_switch_view(api, root, view_name, params, false);
+			_switch_view(api, root, view_name, params, false).catch(e => {
+				tivua.view.utils.show_error_dialogue(root, e);
+				const msg = e.what ? e.what : e.toString();
+			});
 		}
 	}
 
@@ -124,13 +127,13 @@ this.tivua.main = (function () {
 	 * the main view.
 	 */
 	function _switch_view(api, root, view_name, params={}, add_to_history=true) {
-		console.log("main ? _switch_view", view_name, params);
-
 		// Get the constructor and add the corresponding view to the page
 		const ctor = _get_ctor(view_name, params);
 		if (!ctor) {
-			console.error("Ignoring unknown view", view_name);
-			return;
+			return new Promise((_, reject) => reject({
+				"status": "error",
+				"what": "%err_unkown_view"
+			}));
 		}
 		if (add_to_history && !(view_name in HISTORY_BLACKLIST)) {
 			const frag = _encode_fragment(view_name, params);
@@ -214,8 +217,17 @@ this.tivua.main = (function () {
 			});
 	}
 
+	function switch_to_fragment(fragment) {
+		if (fragment != window.location.hash) {
+			window.location.hash = fragment;
+		} else {
+			_switch_to_fragment(api, root, fragment);
+		}
+	}
+
 	return {
 		'init': init,
+		'switch_to_fragment': switch_to_fragment,
 	};
 })();
 

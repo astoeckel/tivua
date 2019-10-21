@@ -44,7 +44,7 @@ this.tivua.colors = (function () {
 		return ((256 * id * gr + 120) | 0) % 256;
 	}
 
-	function author_id_to_color(id, is_bg) {
+	function author_id_to_color(id, is_bg=true) {
 		// Linearly interpolate between the colors from the palette stored in
 		// author_colors_hsl based on the computed hue value
 		let h = author_id_to_hue(id);

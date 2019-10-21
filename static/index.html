@@ -77,7 +77,7 @@
 					<input id="inp_search" type="search" placeholder="Filter by author, date, or content">
 					<button id="btn_clear" class="icon" title="Clear the currently active filter"></button>
 				</div>
-				<button id="btn_view" class="table subtle" title="Toggle between continuous view and card view"><span class="icon"></span></button>
+				<button id="btn_menu" class="subtle" title="%tooltip_menu"><span class="icon"></span></button>
 			</header>
 			<main class="cards"></main>
 			<footer>
@@ -125,24 +125,24 @@
 		<template id="tmpl_editor_view">
 			<header>
 				<button id="btn_back" class="subtle" title="Back to the main view"><span class="icon"></span></button>
-				<h1>New entry</h1>
-				<button id="btn_delete" class="subtle" title="Delete this entry"><span class="icon"></span><span class="caption">Delete</span></button>
-				<button id="btn_save" title="Create new entry"><span class="icon"></span><span class="caption">Create & Save</span></button>
+				<h1>%header_new_entry</h1>
+				<button id="btn_delete" class="subtle" title="Delete this entry"><span class="icon"></span><span class="caption">%btn_delete</span></button>
+				<button id="btn_save" title="Create new entry"><span class="icon"></span><span class="caption">%btn_create_and_save</span></button>
 			</header>
 
 			<main class="editor">
 				<div class="row">
-					<label for="author">Author</label>
-					<label for="date">Date</label>
+					<label for="inp_author">%lbl_author</label>
+					<label for="inp_date">%lbl_date</label>
 				</div>
 				<div class="row">
-					<input id="author" list="authors" placeholder="Your name">
-					<input type="date" id="date" placeholder="Today's date">
+					<select id="sel_author" placeholder="%placeholder_name"></select>
+					<input type="date" id="inp_date" placeholder="%placeholder_date">
 				</div>
 				<datalist id="authors"></datalist>
-				<label for="inp_keywords">Keywords</label>
-				<input id="inp_keywords" placeholder="Optional comma separated list of keywords">
-				<label for="inp_content">Content</label>
+				<label for="inp_keywords">%lbl_keywords</label>
+				<input id="inp_keywords" placeholder="%placeholder_keywords">
+				<label for="inp_content">%lbl_content</label>
 				<textarea id="inp_content"></textarea>
 			</main>
 		</template>
@@ -201,6 +201,29 @@
 				<h1></h1>
 				<div class="message"></div>
 				<div class="buttons"></div>
+			</div>
+		</template>
+
+		<!-- MENU -->
+		<template id="tmpl_menu">
+			<div class="overlay opaque sidebar" tabindex="0">
+				<div class="menu">
+					<h1 class="user">
+						<span class="user_name"></span>
+						<span class="user_emblem" title="%lbl_menu_close"><span class="user_initials"></span></span>
+					</h1>
+					<div class="buttons">
+						<button id="btn_card_view"><span class="icon"></span><span class="caption">%lbl_card_view</span></button>
+						<button id="btn_list_view"><span class="icon"></span><span class="caption">%lbl_list_view</span></button>
+					</div>
+					<ul>
+						<li><a href="#users"><span class="icon"></span><span class="caption">%lbl_menu_user_manager</span></a></li>
+						<li><a href="#preferences"><span class="icon"></span><span class="caption">%lbl_menu_preferences</span></a></li>
+						<li><a href="#help"><span class="icon"></span><span class="caption">%lbl_menu_help</span></a></li>
+						<li><a href="#logout"><span class="icon"></span><span class="caption">%lbl_menu_logout</span></a></li>
+						<li><a href="#" class="close"><span class="icon"></span><span class="caption">%lbl_menu_close</span></a></li>
+					</ul>
+				</div>
 			</div>
 		</template>
 
@@ -263,6 +286,7 @@
 		<script type="text/javascript" src="scripts/view/editor.js"></script>
 		<script type="text/javascript" src="scripts/view/users.js"></script>
 		<script type="text/javascript" src="scripts/view/login.js"></script>
+		<script type="text/javascript" src="scripts/view/menu.js"></script>
 		<script type="text/javascript" src="scripts/view/utils.js"></script>
 		<script type="text/javascript" src="scripts/main.js"></script>
 		<script type="text/javascript" src="l10n/l10n_data.js"></script>

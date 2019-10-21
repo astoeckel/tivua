@@ -37,6 +37,28 @@ this.tivua.api = (function (window) {
 	const utils = tivua.utils;
 	const xhr = tivua.xhr;
 
+	/* Client side API query cache. */
+	const cache = {};
+	function _reset_cache() {
+		cache["session_data"] = {};
+		cache["settings"] = {};
+	}
+	_reset_cache();
+
+	/* Default settings merged into the server response if not present. */
+	const default_settings = {
+		"view": "cards",
+		"posts_per_page": 50,
+	};
+
+	/* Used to avoid out-of-date server responses from spoiling the settings
+	   cache. */
+	let settings_version = 0;
+
+	/* Used to make sure that only the newest requested settings from the server
+	   are used */
+	let setings_version = 0;
+
 	/**
 	 * The internal _err function is used to promote server-side errors to
 	 * client-side errors. Triggers events on certain errors, such as
@@ -122,12 +144,83 @@ this.tivua.api = (function (window) {
 	}
 
 	/**************************************************************************
+	 * USER SETTINGS                                                          *
+	 **************************************************************************/
+
+	function _update_settings_cache(session, authorative, version, settings) {
+		/* If the response is authorative, reset the cache, otherwise use the
+		   existing cache object. */
+		let s_cache;
+		if (authorative && (version >= settings_version)) {
+			s_cache = cache.settings[session] = {};
+		} else {
+			s_cache = (session in cache.settings) ? cache.settings[session] : {};
+		}
+
+		/* Merge the default settings into the cache */
+		for (let key in default_settings) {
+			if (!(key in s_cache)) {
+				s_cache[key] = default_settings[key];
+			}
+		}
+
+		/* Merge the server response into the cache, ignore out-of-date
+		   responses. */
+		let s_resp = settings.settings;
+		if (version >= settings_version) {
+			for (let key in s_resp) {
+				s_cache[key] = s_resp[key];
+			}
+		}
+
+		return {
+			"status": "success",
+			"settings": s_cache,
+		};
+	}
+
+	function get_settings() {
+		return _err(get_session().then(session => {
+			/* If the settings are cached, use the settings stored in the
+			   cache. */
+			if (session in cache.settings) {
+				return {
+					"status": "success",
+					"settings": cache.settings[session],
+				};
+			} else {
+				/* Otherwise, actually perform a request. */
+				return xhr.get_settings(session).then(
+					_update_settings_cache.bind(
+						this, session, true, settings_version));
+			}
+		}));
+	}
+
+	function post_settings(settings) {
+		return _err(get_session().then(session => {
+			/* Merge the requested change into the settings cache. Mark this as
+			   an unauthorative update. */
+			_update_settings_cache(session, false, settings_version,
+					{"settings": settings});
+
+			/* Send the updated data to the server. The server will return the
+			   current settings. Merge those into the settings cache. */
+			settings_version += 1;
+			return xhr.post_settings(session, settings).then(
+					_update_settings_cache.bind(
+						this, session, true, settings_version));
+		}));
+	}
+
+	/**************************************************************************
 	 * SESSION MANAGEMENT                                                     *
 	 **************************************************************************/
 
 	/**
 	 * The get_session() function returns a promise returning current session
-	 * identifier in case a session is active, otherwise triggers an error.
+	 * identifier in case a session is active, otherwise returns an empty
+	 * session identifier.
 	 */
 	function get_session() {
 		return new Promise((resolve, reject) => {
@@ -146,7 +239,17 @@ this.tivua.api = (function (window) {
 	 */
 	function get_session_data() {
 		return _err(get_session().then(session => {
-			return xhr.get_session_data(session);
+			if (session in cache.session_data) {
+				return {
+					"status": "success",
+					"session": cache.session_data[session],
+				};
+			} else {
+				return xhr.get_session_data(session).then((session_data) => {
+					cache.session_data[session] = session_data.session;
+					return session_data;
+				});
+			}
 		}));
 	}
 
@@ -163,6 +266,9 @@ this.tivua.api = (function (window) {
 				.finally(() => {
 					// Delete the local session cookie
 					utils.set_cookie("session", "");
+
+					// Reset the cache
+					_reset_cache();
 
 					// Inform the calling code that logging out was successful
 					resolve({
@@ -242,8 +348,10 @@ this.tivua.api = (function (window) {
 		"get_post": get_post,
 		"get_post_list": get_post_list,
 		"get_total_post_count": get_total_post_count,
+		"get_settings": get_settings,
+		"post_settings": post_settings,
 		"post_logout": post_logout,
 		"post_login": post_login,
-		"on_access_denied": null
+		"on_access_denied": null,
 	};
 })(this);

@@ -28,6 +28,54 @@ this.tivua.l10n = (function () {
 			"%_language_name":
 				"English",
 
+			// Generic error messages
+			"%access_denied":
+				"Access denied",
+			"%post_not_found":
+				"The requested post could not be found.",
+			"%err_unkown_view":
+				"The requested view does not exist.",
+
+			// Error dialogue
+			"%header_error":
+				"Whooops, something went wrong... 🙈",
+			"%lbl_msg_generic":
+				"An unexpected error occured. Most likely this was caused by a programming error inside of Tivua and, unfortunately, there is little you can do to fix this problem. Please contact the developers if this problem persists. Make sure to include all of the information displayed below in your bug report.",
+			"%lbl_stack_trace":
+				"Stack trace:",
+			"%lbl_msg_more_information":
+				"More information:",
+			"%btn_home":
+				"Back to the homepage",
+
+			// Confirmation dialogue
+			"%header_confirm":
+				"Go back and loose changes?",
+			"%msg_confirm":
+				"You made changes that have not been saved. Are you sure you want to go back?",
+			"%msg_confirm_yes":
+				"Yes, loose changes",
+			"%msg_confirm_no":
+				"No, continue editing",
+
+			// Menu
+			"%tooltip_menu":
+				"Displays the main menu",
+			"%lbl_card_view":
+				"Cards",
+			"%lbl_list_view":
+				"List",
+			"%lbl_menu_user_manager":
+				"Manage users",
+			"%lbl_menu_preferences":
+				"Preferences",
+			"%lbl_menu_help":
+				"Help",
+			"%lbl_menu_logout":
+				"Logout",
+			"%lbl_menu_close":
+				"Close this menu",
+
 			// Login form
 			"%sign_in":
 				"Sign in",
@@ -65,6 +113,32 @@ this.tivua.l10n = (function () {
 			"%copyright_string_end":
 				".",
 
+			// Editor view
+			"%header_new_entry":
+				"New entry",
+			"%header_edit_entry":
+				"Edit entry",
+			"%btn_delete":
+				"Delete",
+			"%btn_create_and_save":
+				"Create and save",
+			"%btn_save":
+				"Save",
+			"%lbl_author":
+				"Author",
+			"%lbl_date":
+				"Date",
+			"%lbl_keywords":
+				"Keywords",
+			"%lbl_content":
+				"Content",
+			"%placeholder_name":
+				"Your name",
+			"%placeholder_date":
+				"Today's date",
+			"%placeholder_keywords":
+				"Keywords",
+
 			// Logout dialogue
 			"%logout_title":
 				"Logout successful",
@@ -75,6 +149,12 @@ this.tivua.l10n = (function () {
 			// Language metadata
 			"%_language_name":
 				"Deutsch",
+
+			// Generic error messages
+			"%access_denied":
+				"Zugriff verweigert",
+			"%post_not_found":
+				"Der angefragte Beitrag konnte nicht gefunden werden.",
 
 			// Login form
 			"%sign_in":

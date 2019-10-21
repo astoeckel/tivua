@@ -45,24 +45,36 @@ this.tivua.view.cards = (function() {
 	// posts.
 	const CARD_VIEW_POSTS_PER_PAGE_LIST = [25, 50, 100, 250, 500, -1];
 
-	// Current number of posts per page
-	let card_view_posts_per_page = 50;
-	let card_view_page = 0;
-
 	/**
 	 * Updates the pagination elements on the card view. 
 	 */
-	function _update_card_view_pagination(cback, view, total, page, i0, i1) {
+	function _update_card_view_pagination(api, root, settings, view, total, start, i0, i1) {
+		// Function accessing the posts_per_page setting
+		const posts_per_page = () => settings["posts_per_page"];
+
+		// The posts_per_page setting or the total number of posts
+		const pp = (posts_per_page() < 0) ? total : posts_per_page();
+
+		// Compute the current page and the maximum number of pages
+		let page = Math.floor(start / pp) | 0;
+		const n_pages = Math.ceil(total / pp) | 0;
+		if (page > n_pages) {
+			page = n_pages;
+		}
+
+		// Function moving to the specified page
+		function go_to_page(page) {
+			tivua.main.switch_to_fragment("#list,start=" + (page * pp));
+		}
+
 		// Update the post counter
 		view.querySelector("#lbl_post_start").innerText = i0;
 		view.querySelector("#lbl_post_end").innerText = i1;
 		view.querySelector("#lbl_post_total").innerText = total;
 
 		// Update the page select box
-		const pp = (card_view_posts_per_page < 0) ? total : card_view_posts_per_page;
-		const n_pages = Math.ceil(total / pp);
 		const sel_page = view.querySelector("#sel_page");
-		for (let i = 0; i < n_pages; i++) {
+		for (let i = 0; i < Math.max(n_pages, page + 1); i++) {
 			const sel_page_option = document.createElement("option");
 			sel_page_option.setAttribute("value", i);
 			sel_page_option.innerText = "Page " + (i + 1);
@@ -70,27 +82,44 @@ this.tivua.view.cards = (function() {
 		}
 		sel_page.value = page;
 		sel_page.addEventListener("change", () => {
-			cback(sel_page.value | 0);
+			go_to_page(sel_page.value | 0);
 		});
 
 		// Update the post count select box
 		const sel_entry_count = view.querySelector("#sel_entry_count");
+		if ((CARD_VIEW_POSTS_PER_PAGE_LIST.indexOf(posts_per_page())) < 0) {
+			CARD_VIEW_POSTS_PER_PAGE_LIST.push(posts_per_page());
+		}
 		for (let i = 0; i < CARD_VIEW_POSTS_PER_PAGE_LIST.length; i++) {
 			const sel_entry_count_option = document.createElement("option");
 			const val = CARD_VIEW_POSTS_PER_PAGE_LIST[i];
 			sel_entry_count_option.setAttribute("value", val);
-			if (val == -1)	{
+			if (val == -1) {
 				sel_entry_count_option.innerText = "All posts";
 			} else {
 				sel_entry_count_option.innerText = val + " per page";
 			}
 			sel_entry_count.appendChild(sel_entry_count_option);
 		}
-		sel_entry_count.value = card_view_posts_per_page;
+		sel_entry_count.value = posts_per_page();
 		sel_entry_count.addEventListener("change", () => {
-			card_view_posts_per_page = sel_entry_count.value;
-			const pp = (card_view_posts_per_page < 0) ? total : card_view_posts_per_page;
-			cback(Math.floor(i0 / pp));
+			// Show the loading bar while we're saving the settings
+			const div_overlay = tivua.view.utils.show_loading_overlay(root);
+			api.post_settings({
+				"posts_per_page": sel_entry_count.value | 0
+			}).then((new_settings) => {
+				// Compute a new "pp" variable
+				settings["posts_per_page"] = new_settings.settings["posts_per_page"];
+				const pp = (posts_per_page() < 0) ? total : posts_per_page();
+				const new_page = (Math.floor(start / pp) * pp) | 0;
+
+				// Remove this loading bar, a new one will be added once
+				// we go to the next page
+				div_overlay.close();
+
+				// Go to the current start location
+				tivua.main.switch_to_fragment("#list,start=" + new_page);
+			});
 		});
 
 		// Update the first/next buttons
@@ -103,10 +132,10 @@ this.tivua.view.cards = (function() {
 			btn_page_prev.setAttribute("disabled", "disabled");
 		} else {
 			btn_page_first.addEventListener("click", () => {
-				cback(0);
+				go_to_page(0);
 			});
 			btn_page_prev.addEventListener("click", () => {
-				cback(page - 1);
+				go_to_page(page - 1);
 			});
 		}
 
@@ -115,19 +144,12 @@ this.tivua.view.cards = (function() {
 			btn_page_last.setAttribute("disabled", "disabled");
 		} else {
 			btn_page_next.addEventListener("click", () => {
-				cback(page + 1);
+				go_to_page(page + 1);
 			});
 			btn_page_last.addEventListener("click", () => {
-				cback(n_pages - 1);
+				go_to_page(n_pages - 1);
 			});
 		}
-	}
-
-	function _format_date(timestamp) {
-		const date = new Date(timestamp * 1000);
-		return ("0000" + date.getUTCFullYear()).slice(-4)
-		       + "/" + ("00" + (1 + date.getUTCMonth())).slice(-2)
-		       + "/" + ("00" + ( date.getUTCDate())).slice(-2);
 	}
 
 	function _create_card_view_card(post) {
@@ -136,7 +158,7 @@ this.tivua.view.cards = (function() {
 		tmpl.querySelector(".meta").setAttribute("style",
 			  "color: " + colors.author_id_to_color(post["author"], false) + ";"
 			+ "background-color: " + colors.author_id_to_color(post["author"], true) + ";");
-		tmpl.querySelector(".date").innerText = _format_date(post["date"]);
+		tmpl.querySelector(".date").innerText = utils.format_date(post["date"]);
 
 		const div_content = tivua.render(post["content"]);
 		div_content.setAttribute("class", "content");
@@ -180,32 +202,34 @@ this.tivua.view.cards = (function() {
 		});
 	}
 
-	function show_card_view(api, root, events, page) {
-		// Bind "api", "root", and "events" to this function
-		const cback = page => show_card_view(api, root, events, page);
-
+	function show_card_view(api, root, settings, start) {
 		// Update the navigation part of the card view
 		const view = utils.import_template('tmpl_card_view');
 		const main = view.querySelector("main");
 
+		// Either open the view in "list" or "card" view
+		main.classList.toggle("continuous", settings["view"] == "list");
+
 		// Get the "add" button
 		const btn_add = view.getElementById("btn_add");
-		btn_add.addEventListener('click', (e) => events.on_add(e));
+		btn_add.addEventListener(
+			'click', utils.exec("#add"));
 
 		// Attach the autocomplete to the search bar
 		_init_autocomplete(api, main, view.getElementById('inp_search'))
 
 		// Compute the query range
+		const card_view_posts_per_page = settings["posts_per_page"];
 		let s0 = 0, s1 = -1, s0ext = 0, s1ext = -1;
 		if (card_view_posts_per_page > 0) {
-			s0 = page * card_view_posts_per_page;
-			s1 = (page + 1) * card_view_posts_per_page;
+			s0 = start;
+			s1 = start + card_view_posts_per_page;
 			s0ext = Math.max(0, s0 - CARD_VIEW_OVERLAP);
 			s1ext = s1 + CARD_VIEW_OVERLAP;
 		}
 
 		// Query the posts in the range
-		api.get_post_list(s0ext, s1ext - s0ext).then((response) => {
+		return api.get_post_list(s0ext, s1ext - s0ext).then((response) => {
 			// Fetch the response parts
 			const total = response["total"];
 			const posts = response["posts"];
@@ -260,7 +284,7 @@ this.tivua.view.cards = (function() {
 			// Fetch the index of the first and last post
 			const p0 = (weeks.length == 0) ? 1 : (weeks[0].i0 + 1);
 			const p1 = (weeks.length == 0) ? 1 : (weeks[weeks.length - 1].i1);
-			_update_card_view_pagination(cback, view, total, page, p0, p1);
+			_update_card_view_pagination(api, root, settings, view, total, start, p0, p1);
 
 			// For each post create the corresponding card
 			for (let week of weeks) {
@@ -275,26 +299,31 @@ this.tivua.view.cards = (function() {
 				for (let post of posts_) {
 					const card = _create_card_view_card(post);
 					const btn_edit = card.querySelector(".meta > button");
-					btn_edit.addEventListener("click", _ => events.on_edit(post["id"]));
+					btn_edit.addEventListener(
+						'click', utils.exec("#edit,id=" + post.id));
 					container.appendChild(card);
 				}
 			}
 
-			// Toggle view button
-			const btn_view = view.querySelector("#btn_view")
-			btn_view.addEventListener("click", () => {
-				if (btn_view.classList.contains("table")) {
-					main.classList.add("continuous");
-				} else {
-					main.classList.remove("continuous");
-				}
-				btn_view.classList.toggle("grid");
-				btn_view.classList.toggle("table");
+			// Menu button
+			const btn_menu = view.querySelector("#btn_menu");
+			btn_menu.addEventListener("click", () => {
+				const div_cntr = document.createElement("div");
+				root.appendChild(div_cntr);
+				tivua.view.menu.create(api, div_cntr).then((events) => {
+					events.on_close_menu = () => root.removeChild(div_cntr);
+					events.on_set_view = (view) => {
+						main.classList.toggle("continuous", view == "list");
+						settings["view"] = view;
+					}
+				})
 			});
 
 			// Show the card view
 			utils.replace_content(root, view);
 			root.getRootNode().defaultView.scrollTo(0, 0);
+
+			return {};
 		});
 	}
 
@@ -302,14 +331,10 @@ this.tivua.view.cards = (function() {
 	 * Returns a promise that is executed once the view components have been
 	 * initialized.
 	 */
-	function create_card_view(api, root, page=0) {
-		return new Promise((resolve, reject) => {
-			const events = {
-				"on_edit": () => { throw "Not implemented"},
-				"on_add": () => { throw "Not implemented"},
-			};
-			show_card_view(api, root, events, page);
-			resolve(events);
+	function create_card_view(api, root, start) {
+		// Fetch the user-settings and build the card view
+		return api.get_settings().then((settings) => {
+			return show_card_view(api, root, settings.settings, start)
 		});
 	}
 
