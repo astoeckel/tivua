@@ -64,7 +64,11 @@ this.tivua.view.cards = (function() {
 
 		// Function moving to the specified page
 		function go_to_page(page) {
-			tivua.main.switch_to_fragment("#list,start=" + (page * pp));
+			if (page > 0) {
+				tivua.main.switch_to_fragment("#list,start=" + (page * pp));
+			} else {
+				tivua.main.switch_to_fragment("#list");
+			}
 		}
 
 		// Update the post counter

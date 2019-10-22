@@ -18,6 +18,11 @@
 		<title>Tivua</title>
 
 		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<meta http-equiv="Content-Security-Policy"
+		      content="default-src 'self';
+		               script-src 'self';
+		               img-src 'self' data:;
+		               style-src 'self' 'unsafe-inline';">
 
 		<link rel="icon" type="image/svg+xml" href="images/favicon.svg" />
 		<link rel="icon" type="image/png" href="images/favicon.png" />
@@ -82,7 +87,6 @@
 			<main class="cards"></main>
 			<footer>
 				<div id="lbl_post">Post&nbsp;<span id="lbl_post_start"></span>&nbsp;to&nbsp;<span id="lbl_post_end"></span>&nbsp;of&nbsp;<span id="lbl_post_total"></span></div>
-				<div class="spacer"></div>
 				<div>
 					<button id="btn_page_first" title="First page"><span class="icon"></span></button>
 					<button id="btn_page_prev" title="Previous page"><span class="icon"></span></button>
@@ -90,7 +94,6 @@
 					<button id="btn_page_next" title="Next page"><span class="icon"></span></button>
 					<button id="btn_page_last" title="Last page"><span class="icon"></span></button>
 				</div>
-				<div class="spacer"></div>
 				<div>
 					<select id="sel_entry_count"></select>
 				</div>
@@ -139,7 +142,6 @@
 					<select id="sel_author" placeholder="%placeholder_name"></select>
 					<input type="date" id="inp_date" placeholder="%placeholder_date">
 				</div>
-				<datalist id="authors"></datalist>
 				<label for="inp_keywords">%lbl_keywords</label>
 				<input id="inp_keywords" placeholder="%placeholder_keywords">
 				<label for="inp_content">%lbl_content</label>

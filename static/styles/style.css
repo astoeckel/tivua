@@ -90,6 +90,10 @@ button, input[type="submit"] {
  * STANDARD TEXT LAYOUT ELEMENTS                                              *
  ******************************************************************************/
 
+h1, h2, h3 {
+	line-height: 1.25em;
+}
+
 b, strong {
 	font-weight: bold;
 }
@@ -125,10 +129,6 @@ li {
 code {
 	font-family: monospace;
 	background-color: #f0f0f0;
-}
-
-.spacer {
-	flex: 1 1 0;
 }
 
 a:link,
@@ -313,7 +313,7 @@ header > button {
 	font-weight: bold;
 	border: 2px solid #5c3566;
 	border-radius: 2rem;
-	padding: 0 1rem;
+	padding: 0 1.25rem;
 }
 
 header > button:hover:not(:disabled) {
@@ -382,7 +382,7 @@ header button#btn_back .icon::before {
 
 header div.search {
 	position: relative;
-	flex: 1 0 auto;
+	flex: 1 0 10rem;
 }
 
 header div.search input#inp_search {
@@ -466,7 +466,7 @@ select::after {
 	content: "AAAA";
 }
 
-select:not(:disabled),
+select:hover:not(:disabled),
 input:hover:not(:disabled),
 button:hover:not(:disabled) {
 	border: 2px solid #75507b;
@@ -484,7 +484,7 @@ select:disabled,
 button:disabled {
 	cursor: default !important;
 	color: #666 !important;
-	border-color: #666 !important;
+	border-color: #eeeeec !important;
 	text-shadow: 1px 1px 0 white !important;
 }
 
@@ -515,6 +515,11 @@ footer button#btn_page_next .icon::before {
 
 footer button#btn_page_last .icon::before {
 	content: "\f101";
+}
+
+footer #lbl_post {
+	display: block;
+	flex: 0 1 12rem;
 }
 
 /******************************************************************************
@@ -855,6 +860,7 @@ main.editor {
 
 main.editor,
 main.editor input,
+main.editor select,
 main.editor label,
 main.editor textarea,
 main.editor pre {
@@ -865,7 +871,7 @@ main.editor {
 	display: flex;
 	flex-direction: column;
 	background-color: white;
-	height: 100%;
+	min-height: 100%;
 	padding-bottom: 1rem;
 }
 
@@ -890,10 +896,12 @@ main.editor input[type="date"] {
 }
 
 main.editor > div.row > input,
+main.editor > div.row > select,
 main.editor > div.row > label,
 main.editor textarea,
 main.editor pre,
 main.editor div.CodeMirror {
+	height: unset;
 	flex: 1 0 10rem;
 }
 
@@ -903,7 +911,7 @@ main.editor > div.row > label:not(:first-child) {
 }
 
 main.editor input[type="date"],
-main.editor label[for="date"] {
+main.editor label[for="inp_date"] {
 	flex: 0 0 10rem !important;
 }
 
@@ -991,7 +999,11 @@ div.dialogue > * {
 div.dialogue > div.buttons {
 	justify-content: flex-end;
 	display: flex;
-	height: 3rem;
+	flex-wrap: wrap;
+}
+
+div.dialogue > * {
+	box-sizing: border-box;
 }
 
 div.dialogue > div.buttons > :last-child {
@@ -1010,6 +1022,7 @@ div.dialogue > div.buttons > button {
 	margin-right: 1rem;
 	min-width: 7rem;
 	text-align: center;
+	height: 3rem;
 }
 
 div.dialogue > div.buttons > button:last-child {
@@ -1334,7 +1347,7 @@ a[href="#logout"] .icon::before {
 	}
 
 	header h1 {
-		line-height: 2rem;
+		line-height: 1.5em;
 	}
 
 	main.cards {
@@ -1404,6 +1417,11 @@ a[href="#logout"] .icon::before {
 		width: 100%;
 	}
 
+	header,
+	footer {
+		padding: 0.25rem 0.5rem;
+	}
+
 	footer .page_counter {
 		display: none;
 	}
@@ -1411,4 +1429,22 @@ a[href="#logout"] .icon::before {
 	footer #lbl_post {
 		display: none;
 	}
+
+	select {
+		padding-left: 0.25rem;
+		padding-right: 1.5rem;
+	}
+
+	footer select#sel_page {
+		max-width: 5.75rem;
+	}
+
+	footer select#sel_entry_count {
+		max-width: 6.75rem;
+	}
+
+	div.dialogue > div.buttons > button {
+		min-width: 4rem;
+	}
+
 }

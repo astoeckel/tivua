@@ -86,11 +86,15 @@ this.tivua.view.menu = (function() {
 		btn_list_view.addEventListener("click", handle_btn_view_click.bind("list"));
 
 		/* Hook up all close events */
+		function close(e) {
+			e.preventDefault();
+			events.on_close_menu();
+		}
 		const a_close = main.querySelector("a.close");
-		a_close.addEventListener("click", () => events.on_close_menu());
+		a_close.addEventListener("click", close);
 		div_menu.addEventListener("click", (e) => { e.cancelBubble = true; })
-		div_overlay.addEventListener("click", () => events.on_close_menu());
-		span_user_emblem.addEventListener("click", () => events.on_close_menu());
+		div_overlay.addEventListener("click", close);
+		span_user_emblem.addEventListener("click", close);
 		div_overlay.addEventListener("keyup", (e) => {
 			if (e.keyCode == 27) {
 				events.on_close_menu();

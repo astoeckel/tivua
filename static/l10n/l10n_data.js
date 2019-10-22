@@ -56,7 +56,7 @@ this.tivua.l10n = (function () {
 			"%msg_confirm_yes":
 				"Yes, loose changes",
 			"%msg_confirm_no":
-				"No, continue editing",
+				"No",
 
 			// Menu
 			"%tooltip_menu":

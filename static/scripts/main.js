@@ -111,10 +111,11 @@ this.tivua.main = (function () {
 		return [view_name, params];
 	}
 
-	function _switch_to_fragment(api, root, frag) {
+	function _switch_to_fragment(api, root, frag, add_to_history) {
+		add_to_history = (add_to_history === undefined) ? false : add_to_history;
 		let [view_name, params] = _decode_fragment(frag);
 		if (view_name) {
-			_switch_view(api, root, view_name, params, false).catch(e => {
+			_switch_view(api, root, view_name, params, add_to_history).catch(e => {
 				tivua.view.utils.show_error_dialogue(root, e);
 				const msg = e.what ? e.what : e.toString();
 			});
@@ -126,7 +127,10 @@ this.tivua.main = (function () {
 	 * Views implemented at the moment are the login view, the editor view and
 	 * the main view.
 	 */
-	function _switch_view(api, root, view_name, params={}, add_to_history=true) {
+	function _switch_view(api, root, view_name, params, add_to_history) {
+		params = (params === undefined) ? {} : params;
+		add_to_history = (add_to_history === undefined) ? true : add_to_history;
+
 		// Get the constructor and add the corresponding view to the page
 		const ctor = _get_ctor(view_name, params);
 		if (!ctor) {
@@ -136,8 +140,9 @@ this.tivua.main = (function () {
 			}));
 		}
 		if (add_to_history && !(view_name in HISTORY_BLACKLIST)) {
+			/*const [old_view_name, _] = _decode_fragment(window.location.hash);*/
 			const frag = _encode_fragment(view_name, params);
-			if (root.current_view) {
+			if (root.current_view/* && (old_view_name != view_name)*/) {
 				window.history.pushState(null, "", frag);
 			} else {
 				window.history.replaceState(null, "", frag);
@@ -218,11 +223,7 @@ this.tivua.main = (function () {
 	}
 
 	function switch_to_fragment(fragment) {
-		if (fragment != window.location.hash) {
-			window.location.hash = fragment;
-		} else {
-			_switch_to_fragment(api, root, fragment);
-		}
+		_switch_to_fragment(api, root, fragment, true);
 	}
 
 	return {

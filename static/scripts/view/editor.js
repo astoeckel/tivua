@@ -124,6 +124,9 @@ this.tivua.view.editor = (function() {
 				"on_back": () => { throw "Not implemented"; }
 			};
 
+			/* Canonicalise the "id" parameter */
+			id = id | 0;
+
 			/* Initialise the spellchecker, load the list of authors, and -- if
 			 * applicable -- the requested post */
 			const promises = [
