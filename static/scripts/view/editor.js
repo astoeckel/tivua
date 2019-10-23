@@ -51,6 +51,8 @@ this.tivua.view.editor = (function() {
 			main.getElementById("btn_back"), root);
 
 		/* Append the indentation code to the textarea */
+		const inp_keywords = main.getElementById('inp_keywords');
+		const inp_date = main.getElementById('inp_date');
 		const inp_content = main.getElementById('inp_content');
 		const editor = CodeMirror.fromTextArea(inp_content, {
 			'lineNumbers': false,
@@ -70,24 +72,24 @@ this.tivua.view.editor = (function() {
 			main.querySelector("#sel_author").appendChild(option);
 		}
 
-		/* Make changes relevant to editing a post instead of creating a new
-		   one */
+		/* If "post" is not null/undefined, this means that we're editing an
+		   existing post. */
 		if (post) {
 			l10n.set_node_text(main.querySelector("h1"), "%header_edit_entry");
 			l10n.set_node_text(main.querySelector("#btn_save .caption"), "%btn_save");
 
 			_set_author(main, post["author"]);
-			main.querySelector("#inp_date").value =
+			inp_date.value =
 				utils.format_date(post["date"], "-");
-			main.querySelector("#inp_keywords").value =
+			inp_keywords.value =
 				post["keywords"] ? post["keywords"] : "";
-
 			editor.getDoc().setValue(post["content"]);
 		} else {
+			/* Otherwise, we're creating a new post. Set some sane defaults for
+			   the author and the date. */
 			main.querySelector("#btn_delete").style.display = "none";
-			main.querySelector("#inp_date").value =
-				utils.format_date(new Date(), "-");
 			_set_author(main, session.user_id);
+			inp_date.value = utils.format_date(utils.get_now_as_utc_date(), '-');
 		}
 
 		tivua.spellcheck.init().then(typo => {

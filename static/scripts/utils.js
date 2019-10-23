@@ -148,6 +148,20 @@ this.tivua.utils = (function (window) {
 		       + sep + ("00" + ( date.getUTCDate())).slice(-2);
 	}
 
+	function get_now_as_utc_date() {
+		const date_in_this_timezone = new Date();
+		const date_as_utc = new Date();
+		date_as_utc.setUTCFullYear(date_in_this_timezone.getFullYear());
+		date_as_utc.setUTCMonth(date_in_this_timezone.getMonth());
+		date_as_utc.setUTCDate(date_in_this_timezone.getDate());
+		date_as_utc.setUTCHours(12);
+		date_as_utc.setUTCMinutes(0);
+		date_as_utc.setUTCSeconds(0);
+		date_as_utc.setUTCMilliseconds(0);
+
+		return date_as_utc;
+	}
+
 	function execute_action(action) {
 		/* Allow use of "bind" for event handlers */
 		if (action === undefined) {
@@ -195,6 +209,7 @@ this.tivua.utils = (function (window) {
 		'set_cookie': set_cookie,
 		'to_normalised_ascii_string': to_normalised_ascii_string,
 		'format_date': format_date,
+		'get_now_as_utc_date': get_now_as_utc_date,
 		'execute_action': execute_action,
 		'exec': exec
 	};
