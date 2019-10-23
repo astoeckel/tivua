@@ -125,7 +125,7 @@ this.tivua.view.editor = (function() {
 			};
 
 			/* Canonicalise the "id" parameter */
-			id = id | 0;
+			id = (id === undefined) ? undefined : (id | 0);
 
 			/* Initialise the spellchecker, load the list of authors, and -- if
 			 * applicable -- the requested post */
