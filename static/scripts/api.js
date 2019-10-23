@@ -113,6 +113,59 @@ this.tivua.api = (function (window) {
 	}
 
 	/**
+	 * Make sure stuff in the "post" structure has the right type.
+	 */
+	function _canonicalise_post(post) {
+		let canonical_post = {};
+		for (let key in post) {
+			if (key == "author" || key == "date" || key == "revision") {
+				canonical_post[key] = post[key] | 0;
+			} else {
+				canonical_post[key] = post[key];
+			}
+		}
+		return canonical_post;
+	}
+
+	/**
+	 * Creates a new post with the given author, date, keywords, and content.
+	 * The server response will be the same as a "get_post" on the newly created
+	 * post.
+	 *
+	 * @param post is a JSON serialisable object containing at least the
+	 * following keys: "author", "content" and "date". In particular:
+	 *     - "author" is the numerical author id.
+	 *     - "date" is the date should be stored under as a numerical Unix
+	 *       timestamp.
+	 *     - "content" is a string containing the markdown-encoded contents of
+	 *       the post.
+	 *     - "keywords" (optional) is a comma separated list of keywords.
+	 */
+	function create_post(post) {
+		return _err(get_session().then(session => {
+			return xhr.create_post(session, _canonicalise_post(post));
+		}));
+	}
+
+	/**
+	 * Updates an already existing post. On success, the server response will be
+	 * the same as a "get_post" on the updated post. If the update was not
+	 * successful because of an edit conflict, the current revision stored on
+	 * the server will be returned in the error.
+	 *
+	 * @param id is the ID of the post that should be updated.
+	 * @param post is a "post" object, similar to the "post" object passed to
+	 * create_post. However, in addition, the following fields are required
+	 *     - "revision" is the revision of the post this updated is based on.
+	 *       This field will be incremented by one after the update is complete.
+	 */
+	function update_post(id, post) {
+		return _err(get_session().then(session => {
+			return xhr.update_post(session, id | 0, _canonicalise_post(post));
+		}));
+	}
+
+	/**
 	 * Returns a list of posts starting with the given date.
 	 */
 	function get_post_list(start, limit) {
@@ -346,6 +399,8 @@ this.tivua.api = (function (window) {
 		"get_configuration": get_configuration,
 		"get_author_list": get_author_list,
 		"get_post": get_post,
+		"update_post": update_post,
+		"create_post": create_post,
 		"get_post_list": get_post_list,
 		"get_total_post_count": get_total_post_count,
 		"get_settings": get_settings,

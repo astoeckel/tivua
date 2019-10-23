@@ -48,13 +48,18 @@ this.tivua.xhr = (function (window) {
 		"anonymous": 5
 	}
 
-	function _check_session(session) {
-		if (!(session in sessions)) {
+	function _assert(x, msg) {
+		if (!x) {
 			throw {
 				"status": "error",
-				"what": "%access_denied",
-			};
+				"what": msg,
+			}
 		}
+		return x;
+	}
+
+	function _check_session(session) {
+		_assert(session in sessions);
 		return sessions[session];
 	}
 
@@ -110,6 +115,57 @@ this.tivua.xhr = (function (window) {
 				"what": "%post_not_found"
 			});
 		});
+	}
+
+	function create_post(session, post) {
+		return new Promise((resolve, reject) => {
+			_check_session(session);
+
+			/* Make sure the post object is complete and that everything has the
+			   right type. */
+			const is_int = (x) => (x | 0) === x;
+			const is_str = (x) => (typeof x) === "string";
+			let valid = is_int(post["author"]) &&
+			            is_int(post["date"]) &&
+			            is_str(post["content"]) &&
+			            (("keywords" in post) === is_str(post["keywords"]));
+			_assert(valid, "%server_error_validation");
+
+			/* Make sure the author exists */
+			valid = false;
+			for (let author of DATA_AUTHORS) {
+				if (author["id"] == post["author"]) {
+					valid = true;
+					break;
+				}
+			}
+			_assert(valid, "%server_error_validation");
+
+			/* Create a new ID for the post */
+			let id = 0;
+			for (let post of DATA_CONTENT) {
+				id = Math.max(post["id"] + 1, id);
+			}
+
+			/* Add the post */
+			let new_post = {
+				"author": post["author"],
+				"date": post["date"],
+				"content": post["content"],
+				"keywords": post["keywords"],
+				"id": id
+			};
+			DATA_CONTENT.push(new_post);
+
+			/* Sort all posts by date */
+			DATA_CONTENT = DATA_CONTENT.sort((a, b) => b["date"] - a["date"]);
+
+			get_post(session, id).then(resolve).catch(reject);
+		});
+	}
+
+	function update_post(session, post) {
+		
 	}
 
 	function get_post_list(session, start, limit) {
@@ -215,7 +271,7 @@ this.tivua.xhr = (function (window) {
 				if (!(key in valid_settings) || !(valid_settings[key](settings[key]))) {
 					reject({
 						"status": "error",
-						"what": "Error while validating the request.",
+						"what": "%server_error_validation",
 					})
 					return;
 				}
@@ -336,7 +392,7 @@ this.tivua.xhr = (function (window) {
 							console.log("xhr_stub", "X", data);
 							reject(data);
 						})
-					}, 100 + Math.random() * 200);
+					}, 0/*100 + Math.random() * 200*/);
 				});
 			};
 		}
@@ -348,6 +404,8 @@ this.tivua.xhr = (function (window) {
 		"get_configuration": get_configuration,
 		"get_author_list": get_author_list,
 		"get_post": get_post,
+		"create_post": create_post,
+		"update_post": update_post,
 		"get_post_list": get_post_list,
 		"get_total_post_count": get_total_post_count,
 		"get_login_challenge": get_login_challenge,
