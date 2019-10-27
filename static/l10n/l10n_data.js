@@ -50,11 +50,11 @@ this.tivua.l10n = (function () {
 
 			// Confirmation dialogue
 			"%header_confirm":
-				"Go back and loose changes?",
+				"Go back and lose changes?",
 			"%msg_confirm":
 				"You made changes that have not been saved. Are you sure you want to go back?",
 			"%msg_confirm_yes":
-				"Yes, loose changes",
+				"Yes, lose changes",
 			"%msg_confirm_no":
 				"No",
 
@@ -138,6 +138,12 @@ this.tivua.l10n = (function () {
 				"Today's date",
 			"%placeholder_keywords":
 				"Keywords",
+			"%err_date_format":
+				"YYYY-MM-DD",
+			"%err_author":
+				"Please select a valid author",
+			"%err_keywords":
+				"Keyword too long or too many keywords",
 
 			// Logout dialogue
 			"%logout_title":

@@ -40,6 +40,8 @@ this.tivua.api = (function (window) {
 	/* Client side API query cache. */
 	const cache = {};
 	function _reset_cache() {
+		cache["keywords"] = {};
+		cache["authors"] = {};
 		cache["session_data"] = {};
 		cache["settings"] = {};
 	}
@@ -86,6 +88,20 @@ this.tivua.api = (function (window) {
 		});
 	}
 
+	function _cached(session, key, callback) {
+		/* Check whether the data is already in the cache */
+		if (session in cache[key]) {
+			let res = {};
+			res["status"] = "success";
+			res[key] = cache[key][session];
+			return res;
+		}
+		return callback().then((data) => {
+			cache[key][session] = data[key];
+			return data;
+		});
+	}
+
 	/**
 	 * The get_configuration() function returns the current server
 	 * configuration. This includes available login methods.
@@ -99,7 +115,16 @@ this.tivua.api = (function (window) {
 	 */
 	function get_author_list() {
 		return _err(get_session().then(session => {
-			return xhr.get_author_list(session);
+			return _cached(session, "authors", () => xhr.get_author_list(session));
+		}));
+	}
+
+	/**
+	 * Returns a list of keywords used so far.
+	 */
+	function get_keyword_list() {
+		return _err(get_session().then(session => {
+			return _cached(session, "keywords", () => xhr.get_keyword_list(session));
 		}));
 	}
 
@@ -113,13 +138,41 @@ this.tivua.api = (function (window) {
 	}
 
 	/**
+	 * Writes new keywords found in the given post to the keyword cache.
+	 */
+	function _update_keyword_cache(session, post) {
+		/* Do nothing if the cache has not been initialized */
+		if (!(session in cache["keywords"])) {
+			return;
+		}
+
+		/* Update the local keyword cache */
+		let _cache = cache["keywords"][session];
+		let changed = false;
+		let strcmp = (a, b) => ((a == b) ? 0 : (a > b) ? 1 : -1);
+		for (let keyword of (post["keywords"] || [])) {
+			if (typeof keyword !== "string") {
+				continue;
+			}
+			keyword = keyword.trim().toLowerCase();
+			if (keyword && utils.binary_search(_cache, keyword, strcmp) < 0) {
+				_cache.push(keyword);
+				changed = true;
+			}
+		}
+		if (changed) {
+			cache["keywords"][session] = _cache.sort();
+		}
+	}
+
+	/**
 	 * Make sure stuff in the "post" structure has the right type.
 	 */
 	function _canonicalise_post(post) {
 		let canonical_post = {};
 		for (let key in post) {
 			if (key == "author" || key == "date" || key == "revision") {
-				canonical_post[key] = post[key] | 0;
+				canonical_post[key] = Math.trunc(post[key]);
 			} else {
 				canonical_post[key] = post[key];
 			}
@@ -143,6 +196,7 @@ this.tivua.api = (function (window) {
 	 */
 	function create_post(post) {
 		return _err(get_session().then(session => {
+			_update_keyword_cache(session, post);
 			return xhr.create_post(session, _canonicalise_post(post));
 		}));
 	}
@@ -161,6 +215,7 @@ this.tivua.api = (function (window) {
 	 */
 	function update_post(id, post) {
 		return _err(get_session().then(session => {
+			_update_keyword_cache(session, post);
 			return xhr.update_post(session, id | 0, _canonicalise_post(post));
 		}));
 	}
@@ -398,6 +453,7 @@ this.tivua.api = (function (window) {
 		"get_session_data": get_session_data,
 		"get_configuration": get_configuration,
 		"get_author_list": get_author_list,
+		"get_keyword_list": get_keyword_list,
 		"get_post": get_post,
 		"update_post": update_post,
 		"create_post": create_post,

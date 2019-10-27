@@ -135,16 +135,16 @@
 
 			<main class="editor">
 				<div class="row">
-					<label for="inp_author">%lbl_author</label>
-					<label for="inp_date">%lbl_date</label>
+					<label for="sel_author">%lbl_author<span class="error"></span></label>
+					<label for="inp_date">%lbl_date<span class="error"></span></label>
 				</div>
 				<div class="row">
 					<select id="sel_author" placeholder="%placeholder_name"></select>
 					<input type="date" id="inp_date" placeholder="%placeholder_date">
 				</div>
-				<label for="inp_keywords">%lbl_keywords</label>
+				<label for="inp_keywords">%lbl_keywords<span class="error"></span></label>
 				<input id="inp_keywords" placeholder="%placeholder_keywords">
-				<label for="inp_content">%lbl_content</label>
+				<label for="inp_content">%lbl_content<span class="error"></span></label>
 				<textarea id="inp_content"></textarea>
 			</main>
 		</template>
@@ -278,6 +278,7 @@
 		<script type="text/javascript" src="lib/auto-complete.js"></script>
 		<script type="text/javascript" src="lib/katex.js"></script>
 		<script type="text/javascript" src="lib/markdown-it.js"></script>
+		<script type="text/javascript" src="lib/tagger.js"></script>
 		<script type="text/javascript" src="scripts/render.js"></script>
 		<script type="text/javascript" src="scripts/colors.js"></script>
 		<script type="text/javascript" src="scripts/time.js"></script>

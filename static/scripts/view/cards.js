@@ -48,7 +48,7 @@ this.tivua.view.cards = (function() {
 	/**
 	 * Updates the pagination elements on the card view. 
 	 */
-	function _update_card_view_pagination(api, root, settings, view, total, start, i0, i1) {
+	function _update_card_view_pagination(api, root, events, settings, view, total, start, i0, i1) {
 		// Function accessing the posts_per_page setting
 		const posts_per_page = () => settings["posts_per_page"];
 
@@ -63,13 +63,7 @@ this.tivua.view.cards = (function() {
 		}
 
 		// Function moving to the specified page
-		function go_to_page(page) {
-			if (page > 0) {
-				tivua.main.switch_to_fragment("#list,start=" + (page * pp));
-			} else {
-				tivua.main.switch_to_fragment("#list");
-			}
-		}
+		const go_to_page = (page) => events.on_go_to_page(page, pp);
 
 		// Update the post counter
 		view.querySelector("#lbl_post_start").innerText = i0;
@@ -122,7 +116,7 @@ this.tivua.view.cards = (function() {
 				div_overlay.close();
 
 				// Go to the current start location
-				tivua.main.switch_to_fragment("#list,start=" + new_page);
+				events.on_go_to_page(new_page, pp);
 			});
 		});
 
@@ -189,6 +183,7 @@ this.tivua.view.cards = (function() {
 	function _init_autocomplete(api, root, input) {
 		const autocomplete = new autoComplete({
 			"selector": input,
+			"menuClass": "search",
 			"source": (term, response) => {
 				const matches = (x) => (x.toLowerCase().includes(term.toLowerCase()));
 				api.get_author_list().then((data) => {
@@ -206,7 +201,7 @@ this.tivua.view.cards = (function() {
 		});
 	}
 
-	function show_card_view(api, root, settings, start) {
+	function show_card_view(api, root, events, settings, start) {
 		// Update the navigation part of the card view
 		const view = utils.import_template('tmpl_card_view');
 		const main = view.querySelector("main");
@@ -288,7 +283,7 @@ this.tivua.view.cards = (function() {
 			// Fetch the index of the first and last post
 			const p0 = (weeks.length == 0) ? 1 : (weeks[0].i0 + 1);
 			const p1 = (weeks.length == 0) ? 1 : (weeks[weeks.length - 1].i1);
-			_update_card_view_pagination(api, root, settings, view, total, start, p0, p1);
+			_update_card_view_pagination(api, root, events, settings, view, total, start, p0, p1);
 
 			// For each post create the corresponding card
 			for (let week of weeks) {
@@ -327,7 +322,7 @@ this.tivua.view.cards = (function() {
 			utils.replace_content(root, view);
 			root.getRootNode().defaultView.scrollTo(0, 0);
 
-			return {};
+			return events;
 		});
 	}
 
@@ -336,9 +331,13 @@ this.tivua.view.cards = (function() {
 	 * initialized.
 	 */
 	function create_card_view(api, root, start) {
+		const events = {
+			"on_go_to_page": () => { throw "Not implemented"; }
+		}
+
 		// Fetch the user-settings and build the card view
 		return api.get_settings().then((settings) => {
-			return show_card_view(api, root, settings.settings, start)
+			return show_card_view(api, root, events, settings.settings, start)
 		});
 	}
 

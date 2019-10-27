@@ -141,11 +141,58 @@ this.tivua.utils = (function (window) {
 		return null;
 	}
 
-	function format_date(timestamp, sep="/") {
+	function format_date(timestamp, sep) {
+		sep = (sep === undefined) ? '/' : sep;
 		const date = (timestamp instanceof Date) ? timestamp : new Date(timestamp * 1000);
 		return ("0000" + date.getUTCFullYear()).slice(-4)
 		       + sep + ("00" + (1 + date.getUTCMonth())).slice(-2)
 		       + sep + ("00" + ( date.getUTCDate())).slice(-2);
+	}
+
+	/**
+	 * Converts a string of the form "YYYY-MM-DD" to a Date() object pointing at
+	 * noon, UTC of the given date.
+	 *
+	 * @param s is the string that should be converted.
+	 * @param sep is the separator, defaults to "-".
+	 */
+	function string_to_utc_date(s, sep) {
+		/* Split the given string into the individual parts */
+		sep = (sep === undefined) ? '-' : sep;
+		const is_int = (x) => (x | 0) === x;
+		const parts = s.split(sep);
+		if (parts.length != 3) {
+			return null;
+		}
+
+		/* Try to convert the individual parts to integers and make sure they
+		   make sense */
+		const year = parseInt(parts[0]);
+		const month = parseInt(parts[1]);
+		const day = parseInt(parts[2]);
+		if (!is_int(year) || !is_int(day) || !is_int(day)) {
+			return null;
+		}
+		if (month <= 0 || month > 12 || year < 0 || day < 0 || day > 31) {
+			return null;
+		}
+
+		/* Create a new Date object with the corresponding date */
+		const date = new Date();
+		date.setUTCFullYear(year);
+		date.setUTCMonth(month - 1);
+		date.setUTCDate(day);
+		date.setUTCHours(12);
+		date.setUTCMinutes(0);
+		date.setUTCSeconds(0);
+		date.setUTCMilliseconds(0);
+
+		/* Make sure the date roundtrips correctly. This filters stuff such as
+		   invalid days (i.e. 30th of April). */
+		if (format_date(date, '-') != s) {
+			return null;
+		}
+		return date;
 	}
 
 	function get_now_as_utc_date() {
@@ -200,6 +247,24 @@ this.tivua.utils = (function (window) {
 		return () => execute_action(action);
 	}
 
+	function binary_search(A, x, pred) {
+		let lower = 0;
+		let upper = A.length - 1;
+		while (lower <= upper) {
+			const k = lower + ((upper - lower) >> 1);
+			const res = pred(x, A[k]);
+			if (res > 0) {
+				lower = k + 1;
+			} else if (res < 0) {
+				upper = k - 1;
+			} else {
+				return k;
+			}
+		}
+		return -1;
+	}
+
+
 	return {
 		'clear': clear,
 		'clean_whitespace': clean_whitespace,
@@ -209,8 +274,10 @@ this.tivua.utils = (function (window) {
 		'set_cookie': set_cookie,
 		'to_normalised_ascii_string': to_normalised_ascii_string,
 		'format_date': format_date,
+		'string_to_utc_date': string_to_utc_date,
 		'get_now_as_utc_date': get_now_as_utc_date,
 		'execute_action': execute_action,
-		'exec': exec
+		'exec': exec,
+		'binary_search': binary_search,
 	};
 })(this);

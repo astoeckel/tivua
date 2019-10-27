@@ -34,7 +34,7 @@ this.tivua.xhr = (function (window) {
 
 	/* List of users */
 	const users = {
-		5: {
+		1: {
 			"user_name": "astoecke",
 			"password_hash": "2fef31c115173ef2abd946a4cbd35afe980d40ff80ea6ff66e31c37e1a4afe34",
 			"full_name": "Andreas Stöckel"
@@ -45,7 +45,7 @@ this.tivua.xhr = (function (window) {
 
 	/* List of active sessions */
 	const sessions = {
-		"anonymous": 5
+		"anonymous": 1
 	}
 
 	function _assert(x, msg) {
@@ -80,9 +80,26 @@ this.tivua.xhr = (function (window) {
 
 	function get_author_list(session) {
 		return new Promise((resolve, reject) => {
+			_check_session(session);
 			resolve({
 				"status": "success",
 				"authors": DATA_AUTHORS.slice()
+			});
+		});
+	}
+
+	function get_keyword_list(session) {
+		return new Promise((resolve, reject) => {
+			_check_session(session);
+			let keywords = {};
+			for (let post of DATA_CONTENT) {
+				for (let keyword of (post["keywords"] || [])) {
+					keywords[keyword] = 0;
+				}
+			}
+			resolve({
+				"status": "success",
+				"keywords": Object.keys(keywords).sort(),
 			});
 		});
 	}
@@ -117,29 +134,64 @@ this.tivua.xhr = (function (window) {
 		});
 	}
 
+	function _validate_and_canonicalise_post(post) {
+		/* Make sure the post object is complete and that everything has the
+		   right type. */
+		const is_int = (x) => Math.trunc(x) == x;
+		const is_str = (x) => (typeof x) === "string";
+		const is_arr = (x) => Array.isArray(x);
+		let valid = is_int(post["author"]) &&
+		            is_int(post["date"]) &&
+		            is_str(post["content"]) &&
+		            (("keywords" in post) === is_arr(post["keywords"]));
+		_assert(valid, "%server_error_validation");
+
+		/* Make sure the author exists */
+		valid = false;
+		for (let author of DATA_AUTHORS) {
+			if (author["id"] == post["author"]) {
+				valid = true;
+				break;
+			}
+		}
+		_assert(valid, "%server_error_validation");
+
+		/* Trim whitespaces in keywords, delete empty keywords, convert them to
+		   lowercase, and make sure the keywords are unique. */
+		if (!("keywords" in post)) {
+			post["keywords"] = [];
+		}
+		let new_keywords = [];
+		for (let keyword of post["keywords"]) {
+			/* Make sure each keyword is a string */
+			_assert(typeof keyword === "string", "%server_error_validation");
+
+			/* Trim the keyword, and convert it to lower case */
+			keyword = keyword.trim().toLowerCase();
+			if (!keyword) {
+				continue;
+			}
+
+			/* Make sure the keywords are shorter than 30 characters */
+			_assert(keyword.length <= 30, "%server_error_validation");
+
+			/* Make sure the keyword is unique */
+			if (new_keywords.indexOf(keyword) >= 0) {
+				continue;
+			}
+
+			/* Add the keyword to the list, make sure the number of keywords is
+			   not too large */
+			_assert(new_keywords.length < 10, "%server_error_validation");
+			new_keywords.push(keyword);
+		}
+		post["keywords"] = new_keywords;
+	}
+
 	function create_post(session, post) {
 		return new Promise((resolve, reject) => {
 			_check_session(session);
-
-			/* Make sure the post object is complete and that everything has the
-			   right type. */
-			const is_int = (x) => (x | 0) === x;
-			const is_str = (x) => (typeof x) === "string";
-			let valid = is_int(post["author"]) &&
-			            is_int(post["date"]) &&
-			            is_str(post["content"]) &&
-			            (("keywords" in post) === is_str(post["keywords"]));
-			_assert(valid, "%server_error_validation");
-
-			/* Make sure the author exists */
-			valid = false;
-			for (let author of DATA_AUTHORS) {
-				if (author["id"] == post["author"]) {
-					valid = true;
-					break;
-				}
-			}
-			_assert(valid, "%server_error_validation");
+			_validate_and_canonicalise_post(post);
 
 			/* Create a new ID for the post */
 			let id = 0;
@@ -392,7 +444,7 @@ this.tivua.xhr = (function (window) {
 							console.log("xhr_stub", "X", data);
 							reject(data);
 						})
-					}, 0/*100 + Math.random() * 200*/);
+					}, 100 + Math.random() * 200);
 				});
 			};
 		}
@@ -403,6 +455,7 @@ this.tivua.xhr = (function (window) {
 		"get_session_data": get_session_data,
 		"get_configuration": get_configuration,
 		"get_author_list": get_author_list,
+		"get_keyword_list": get_keyword_list,
 		"get_post": get_post,
 		"create_post": create_post,
 		"update_post": update_post,
