@@ -94,12 +94,16 @@ this.tivua.xhr = (function (window) {
 			let keywords = {};
 			for (let post of DATA_CONTENT) {
 				for (let keyword of (post["keywords"] || [])) {
-					keywords[keyword] = 0;
+					if (keyword in keywords) {
+						keywords[keyword] += 1;
+					} else {
+						keywords[keyword] = 1;
+					}
 				}
 			}
 			resolve({
 				"status": "success",
-				"keywords": Object.keys(keywords).sort(),
+				"keywords": keywords,
 			});
 		});
 	}

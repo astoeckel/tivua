@@ -148,20 +148,14 @@ this.tivua.api = (function (window) {
 
 		/* Update the local keyword cache */
 		let _cache = cache["keywords"][session];
-		let changed = false;
-		let strcmp = (a, b) => ((a == b) ? 0 : (a > b) ? 1 : -1);
 		for (let keyword of (post["keywords"] || [])) {
 			if (typeof keyword !== "string") {
 				continue;
 			}
 			keyword = keyword.trim().toLowerCase();
-			if (keyword && utils.binary_search(_cache, keyword, strcmp) < 0) {
-				_cache.push(keyword);
-				changed = true;
+			if (keyword && !(keyword in _cache)) {
+				_cache[keyword] = 1;
 			}
-		}
-		if (changed) {
-			cache["keywords"][session] = _cache.sort();
 		}
 	}
 

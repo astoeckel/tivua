@@ -177,14 +177,26 @@ this.tivua.view.editor = (function() {
 			"selector": inp_keywords_tagger._new_input_tag,
 			"anchor": inp_keywords_tagger._wrapper,
 			"source": (term, response) => {
+				/* Trim the given term and make sure it is still long enough */
 				term = term.toLowerCase().trim();
+				if (term.length < 2) {
+					response([]);
+					return;
+				}
+
+				/* Request the keywords from the server */
 				api.get_keyword_list().then((keywords) => {
+					/* Filter for the keywords containing the current term,
+					   sort by occurance count and overlap. */
 					let res = {};
-					for (let keyword of keywords.keywords) {
+					for (let keyword in keywords.keywords) {
+						const count = keywords.keywords[keyword];
 						if (keyword.includes(term)) {
-							res[keyword] = term.length / keyword.length;
+							const weight = count * Math.sqrt(term.length / keyword.length);
+							res[keyword] = weight;
 						}
 					}
+					console.log(res);
 					response(Object.keys(res).sort((a, b) => res[b] - res[a]));
 				});
 			},
