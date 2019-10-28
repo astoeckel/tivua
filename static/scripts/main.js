@@ -50,6 +50,16 @@ this.tivua.main = (function () {
 		"on_add": () => {
 			return _switch_view(api, root, "add", null);
 		},
+		"on_back": () => {
+			window.history.back();
+		},
+		"on_go_to_page": (page, posts_per_page) => {
+			if (page > 0) {
+				switch_to_fragment("#list,start=" + (page * posts_per_page));
+			} else {
+				switch_to_fragment("#list");
+			}
+		},
 	};
 
 	function _get_ctor(view_name, params) {

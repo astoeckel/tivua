@@ -5,6 +5,10 @@
     License: http://www.opensource.org/licenses/mit-license.php
 */
 
+/**
+ * Modified by Andreas Stöckel for Tivua, 2019
+ */
+
 var autoComplete = (function(){
     // "use strict";
     function autoComplete(options){
@@ -37,6 +41,7 @@ var autoComplete = (function(){
             offsetTop: 1,
             cache: 1,
             menuClass: '',
+            anchor: null,
             renderItem: function (item, search){
                 // escape special characters
                 search = search.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
@@ -63,7 +68,7 @@ var autoComplete = (function(){
             that.last_val = '';
 
             that.updateSC = function(resize, next){
-                var rect = that.getBoundingClientRect();
+                var rect = o.anchor ? o.anchor.getBoundingClientRect() : that.getBoundingClientRect();
                 that.sc.style.left = Math.round(rect.left + (window.pageXOffset || document.documentElement.scrollLeft) + o.offsetLeft) + 'px';
                 that.sc.style.top = Math.round(rect.bottom + (window.pageYOffset || document.documentElement.scrollTop) + o.offsetTop) + 'px';
                 that.sc.style.width = Math.round(rect.right - rect.left) + 'px'; // outerWidth

@@ -225,7 +225,8 @@ header, footer {
 
 input,
 textarea,
-main.editor div.CodeMirror {
+div.tagger,
+div.CodeMirror {
 	background-color: #f0f0f0;
 	border: #f0f0f0 2px solid;
 
@@ -244,6 +245,7 @@ textarea {
 	resize: none;
 }
 
+div.tagger.focused,
 input:focus,
 textarea:focus,
 main.editor div.CodeMirror-focused {
@@ -286,6 +288,50 @@ button.btn_reload .icon::before {
 	content: "\f2f1";
 }
 
+/******************************************************************************
+ * TAGGER                                                                     *
+ ******************************************************************************/
+
+div.tagger {
+	cursor: text;
+	padding: 0;
+	position: relative;
+	line-height: 2.1rem;
+}
+
+div.tagger li, div.tagger ul {
+	display: inline-block;
+}
+
+div.tagger li span {
+	margin: 0 0.25em;
+	padding: 0.25em 0.25em;
+	background-color: #5c3566;
+	color: white;
+	border-radius: 0.25em;
+	font-weight: bold;
+	text-transform: lowercase;
+}
+
+div.tagger li span a.close {
+	text-decoration: none;
+	color: white;
+}
+
+div.tagger input {
+	border: none !important;
+	padding: 0 0.5rem !important;
+	margin: 0.1rem 0 !important;
+	background: transparent !important;
+	box-shadow: none !important;
+	border-radius: 0 !important;
+	font-size: inherit;
+	line-height: inherit;
+}
+
+div.tagger input:focus {
+	outline: 0;
+}
 
 /******************************************************************************
  * HEADER MENU                                                                *
@@ -585,20 +631,23 @@ main.login form input[type="password"] {
 	margin-bottom: 0.5rem;
 }
 
-main.login form input.error {
-	border: 2px dashed #a40000;
+select.error,
+input.error,
+div.tagger.error {
+	border: 2px dashed #a40000 !important;
 }
 
-main.login form label {
+label {
 	position: relative;
 }
 
-main.login span.error {
+span.error {
 	color: #a40000;
+	font-weight: normal;
 	font-style: italic;
 }
 
-main.login form label span.error {
+label span.error {
 	position: absolute;
 	right: 0%;
 }
@@ -899,11 +948,16 @@ main.editor > div.row > input,
 main.editor > div.row > select,
 main.editor > div.row > label,
 main.editor textarea,
-main.editor pre,
 main.editor div.CodeMirror {
-	height: unset;
 	flex: 1 0 10rem;
 }
+
+main.editor > div.row > select,
+main.editor > div.row > input,
+main.editor > div.row > label {
+	height: unset;
+}
+
 
 main.editor > div.row > input:not(:first-child),
 main.editor > div.row > label:not(:first-child) {
@@ -1301,16 +1355,25 @@ a[href="#logout"] .icon::before {
 	overflow: hidden;
 	overflow-y: auto;
 	box-sizing: border-box;
+	padding: 0.25rem;
 }
 
 .autocomplete-suggestion {
 	position: relative;
-	padding: 0 2.5rem;
+	padding: 0 0.25rem;
 	line-height: 2em;
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	font-size: 1.02em;
+}
+
+.autocomplete-suggestions.search {
+	padding: 0.25rem 0.5rem;
+}
+
+.autocomplete-suggestions.search .autocomplete-suggestion {
+	padding: 0 2rem;
 }
 
 .autocomplete-suggestion b {

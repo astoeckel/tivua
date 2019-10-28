@@ -34,26 +34,104 @@ this.tivua.view.editor = (function() {
 	// Module aliases
 	const utils = tivua.utils;
 
-	function _set_author(root, user_id) {
-		if (root.querySelector(`#sel_author option[value="${user_id}"]`)) {
-			root.querySelector("#sel_author").value = user_id;
+	/**
+	 * Used internally to disable the "save" button as long as there is at least
+	 * one validation error.
+	 */
+	function _update_error_state(btn, field_name, valid) {
+		/* Fetch the fields that are currently marked as invalid */
+		const fields = (btn.getAttribute('data-error-state') || '')
+			.split(' ')
+			.filter(s => s.length > 0);
+
+		/* Either add or remove the given field from the list of fields */
+		const idx = fields.indexOf(field_name);
+		if (valid) {
+			if (idx >= 0) {
+				fields.splice(idx, 1);
+			}
+		} else {
+			if (idx < 0) {
+				fields.push(field_name);
+			}
+		}
+
+		/* Store the list of fields with validation error in the button */
+		btn.setAttribute('data-error-state', fields.join(' '));
+
+		/* Disable the buttons if there is at least one validation error */
+		if (fields.length > 0) {
+			btn.setAttribute('disabled', 'disabled');
+		} else {
+			btn.removeAttribute('disabled');
 		}
 	}
 
-	function show_editor_view(root, events, authors, session, post) {
+	function _validate_author(authors, btn_save, sel_author, span_author_error) {
+		const l10n = tivua.l10n;
+		let author_id = -1;
+		if ((sel_author.value | 0) === parseInt(sel_author.value)) {
+			author_id = sel_author.value | 0;
+		}
+		let valid = false;
+		for (let author of authors) {
+			if (author_id == author["id"]) {
+				valid = true;
+				break;
+			}
+		}
+
+		_update_error_state(btn_save, 'author', valid);
+		sel_author.classList.toggle('error', !valid);
+		l10n.set_node_text(span_author_error, valid ? '' : '%err_author');
+		return valid;
+	}
+
+	function _validate_date(btn_save, inp_date, span_date_error) {
+		const valid = tivua.utils.string_to_utc_date(inp_date.value) !== null;
+		_update_error_state(btn_save, 'date', valid);
+		inp_date.classList.toggle('error', !valid);
+		tivua.l10n.set_node_text(span_date_error, valid ? '' : '%err_date_format');
+		return valid;
+	}
+
+	function _validate_keywords(btn_save, inp_keywords, inp_keywords_wrapper, span_keywords_error) {
+		const keywords = inp_keywords.value.split(',').map(s => s.trim()).filter(s => !!s);
+		let valid = keywords.length <= 10;
+		for (let keyword of keywords) {
+			valid = valid && (keyword.length <= 30);
+		}
+		_update_error_state(btn_save, 'keywords', valid);
+		inp_keywords_wrapper.classList.toggle('error', !valid);
+		tivua.l10n.set_node_text(span_keywords_error, valid ? '': '%err_keywords');
+		return valid;
+	}
+
+	function show_editor_view(api, root, events, authors, session, post) {
 		const l10n = tivua.l10n;
 
 		/* Instantiate the editor view DOM nodes */
 		const main = utils.import_template('tmpl_editor_view');
 
-		/* Setup the back button */
-		const back_button = tivua.view.utils.setup_back_button(
+		/* Fetch references at all UI components */
+		const sel_author = main.getElementById('sel_author');
+		const span_author_error = main.querySelector('label[for=sel_author] span');
+
+		const inp_date = main.getElementById('inp_date');
+		const span_date_error = main.querySelector('label[for=inp_date] span');
+
+		const inp_keywords = main.getElementById('inp_keywords');
+		const span_keywords_error = main.querySelector('label[for=inp_keywords] span');
+
+		const inp_content = main.getElementById('inp_content');
+		const span_content_error = main.querySelector('label[for=inp_content] span');
+
+		const btn_back = tivua.view.utils.setup_back_button(
 			main.getElementById("btn_back"), root);
+		const btn_save = main.getElementById('btn_save');
+		const btn_delete = main.getElementById('btn_delete');
 
 		/* Append the indentation code to the textarea */
-		const inp_keywords = main.getElementById('inp_keywords');
-		const inp_date = main.getElementById('inp_date');
-		const inp_content = main.getElementById('inp_content');
 		const editor = CodeMirror.fromTextArea(inp_content, {
 			'lineNumbers': false,
 			'backdrop': 'markdown',
@@ -69,28 +147,112 @@ this.tivua.view.editor = (function() {
 			const option = document.createElement("option");
 			option.setAttribute("value", author.id);
 			option.innerText = author.display_name;
-			main.querySelector("#sel_author").appendChild(option);
+			sel_author.appendChild(option);
 		}
 
 		/* If "post" is not null/undefined, this means that we're editing an
 		   existing post. */
+		const create_post = !post;
 		if (post) {
 			l10n.set_node_text(main.querySelector("h1"), "%header_edit_entry");
 			l10n.set_node_text(main.querySelector("#btn_save .caption"), "%btn_save");
 
-			_set_author(main, post["author"]);
-			inp_date.value =
-				utils.format_date(post["date"], "-");
-			inp_keywords.value =
-				post["keywords"] ? post["keywords"] : "";
+			sel_author.value = post["author"];
+			inp_date.value = utils.format_date(post["date"], "-");
+			inp_keywords.value = post["keywords"] ? post["keywords"].join(",") : "";
+
 			editor.getDoc().setValue(post["content"]);
 		} else {
 			/* Otherwise, we're creating a new post. Set some sane defaults for
 			   the author and the date. */
 			main.querySelector("#btn_delete").style.display = "none";
-			_set_author(main, session.user_id);
+			sel_author.value = session["user_id"];
 			inp_date.value = utils.format_date(utils.get_now_as_utc_date(), '-');
 		}
+
+		const inp_keywords_tagger = tagger(inp_keywords);
+		const autocomplete = new autoComplete({
+			"minChars": 2,
+			"delay": 50,
+			"selector": inp_keywords_tagger._new_input_tag,
+			"anchor": inp_keywords_tagger._wrapper,
+			"source": (term, response) => {
+				/* Trim the given term and make sure it is still long enough */
+				term = term.toLowerCase().trim();
+				if (term.length < 2) {
+					response([]);
+					return;
+				}
+
+				/* Request the keywords from the server */
+				api.get_keyword_list().then((keywords) => {
+					/* Filter for the keywords containing the current term,
+					   sort by occurance count and overlap. */
+					let res = {};
+					for (let keyword in keywords.keywords) {
+						const count = keywords.keywords[keyword];
+						if (keyword.includes(term)) {
+							const weight = count * Math.sqrt(term.length / keyword.length);
+							res[keyword] = weight;
+						}
+					}
+					console.log(res);
+					response(Object.keys(res).sort((a, b) => res[b] - res[a]));
+				});
+			},
+			"offsetTop": -3,
+			"root": main,
+		});
+
+		/* Hook up all validation code */
+		let validate_author = () => _validate_author(authors, btn_save, sel_author, span_author_error);
+		let validate_date = () => _validate_date(btn_save, inp_date, span_date_error);
+		let validate_keywords = () => _validate_keywords(btn_save, inp_keywords, inp_keywords_tagger._wrapper, span_keywords_error);
+
+		sel_author.addEventListener('change', validate_author);
+		inp_date.addEventListener('change', validate_date);
+		inp_keywords.addEventListener('change', validate_keywords);
+
+		/* Hook up the creation/updating of a post */
+		btn_save.addEventListener("click", function () {
+			/* Validate all input fields */
+			if (!validate_author() || !validate_date()) {
+				return;
+			}
+
+			/* Try to convert the date input to a Date object */
+			const date = tivua.utils.string_to_utc_date(inp_date.value);
+			if (date == null) {
+				inp_date.classList.add('error');
+			}
+
+			/* Show the loading overlay */
+			const div_overlay = tivua.view.utils.show_loading_overlay(root);
+
+			/* Assemble a new post with the information entered by the user */
+			const new_post = {
+				'author': sel_author.value,
+				'date': date.getTime() / 1000,
+				'content': editor.getDoc().getValue(),
+				'keywords': inp_keywords.value.split(',').filter(s => (s.trim()).length > 0),
+				'revision': post ? post['revision'] : 0,
+			};
+
+			let api_call = null;
+			if (create_post) {
+				api_call = api.create_post(new_post);
+			} else {
+				api_call = api.update_post(post["id"], new_post);
+			}
+			api_call.then((data) => {
+				// Remove this loading bar, a new one will be added once
+				// we go to the next page
+				div_overlay.close();
+
+				// Go to the previous page
+				events.on_back();
+			});
+		});
 
 		tivua.spellcheck.init().then(typo => {
 			tivua.spellcheck.start(editor, typo)
@@ -98,7 +260,7 @@ this.tivua.view.editor = (function() {
 
 		/* Require confirmation if any change is made */
 		const needs_confirmation = () => {
-			back_button.needs_confirmation = true;
+			btn_back.needs_confirmation = true;
 		};
 		main.querySelector("#sel_author").addEventListener(
 			"change", needs_confirmation);
@@ -133,11 +295,11 @@ this.tivua.view.editor = (function() {
 			 * applicable -- the requested post */
 			const promises = [
 				tivua.spellcheck.init(),
-				tivua.api.get_author_list(),
-				tivua.api.get_session_data(),
+				api.get_author_list(),
+				api.get_session_data(),
 			];
 			if (id >= 0) {
-				promises.push(tivua.api.get_post(id));
+				promises.push(api.get_post(id));
 			}
 
 			/* Show the editor */
@@ -145,7 +307,7 @@ this.tivua.view.editor = (function() {
 				const authors = data[1].authors;
 				const session = data[2].session;
 				const post = (promises.length > 3) ? data[3].post : null;
-				show_editor_view(root, events, authors, session, post);
+				show_editor_view(api, root, events, authors, session, post);
 				resolve(events);
 			}).catch((err) => reject(err))
 		});
