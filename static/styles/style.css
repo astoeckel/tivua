@@ -296,7 +296,7 @@ div.tagger {
 	cursor: text;
 	padding: 0;
 	position: relative;
-	line-height: 2.3rem;
+	line-height: 2.1rem;
 }
 
 div.tagger li, div.tagger ul {
@@ -321,10 +321,16 @@ div.tagger li span a.close {
 div.tagger input {
 	border: none !important;
 	padding: 0 0.5rem !important;
-	margin: 0 !important;
+	margin: 0.1rem 0 !important;
 	background: transparent !important;
 	box-shadow: none !important;
 	border-radius: 0 !important;
+	font-size: inherit;
+	line-height: inherit;
+}
+
+div.tagger input:focus {
+	outline: 0;
 }
 
 /******************************************************************************
@@ -942,11 +948,16 @@ main.editor > div.row > input,
 main.editor > div.row > select,
 main.editor > div.row > label,
 main.editor textarea,
-main.editor pre,
 main.editor div.CodeMirror {
-	height: unset;
 	flex: 1 0 10rem;
 }
+
+main.editor > div.row > select,
+main.editor > div.row > input,
+main.editor > div.row > label {
+	height: unset;
+}
+
 
 main.editor > div.row > input:not(:first-child),
 main.editor > div.row > label:not(:first-child) {

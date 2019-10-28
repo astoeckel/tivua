@@ -176,7 +176,7 @@
                         /* Emit a keyboard event to inform the autocomplete
                            component */
                         let evt = document.createEvent('KeyboardEvent');
-                        evt.initKeyEvent("keyup", true, true, null, false, false, false, false, 8, 0,);
+                        evt.initKeyboardEvent("keyup", true, true, null, false, false, false, false, 8, 0,);
                         self._new_input_tag.dispatchEvent(evt);
                     }
                     event.preventDefault();
