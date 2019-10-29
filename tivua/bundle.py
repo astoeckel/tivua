@@ -15,6 +15,7 @@
 #
 #   You should have received a copy of the GNU Affero General Public License
 #   along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 """
 Contains code for bundling index.html and its resources.
 
@@ -24,24 +25,37 @@ Contains code for bundling index.html and its resources.
 import os
 import re
 import hashlib
+import multiprocessing
 
 import logging
 logger = logging.getLogger(__name__)
 
 
-def bundle(filename, minify=True, exclude_stub=True):
+def bundle(filename, do_bundle=True, do_minify=True, do_exclude_stub=True):
     """
     For the given HTML file, bundles JS and CSS files included between special
     markers. Returns a firtual filesystem descriptor containig the bundled
     scripts.
+
+    @param filename is the name of the HTML file that should be bundled
+    @param do_bundle if True, this function actually performs bundling. Set to
+           False to produce a development version without the stub.
+    @param do_minify if True, minifies bundled resources.
+    @param do_execlude_stub if True, excludes the stub from the generated
+           source.
     """
 
     def add_bundle(res, name, ext, data):
+        from tivua.minify import Minify
+
         # Minify the bundle
-        bundle_data = b'\n'.join(data)
-        if minify:
-            from tivua.minify import Minify
-            bundle_data = getattr(Minify, ext)(bundle_data)
+        has_minifier = getattr(Minify, "has_{}_minifier".format(ext))
+        minifier = getattr(Minify, ext)
+        if (not do_minify) or (not has_minifier()):
+            bundle_data = b'\n'.join(data)
+        else:
+            with multiprocessing.Pool() as pool:
+                bundle_data = b'\n'.join(pool.map(minifier, data))
 
         # Compute the hash and generate a unique filename
         bundle_hash = hashlib.sha256(bundle_data).hexdigest()
@@ -83,6 +97,8 @@ def bundle(filename, minify=True, exclude_stub=True):
     style_re2 = re.compile(r"<link.*?href=\"(.*?.css)\"", re.DOTALL)
     for mrange in re.findall(style_re1, html):
         # Bundle the CSS
+        if not do_bundle:
+            continue
         css_data = []
         for mhref in re.finditer(style_re2, mrange):
             css_filename = os.path.join(html_path, mhref[1])
@@ -99,14 +115,16 @@ def bundle(filename, minify=True, exclude_stub=True):
     script_re1 = re.compile(
         r"<!-- SCRIPT( STUB)? BEGIN -->(.*?)<!-- SCRIPT( STUB)? END -->", re.DOTALL)
     script_re2 = re.compile(r"<script.*?src=\"(.*?.js)\"", re.DOTALL)
-
     for mrange in re.findall(script_re1, html):
         # Skip the script stub if requested
-        if mrange[0] and exclude_stub:
+        is_stub = bool(mrange[0])
+        if is_stub and do_exclude_stub:
             html_replacements[mrange[1]] = ""
             continue
 
-        # Bundle the CSS
+        # Bundle the JS
+        if not do_bundle:
+            continue
         js_data = []
         for mhref in re.finditer(script_re2, mrange[1]):
             js_filename = os.path.join(html_path, mhref[1])
@@ -117,7 +135,7 @@ def bundle(filename, minify=True, exclude_stub=True):
         bundle_filename = add_bundle(res, html_name, "js", js_data)
 
         # Reference the bundled/minified JS in the HTML
-        html_replacements[mrange[1]] = "<script src=\"" + bundle_filename + "\" defer></script>"
+        html_replacements[mrange[1]] = "<script src=\"" + bundle_filename + "\"" + ("" if is_stub else " defer") +"></script>"
 
     # Apply all replacements
     for old, new in html_replacements.items():
@@ -139,7 +157,7 @@ if __name__ == "__main__":
             sys.argv[0]))
         sys.exit(1)
 
-    _, files = bundle(sys.argv[1], minify=False, exclude_stub=False)
+    _, files = bundle(sys.argv[1], do_minify=False, do_exclude_stub=False)
     for filename, content in files.items():
         with open(filename, "wb") as f:
             f.write(content["data"])

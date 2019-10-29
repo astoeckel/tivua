@@ -69,7 +69,7 @@ def create_parser_serve():
         type=check_bool,
         default=False)
     parser.add_argument('--no-dev-mode',
-        help='Disable serving debug versions of all files',
+        help='Disable serving debug versions of the frontend',
         type=check_bool,
         default=False)
     parser.add_argument('--document-root',
@@ -95,7 +95,7 @@ def main_serve(argv):
     # Start the HTTP server
     Server = tivua.server.create_server_class(args)
     with socketserver.TCPServer((args.bind, args.port), Server) as httpd:
-        logger.info("Serving on {}:{}...".format(args.bind, args.port))
+        logger.info("Serving on http://{}:{}/".format(args.bind, args.port))
         try:
             httpd.serve_forever()
         except KeyboardInterrupt:

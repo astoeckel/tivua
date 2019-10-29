@@ -29,6 +29,7 @@ logger = logging.getLogger(__name__)
 # REQUEST HANDLERS                                                             #
 ################################################################################
 
+
 def mimetype(filename):
     """
     Returns the mime type based on the file extension.
@@ -54,16 +55,14 @@ def mimetype(filename):
     # Otherwise, return a safe default MIME type
     return "application/octet-stream"
 
+
 def escape(text):
     """
     Escapes text for safe inclusion in HTML.
     """
-    return (text
-        .replace('&', '&amp;')
-        .replace('<', '&lt;')
-        .replace('>', '&gt;')
-        .replace('"', '&quot;')
-        .replace("'", '&#39;'))
+    return (text.replace('&', '&amp;').replace('<', '&lt;').replace(
+        '>', '&gt;').replace('"', '&quot;').replace("'", '&#39;'))
+
 
 def _handle_vfs(vfs, vfs_filename=None, vfs_content_type=None):
     """
@@ -88,7 +87,8 @@ def _handle_vfs(vfs, vfs_filename=None, vfs_content_type=None):
         req.send_response(200)
         req.send_header('Content-type', mimetype(filename))
         if vfs[filename]["immutable"]:
-            req.send_header('Cache-control', 'public,max-age=31536000,immutable')
+            req.send_header('Cache-control',
+                            'public,max-age=31536000,immutable')
         req.end_headers()
         if head:
             return True
@@ -98,6 +98,7 @@ def _handle_vfs(vfs, vfs_filename=None, vfs_content_type=None):
         return True
 
     return _handler
+
 
 def _handle_fs(document_root):
     """
@@ -136,6 +137,7 @@ def _handle_fs(document_root):
         return True
 
     return _handler
+
 
 def _handle_error(code, msg=None):
     """
@@ -177,10 +179,12 @@ def _handle_error(code, msg=None):
             return True
 
         # Generate the actual HTML
-        req.wfile.write(ERROR_PAGE.format(
-            escape(str(code)), escape(msg)).encode('utf-8'))
+        req.wfile.write(
+            ERROR_PAGE.format(escape(str(code)), escape(msg)).encode('utf-8'))
         return True
+
     return _handler
+
 
 def _handle_index(req, match):
     req.send_response(200)
@@ -189,9 +193,11 @@ def _handle_index(req, match):
     req.wfile.write(b'<h1>Hallo Welt</h1>')
     return True
 
+
 ################################################################################
 # REQUEST ROUTER                                                               #
 ################################################################################
+
 
 class Route:
     def __init__(self, method, path, callback):
@@ -200,11 +206,12 @@ class Route:
         self.callback = callback
 
     def exec_on_match(self, req, method, head, path):
-        if (method == self.method) or (head and self.method=="GET"):
+        if (method == self.method) or (head and self.method == "GET"):
             match = self.path.match(path)
             if match:
                 return self.callback(req, match, head)
         return False
+
 
 class Router:
     def __init__(self, routes):
@@ -230,9 +237,11 @@ class Router:
         _handle_error(404)(req, None, head)
         return False
 
+
 ################################################################################
 # PUBLIC API                                                                   #
 ################################################################################
+
 
 def create_server_class(args):
     from tivua.bundle import bundle
@@ -241,14 +250,26 @@ def create_server_class(args):
     logger.info("Bundling static resources")
     vfs_index, vfs = bundle(
         os.path.join(args.document_root, 'index.html'),
-        minify=args.minify,
-        exclude_stub=False,
+        do_minify=args.minify,
+        do_exclude_stub=True,
     )
+
+    # Create the development version of the code
+    dev_vfs_index, dev_vfs = vfs_index, vfs
+    if not args.no_dev_mode:
+        dev_vfs_index, dev_vfs = bundle(
+            os.path.join(args.document_root, 'index.html'),
+            do_bundle=False,
+            do_minify=False,
+            do_exclude_stub=True,
+        )
 
     # Setup the routes
     router = Router([
-        Route("GET", r"^/(index.html)?$", _handle_vfs(vfs, vfs_index, "text/html")),
-#        Route("GET", r"^/api/.*$", _handle_error(404)),
+        Route("GET", r"^/$", _handle_vfs(vfs, vfs_index, "text/html")),
+        Route("GET", r"^/index\.html$",
+              _handle_vfs(dev_vfs, dev_vfs_index, "text/html")),
+        #        Route("GET", r"^/api/.*$", _handle_error(404)),
         Route("GET", r"^/(.*)$", _handle_vfs(vfs)),
         Route("GET", r"^/(.*)$", _handle_fs(args.document_root)),
     ])

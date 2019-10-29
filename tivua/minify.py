@@ -15,7 +15,6 @@
 #
 #   You should have received a copy of the GNU Affero General Public License
 #   along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
 """
 Contains code for bundling index.html and its resources.
 
@@ -24,6 +23,7 @@ Contains code for bundling index.html and its resources.
 
 import logging
 logger = logging.getLogger(__name__)
+
 
 class Minify:
     """
@@ -48,6 +48,10 @@ class Minify:
     _JS_TEST_OUT = b'(function(){console.log("foo")})();'
 
     @staticmethod
+    def _minify_stub(s):
+        return s
+
+    @staticmethod
     def _get_minifiers():
         """
         Used internally to globally initialise the minifier instances.
@@ -57,7 +61,7 @@ class Minify:
             import subprocess
             try:
                 with subprocess.Popen(
-                    args,
+                        args,
                         stdout=subprocess.PIPE,
                         stderr=subprocess.PIPE,
                         stdin=subprocess.PIPE) as p:
@@ -72,20 +76,17 @@ class Minify:
                     Minify._MINIFIERS[name] = minifier
                 else:
                     logger.warning(
-                        "Install the npm package \"{}\" to minify {}".format(package, name))
-                    Minify._MINIFIERS[name] = lambda s: s
+                        "Install the npm package \"{}\" to minify {}".format(
+                            package, name))
+                    Minify._MINIFIERS[name] = Minify._minify_stub
             return
 
         def html_minify(data):
-            return exec(data, ["html-minifier",
-                "--case-sensitive",
-                "--collapse-boolean-attributes",
-                "--collapse-whitespace",
-                "--remove-comments",
-                "--remove-script-type-attributes",
-                "--sort-attributes",
-                "--sort-class-name",
-                "--use-short-doctype"
+            return exec(data, [
+                "html-minifier", "--case-sensitive",
+                "--collapse-boolean-attributes", "--collapse-whitespace",
+                "--remove-comments", "--remove-script-type-attributes",
+                "--sort-attributes", "--sort-class-name", "--use-short-doctype"
             ])
 
         def css_minify(data):
@@ -94,14 +95,26 @@ class Minify:
         def js_minify(data):
             return exec(data, ["minify"])
 
-        init("html", html_minify,
-            Minify._HTML_TEST_IN, Minify._HTML_TEST_OUT, "html-minifier")
-        init("css", css_minify,
-            Minify._CSS_TEST_IN, Minify._CSS_TEST_OUT, "csso-cli")
-        init("js", js_minify,
-             Minify._JS_TEST_IN, Minify._JS_TEST_OUT, "babel-minify")
+        init("html", html_minify, Minify._HTML_TEST_IN, Minify._HTML_TEST_OUT,
+             "html-minifier")
+        init("css", css_minify, Minify._CSS_TEST_IN, Minify._CSS_TEST_OUT,
+             "csso-cli")
+        init("js", js_minify, Minify._JS_TEST_IN, Minify._JS_TEST_OUT,
+             "babel-minify")
 
         return Minify._MINIFIERS
+
+    @staticmethod
+    def has_html_minifier():
+        return Minify._get_minifiers()["html"] != Minify._minify_stub
+
+    @staticmethod
+    def has_css_minifier():
+        return Minify._get_minifiers()["css"] != Minify._minify_stub
+
+    @staticmethod
+    def has_js_minifier():
+        return Minify._get_minifiers()["js"] != Minify._minify_stub
 
     @staticmethod
     def html(s):
