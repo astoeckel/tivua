@@ -64,10 +64,18 @@ def create_parser_serve():
         help='Address of the interface the server should bind to',
         type=str,
         default='127.0.0.1')
+    parser.add_argument('--minify',
+        help='Minify the CSS/JS/HTML before bundling (slow)',
+        type=check_bool,
+        default=False)
     parser.add_argument('--no-dev-mode',
         help='Disable serving debug versions of all files',
         type=check_bool,
         default=False)
+    parser.add_argument('--document-root',
+        help='Sets the web root directory',
+        type=str,
+        default='static/')
     return parser
 
 ################################################################################

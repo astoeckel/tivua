@@ -19,10 +19,7 @@
 
 		<meta name="viewport" content="width=device-width, initial-scale=1.0">
 		<meta http-equiv="Content-Security-Policy"
-		      content="default-src 'self';
-		               script-src 'self';
-		               img-src 'self' data:;
-		               style-src 'self' 'unsafe-inline';">
+		      content="default-src 'self'; script-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline';">
 
 		<link rel="icon" type="image/svg+xml" href="images/favicon.svg" />
 		<link rel="icon" type="image/png" href="images/favicon.png" />
@@ -263,36 +260,35 @@
 			<div class="copyright">Tivua. © 2019, Andreas Stöckel. Licensed under the <a href="https://www.gnu.org/licenses/agpl-3.0.en.html">AGPL 3.0</a>. Report bugs at <a href="https://github.com/astoeckel/tivua/">https://github.com/astoeckel/tivua/</a>.</div>
 		</div>
 
-		<!-- LOAD ALL SCRIPTS -->
-		<!-- SCRIPTS STUB BEGIN -->
-		<script type="text/javascript" src="data/data.js"></script>
-		<script type="text/javascript" src="scripts/xhr_stub.js"></script>
-		<!-- SCRIPTS STUB END -->
-		<!-- SCRIPTS BEGIN -->
-		<script type="text/javascript" src="lib/l10n.js"></script>
-		<script type="text/javascript" src="lib/sjcl.js"></script>
-		<script type="text/javascript" src="lib/typo.js"></script>
-		<script type="text/javascript" src="lib/codemirror.js"></script>
-		<script type="text/javascript" src="lib/codemirror_markdown.js"></script>
-		<script type="text/javascript" src="lib/codemirror_spell_checker.js"></script>
-		<script type="text/javascript" src="lib/auto-complete.js"></script>
-		<script type="text/javascript" src="lib/katex.js"></script>
-		<script type="text/javascript" src="lib/markdown-it.js"></script>
-		<script type="text/javascript" src="lib/tagger.js"></script>
-		<script type="text/javascript" src="scripts/render.js"></script>
-		<script type="text/javascript" src="scripts/colors.js"></script>
-		<script type="text/javascript" src="scripts/time.js"></script>
-		<script type="text/javascript" src="scripts/utils.js"></script>
-		<script type="text/javascript" src="scripts/xhr.js"></script>
-		<script type="text/javascript" src="scripts/api.js"></script>
-		<script type="text/javascript" src="scripts/view/cards.js"></script>
-		<script type="text/javascript" src="scripts/view/editor.js"></script>
-		<script type="text/javascript" src="scripts/view/users.js"></script>
-		<script type="text/javascript" src="scripts/view/login.js"></script>
-		<script type="text/javascript" src="scripts/view/menu.js"></script>
-		<script type="text/javascript" src="scripts/view/utils.js"></script>
-		<script type="text/javascript" src="scripts/main.js"></script>
-		<script type="text/javascript" src="l10n/l10n_data.js"></script>
-		<!-- SCRIPTS END -->
+		<!-- SCRIPT STUB BEGIN -->
+		<script src="data/data.js"></script>
+		<script src="scripts/xhr_stub.js"></script>
+		<!-- SCRIPT STUB END -->
+		<!-- SCRIPT BEGIN -->
+		<script src="lib/codemirror.js"></script>
+		<script src="lib/codemirror_markdown.js"></script>
+		<script src="lib/codemirror_spell_checker.js"></script>
+		<script src="lib/sjcl.js"></script>
+		<script src="lib/typo.js"></script>
+		<script src="lib/l10n.js"></script>
+		<script src="lib/tagger.js"></script>
+		<script src="lib/auto-complete.js"></script>
+		<script src="lib/markdown-it.js"></script>
+		<script src="lib/katex.js"></script>
+		<script src="scripts/render.js"></script>
+		<script src="scripts/colors.js"></script>
+		<script src="scripts/time.js"></script>
+		<script src="scripts/utils.js"></script>
+		<script src="scripts/xhr.js"></script>
+		<script src="scripts/api.js"></script>
+		<script src="scripts/view/cards.js"></script>
+		<script src="scripts/view/editor.js"></script>
+		<script src="scripts/view/users.js"></script>
+		<script src="scripts/view/login.js"></script>
+		<script src="scripts/view/menu.js"></script>
+		<script src="scripts/view/utils.js"></script>
+		<script src="scripts/main.js"></script>
+		<script src="l10n/l10n_data.js"></script>
+		<!-- SCRIPT END -->
 	</body>
 </html>

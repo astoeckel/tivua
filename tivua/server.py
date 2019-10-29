@@ -14,46 +14,183 @@
 #   You should have received a copy of the GNU Affero General Public License
 #   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import re
+import re, os
 import http.server
+import http.client
 
 ################################################################################
-# Handlers                                                                     #
+# LOGGER                                                                       #
 ################################################################################
 
-def escape(html):
-    return (html
+import logging
+logger = logging.getLogger(__name__)
+
+################################################################################
+# REQUEST HANDLERS                                                             #
+################################################################################
+
+def mimetype(filename):
+    """
+    Returns the mime type based on the file extension.
+    """
+
+    MIME_MAP = {
+        "woff2": "font/woff2",
+        "html": "text/html; charset=utf-8",
+        "js": "text/javascript; charset=utf-8",
+        "json": "application/json",
+        "manifest": "application/manifest+json",
+        "css": "text/css; charset=utf-8",
+        "svg": "image/svg+xml",
+        "ico": "image/x-icon",
+        "png": "image/png",
+    }
+
+    # Get the file extension
+    ext = (filename.split(".")[-1]).lower()
+    if ext in MIME_MAP:
+        return MIME_MAP[ext]
+
+    # Otherwise, return a safe default MIME type
+    return "application/octet-stream"
+
+def escape(text):
+    """
+    Escapes text for safe inclusion in HTML.
+    """
+    return (text
         .replace('&', '&amp;')
         .replace('<', '&lt;')
         .replace('>', '&gt;')
         .replace('"', '&quot;')
         .replace("'", '&#39;'))
 
-def _handle_error(code, msg):
+def _handle_vfs(vfs, vfs_filename=None, vfs_content_type=None):
+    """
+    Creates a handler that resolves file in the virtual filesystem.
+    """
+
+    def _handler(req, match=None, head=False):
+        # If no vfs_filename has been specified, check whether the user-provided
+        # file is stored in the vfs
+        filename = None
+        if vfs_filename:
+            filename = vfs_filename
+        elif match:
+            if (match[0][1:] in vfs):
+                filename = match[0][1:]
+
+        # If no file has been found, return
+        if filename is None:
+            return False
+
+        # Send the header
+        req.send_response(200)
+        req.send_header('Content-type', mimetype(filename))
+        if vfs[filename]["immutable"]:
+            req.send_header('Cache-control', 'public,max-age=31536000,immutable')
+        req.end_headers()
+        if head:
+            return True
+
+        # Dump the VFS content
+        req.wfile.write(vfs[filename]["data"])
+        return True
+
+    return _handler
+
+def _handle_fs(document_root):
+    """
+    Creates a handler that resolves file in the virtual filesystem.
+    """
+
+    # Get the canonical document root
+    document_root = os.path.realpath(document_root)
+
+    def _handler(req, match=None, head=False):
+        # If no vfs_filename has been specified, check whether the user-provided
+        # file is stored in the vfs
+        filename = None
+        if match:
+            filename = os.path.join(document_root, match[0][1:])
+
+        # If no file has been found, return
+        if (not filename) or (not os.path.isfile(filename)):
+            return False
+
+        # Make sure the file is truely a child of the document root
+        filename = os.path.realpath(filename)
+        if (not filename.startswith(document_root)):
+            return False
+
+        # Send the header
+        req.send_response(200)
+        req.send_header('Content-type', mimetype(filename))
+        req.end_headers()
+        if head:
+            return True
+
+        # Dump the file
+        with open(filename, 'rb') as f:
+            req.wfile.write(f.read())
+        return True
+
+    return _handler
+
+def _handle_error(code, msg=None):
+    """
+    Creates a handler that responds with the given HTTP error code.
+    """
+
+    ERROR_PAGE = '''
+    <style>body {{
+        position: fixed;
+        top: calc(50% - 5em);
+        left: 0;
+        right: 0;
+        font-family: sans-serif;
+        text-align: center;
+    }}
+    h1, h2 {{
+        text-transform: uppercase;
+    }}
+    h1 {{
+        color: #5c3566;
+    }}
+    hr {{
+        width: 10rem;
+        bottom: none;
+        border-bottom: 2px solid #5c3566;
+    }}</style><h1>{}</h1><hr/><h2>{}</h2>
+    '''
+
+    # If no message is given, try to lookup the correct status code
+    if msg is None:
+        msg = http.client.responses[code]
+
     def _handler(req, match=None, head=False):
         # Send the header
         req.send_response(code)
-        req.send_header('Content-type', 'text/html')
+        req.send_header('Content-type', mimetype('html'))
         req.end_headers()
-
-        # Send the header only
         if head:
             return True
 
         # Generate the actual HTML
-        req.wfile.write(b'<h1>' + escape("{}: {}".format(code, msg)) + '</h1>')
+        req.wfile.write(ERROR_PAGE.format(
+            escape(str(code)), escape(msg)).encode('utf-8'))
         return True
     return _handler
 
 def _handle_index(req, match):
     req.send_response(200)
-    req.send_header('Content-type', 'text/html')
+    req.send_header('Content-type', mimetype('html'))
     req.end_headers()
     req.wfile.write(b'<h1>Hallo Welt</h1>')
     return True
 
 ################################################################################
-# Request router                                                               #
+# REQUEST ROUTER                                                               #
 ################################################################################
 
 class Route:
@@ -62,11 +199,11 @@ class Route:
         self.path = re.compile(path)
         self.callback = callback
 
-    def exec_on_match(self, method, path):
-        if (method == self.method) or (method == "HEAD" and self.method=="GET"):
-            match = re.match(path)
+    def exec_on_match(self, req, method, head, path):
+        if (method == self.method) or (head and self.method=="GET"):
+            match = self.path.match(path)
             if match:
-                return self.callback(req, match, method == "HEAD")
+                return self.callback(req, match, head)
         return False
 
 class Router:
@@ -76,33 +213,55 @@ class Router:
     def exec(self, req):
         # Fetch the method and the path
         method = req.command.upper()
+        head = method == "HEAD"
         path = req.path
 
-        # Cancle if the path contains a ".." -- this is a malicious request
-        if ".." in path:
-            _handle_error(404, "Not found")(req, None, method == "HEAD")
+        # Cancel if the path contains a ".." -- this is a malicious request
+        if (len(path) == 0) or (path[0] != '/') or (".." in path):
+            _handle_error(404)(req, None, head)
+            return False
 
-#        for route in self.routes:
+        # Try to execute the request
+        for route in self.routes:
+            if route.exec_on_match(req, method, head, path):
+                return True
 
-ROUTES = [
-    Route("GET", r"^/$", _handle_index),
-    Route("GET", r"^/api/.*$", _handle_error),
-    Route("GET", r"^/.*$", _handle_generic),
-]
+        # No route matched, issue a 404 error
+        _handle_error(404)(req, None, head)
+        return False
 
 ################################################################################
-# Public API                                                                   #
+# PUBLIC API                                                                   #
 ################################################################################
 
 def create_server_class(args):
+    from tivua.bundle import bundle
 
+    # Create the virtual filesystem containing the document root
+    logger.info("Bundling static resources")
+    vfs_index, vfs = bundle(
+        os.path.join(args.document_root, 'index.html'),
+        minify=args.minify,
+        exclude_stub=False,
+    )
+
+    # Setup the routes
+    router = Router([
+        Route("GET", r"^/(index.html)?$", _handle_vfs(vfs, vfs_index, "text/html")),
+#        Route("GET", r"^/api/.*$", _handle_error(404)),
+        Route("GET", r"^/(.*)$", _handle_vfs(vfs)),
+        Route("GET", r"^/(.*)$", _handle_fs(args.document_root)),
+    ])
+
+    # Define the actual server class
     class Server(http.server.BaseHTTPRequestHandler):
         def do_HEAD(self):
-            return
+            router.exec(self)
 
         def do_POST(self):
-            return
+            router.exec(self)
 
         def do_GET(self):
+            router.exec(self)
 
     return Server
