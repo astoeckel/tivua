@@ -21,7 +21,6 @@
 ################################################################################
 
 import logging
-logging.basicConfig(format='[%(levelname)s] %(asctime)s: %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 ################################################################################
@@ -46,56 +45,84 @@ def check_bool(v):
     else:
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
-def create_parser():
-	parser = argparse.ArgumentParser(
-		formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-	parser.add_argument('--db',
-		help='Location of the database file',
-		type=str,
-		default='./tivua.sqlite')
-	parser.add_argument('--config',
-		help='Location of the configuration file',
-		type=str,
-		default='./tivua.ini')
-	parser.add_argument('--port',
-		help='Port number',
-		type=check_port_number,
-		default=8324)
-	parser.add_argument('--no-dev-mode',
-		help='Disable serving debug versions of all files',
-		type=check_bool,
-		default=False)
-	return parser
+def create_parser_serve():
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument('--db',
+        help='Location of the database file',
+        type=str,
+        default='./tivua.sqlite')
+    parser.add_argument('--config',
+        help='Location of the configuration file',
+        type=str,
+        default='./tivua.conf')
+    parser.add_argument('--port',
+        help='Port number',
+        type=check_port_number,
+        default=8324)
+    parser.add_argument('--bind',
+        help='Address of the interface the server should bind to',
+        type=str,
+        default='127.0.0.1')
+    parser.add_argument('--no-dev-mode',
+        help='Disable serving debug versions of all files',
+        type=check_bool,
+        default=False)
+    return parser
 
 ################################################################################
-# ACTUAL SERVER                                                                #
+# MAIN PROGRAM                                                                 #
 ################################################################################
 
-import http.server
-import socketserver
-socketserver.TCPServer.allow_reuse_address = True
+def main_serve(argv):
+    import tivua.server
+    import socketserver
+    socketserver.TCPServer.allow_reuse_address = True
 
-class Server(http.server.BaseHTTPRequestHandler):
-	def do_HEAD(self):
-		return
+    # Parse the arguments
+    args = create_parser_serve().parse_args(argv)
 
-	def do_POST(self):
-		return
+    # TODO: Read the configuration
 
-	def do_GET(self):
-		self.send_response(200)
-		self.send_header('Content-type', 'text/html')
-		self.end_headers()
-		self.wfile.write(b'<h1>Hallo Welt</h1>')
+    # Start the HTTP server
+    Server = tivua.server.create_server_class(args)
+    with socketserver.TCPServer((args.bind, args.port), Server) as httpd:
+        logger.info("Serving on {}:{}...".format(args.bind, args.port))
+        try:
+            httpd.serve_forever()
+        except KeyboardInterrupt:
+            pass
 
-def _serve(port):
-	with socketserver.TCPServer(("", args.port), Server) as httpd:
-		logger.info("Serving on port {}...".format(args.port))
-		try:
-			httpd.serve_forever()
-		except KeyboardInterrupt:
-			pass
+def main(argv):
+    # Setup logging
+    logging.basicConfig(format='[%(levelname)s] %(message)s', level=logging.INFO)
 
-def main(args, argv):
-	logger.info("Done")
+    # If no subcommand is given, assume that we're supposed to serve the
+    # application
+    if len(argv) == 1:
+        argv.append("serve")
+    elif argv[1].startswith('--'):
+        argv.insert(1, "serve")
+
+    # Select the correct sub-program
+    try:
+        # Fetch the command and remove the corresponding entry from the argv
+        # array
+        cmd = argv[1].lower()
+        del argv[0]
+        del argv[0]
+
+        # Depending on the command, launch the corresponding subprogram
+        if cmd == "serve":
+            main_serve(argv)
+        else:
+            logger.error("Invalid subcommand \"{}\"".format(cmd))
+    except Exception as e:
+        logger.fatal(str(e))
+        return -1
+    return 0
+
+if __name__ == "__main__":
+    import sys
+    sys.exit(main(list(sys.argv)))
 
