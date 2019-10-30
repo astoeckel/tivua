@@ -48,7 +48,7 @@ def create_parser_serve():
     parser.add_argument('--port',
         help='Port number',
         type=check_port_number,
-        default=8324)
+        default=9368)
     parser.add_argument('--bind',
         help='Address of the interface the server should bind to',
         type=str,
