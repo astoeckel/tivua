@@ -324,7 +324,7 @@ this.tivua.api = (function (window) {
 		return new Promise((resolve, reject) => {
 			let session = utils.get_cookie("session");
 			if (session === null || session === "") {
-				resolve("anonymous"); // XXX
+				reject({"status": "error", "what": "No active session"});
 			} else {
 				resolve(session);
 			}
