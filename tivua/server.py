@@ -17,6 +17,7 @@
 import re, os
 import http.server
 import http.client
+import json
 
 ################################################################################
 # LOGGER                                                                       #
@@ -26,15 +27,13 @@ import logging
 logger = logging.getLogger(__name__)
 
 ################################################################################
-# REQUEST HANDLERS                                                             #
+# HELPER FUNCTIONS                                                             #
 ################################################################################
-
 
 def mimetype(filename):
     """
     Returns the mime type based on the file extension.
     """
-
     MIME_MAP = {
         "woff2": "font/woff2",
         "html": "text/html; charset=utf-8",
@@ -63,6 +62,13 @@ def escape(text):
     return (text.replace('&', '&amp;').replace('<', '&lt;').replace(
         '>', '&gt;').replace('"', '&quot;').replace("'", '&#39;'))
 
+################################################################################
+# REQUEST HANDLERS                                                             #
+################################################################################
+
+################################################################################
+# Generic filesystem and virtual filesystem handlers                           #
+################################################################################
 
 def _handle_vfs(vfs, vfs_filename=None, vfs_content_type=None):
     """
@@ -100,7 +106,7 @@ def _handle_vfs(vfs, vfs_filename=None, vfs_content_type=None):
     return _handler
 
 
-def _handle_fs(document_root):
+def _handle_fs(document_root, static_filename=None):
     """
     Creates a handler that resolves file in the virtual filesystem.
     """
@@ -112,7 +118,9 @@ def _handle_fs(document_root):
         # If no vfs_filename has been specified, check whether the user-provided
         # file is stored in the vfs
         filename = None
-        if match:
+        if static_filename:
+            filename = os.path.join(document_root, static_filename)
+        elif match:
             filename = os.path.join(document_root, match[0][1:])
 
         # If no file has been found, return
@@ -138,6 +146,9 @@ def _handle_fs(document_root):
 
     return _handler
 
+################################################################################
+# Generic (non-API) error handler                                              #
+################################################################################
 
 def _handle_error(code, msg=None):
     """
@@ -145,9 +156,9 @@ def _handle_error(code, msg=None):
     """
 
     ERROR_PAGE = '''
-    <style>body {{
+    <!doctype html><head><style>body {{
         position: fixed;
-        top: calc(50% - 5em);
+        top: calc(50% - 7em);
         left: 0;
         right: 0;
         font-family: sans-serif;
@@ -159,11 +170,16 @@ def _handle_error(code, msg=None):
     h1 {{
         color: #5c3566;
     }}
+    h1 span {{
+        display: block;
+        font-size: 250%;
+        margin-bottom: 1rem;
+    }}
     hr {{
         width: 10rem;
         bottom: none;
         border-bottom: 2px solid #5c3566;
-    }}</style><h1>{}</h1><hr/><h2>{}</h2>
+    }}</style></head><body><h1><span>🤖</span>{}</h1><hr/><h2>{}</h2></body>
     '''
 
     # If no message is given, try to lookup the correct status code
@@ -185,13 +201,50 @@ def _handle_error(code, msg=None):
 
     return _handler
 
+################################################################################
+# API handlers                                                                 #
+################################################################################
 
-def _handle_index(req, match):
-    req.send_response(200)
-    req.send_header('Content-type', mimetype('html'))
-    req.end_headers()
-    req.wfile.write(b'<h1>Hallo Welt</h1>')
-    return True
+def _wrap_api_handler(field, cback, code=200, status="success"):
+    import codecs
+    utf8_writer = codecs.getwriter('utf-8')
+
+    def _handler(req, match=None, head=False):
+        # Send the header
+        req.send_response(code)
+        req.send_header('Content-type', mimetype('json'))
+        req.end_headers()
+        if head:
+            return True
+
+        # Call the actual callback and obtain the object that should be
+        # serialised and sent back to the client
+        try:
+            obj = {
+                "status": status,
+                field: cback(req, match)
+            }
+        except Exception as e:
+            obj = {
+                "status": "error",
+                "what": str(e)
+            }
+        json.dump(obj, utf8_writer(req.wfile))
+        return True
+
+    return _handler
+
+def _handle_api_error(code, msg=None):
+    if msg is None:
+        msg = http.client.responses[code]
+    def _handler(req, match=None, head=False):
+        return msg
+    return _wrap_api_handler("what", _handler, code=code, status="error")
+
+def _handle_api_configuration(db):
+    def _handler(req, match):
+        return db.get_configuration_object()
+    return _wrap_api_handler("configuration", _handler)
 
 
 ################################################################################
@@ -230,7 +283,10 @@ class Router:
 
         # Try to execute the request
         for route in self.routes:
-            if route.exec_on_match(req, method, head, path):
+            if route is None:
+                continue
+            res = route.exec_on_match(req, method, head, path)
+            if res or (res is None):
                 return True
 
         # No route matched, issue a 404 error
@@ -243,22 +299,26 @@ class Router:
 ################################################################################
 
 
-def create_server_class(args):
+def create_server_class(db, args):
     from tivua.bundle import bundle
 
-    # Create the virtual filesystem containing the document root
-    logger.info("Bundling static resources")
+    # Fetch some often needed arguments
+    root = args.document_root
+    no_dev = args.no_dev
+
+    # Create the virtual filesystem (VFS) containing the document root
+    logger.info("Bundling static resources into VFS (this may take a while for fresh Tivua instances)")
     vfs_index, vfs = bundle(
-        os.path.join(args.document_root, 'index.html'),
-        do_minify=args.minify,
+        os.path.join(root, 'index.html'),
+        cache=db.cache,
         do_exclude_stub=True,
     )
 
     # Create the development version of the code
     dev_vfs_index, dev_vfs = vfs_index, vfs
-    if not args.no_dev_mode:
+    if not no_dev:
         dev_vfs_index, dev_vfs = bundle(
-            os.path.join(args.document_root, 'index.html'),
+            os.path.join(root, 'index.html'),
             do_bundle=False,
             do_minify=False,
             do_exclude_stub=True,
@@ -266,12 +326,26 @@ def create_server_class(args):
 
     # Setup the routes
     router = Router([
+        # Always serve the "index.html" file from the VFS when "/" is requested
         Route("GET", r"^/$", _handle_vfs(vfs, vfs_index, "text/html")),
+        # When "/index.html" is requested explicitly, serve from the development
+        # VFS, which may be equal to the normal VFS (see above)
         Route("GET", r"^/index\.html$",
               _handle_vfs(dev_vfs, dev_vfs_index, "text/html")),
-        #        Route("GET", r"^/api/.*$", _handle_error(404)),
+        # If development is disabled, answer with a 404 when any non-minified
+        # sources are requested
+        Route("GET", r"^/(lib|scripts|styles)/(?!.*(\.min\.js|\.min\.css)).*$", _handle_error(404)) \
+            if no_dev else None,
+        # Re-route the request for the favicon to the images subfolder
+        Route("GET", r"^/favicon\.ico$", _handle_fs(root, "images/favicon.ico")),
+        # Configuration API request
+        Route("GET", r"^/api/configuration$", _handle_api_configuration(db)),
+        # Unkown API request
+        Route("GET", r"^/(api/.*|api)$", _handle_api_error(404)),
+        # Try to handle generic requests from the VFS
         Route("GET", r"^/(.*)$", _handle_vfs(vfs)),
-        Route("GET", r"^/(.*)$", _handle_fs(args.document_root)),
+        # Last option, fall back to the real filesystem
+        Route("GET", r"^/(.*)$", _handle_fs(root)),
     ])
 
     # Define the actual server class

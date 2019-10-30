@@ -35,16 +35,6 @@ def check_port_number(i):
         raise argparse.ArgumentTypeError("Invalid port number")
     return i
 
-def check_bool(v):
-    if isinstance(v, bool):
-       return v
-    if v.lower() in ('yes', 'true', 't', 'y', '1'):
-        return True
-    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
-        return False
-    else:
-        raise argparse.ArgumentTypeError('Boolean value expected.')
-
 def create_parser_serve():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -52,10 +42,9 @@ def create_parser_serve():
         help='Location of the database file',
         type=str,
         default='./tivua.sqlite')
-    parser.add_argument('--config',
-        help='Location of the configuration file',
-        type=str,
-        default='./tivua.conf')
+    parser.add_argument('--verbose',
+        help='Port number',
+        action='store_true')
     parser.add_argument('--port',
         help='Port number',
         type=check_port_number,
@@ -64,18 +53,13 @@ def create_parser_serve():
         help='Address of the interface the server should bind to',
         type=str,
         default='127.0.0.1')
-    parser.add_argument('--minify',
-        help='Minify the CSS/JS/HTML before bundling (slow)',
-        type=check_bool,
-        default=False)
-    parser.add_argument('--no-dev-mode',
+    parser.add_argument('--no-dev',
         help='Disable serving debug versions of the frontend',
-        type=check_bool,
-        default=False)
+        action='store_true')
     parser.add_argument('--document-root',
         help='Sets the web root directory',
         type=str,
-        default='static/')
+        default='./static/')
     return parser
 
 ################################################################################
@@ -83,23 +67,33 @@ def create_parser_serve():
 ################################################################################
 
 def main_serve(argv):
+    # Start the database
     import tivua.server
+    import tivua.database
+
+    # Make sure TCP servers can quickly reuse the port after the application
+    # exits
     import socketserver
     socketserver.TCPServer.allow_reuse_address = True
 
-    # Parse the arguments
+    # Parse the command line arguments
     args = create_parser_serve().parse_args(argv)
 
-    # TODO: Read the configuration
+    # If the verbosity is set to "verbose", set the right level for the root
+    # logger.
+    if args.verbose:
+        logging.getLogger().setLevel(logging.DEBUG)
 
-    # Start the HTTP server
-    Server = tivua.server.create_server_class(args)
-    with socketserver.TCPServer((args.bind, args.port), Server) as httpd:
-        logger.info("Serving on http://{}:{}/".format(args.bind, args.port))
-        try:
-            httpd.serve_forever()
-        except KeyboardInterrupt:
-            pass
+    # Open the database connection
+    with tivua.database.Database(args.db) as db:
+        # Start the HTTP server
+        Server = tivua.server.create_server_class(db, args)
+        with socketserver.TCPServer((args.bind, args.port), Server) as httpd:
+            logger.info("Serving on http://{}:{}/".format(args.bind, args.port))
+            try:
+                httpd.serve_forever()
+            except KeyboardInterrupt:
+                pass
 
 def main(argv):
     # Setup logging
@@ -112,23 +106,17 @@ def main(argv):
     elif argv[1].startswith('--'):
         argv.insert(1, "serve")
 
-    # Select the correct sub-program
-    try:
-        # Fetch the command and remove the corresponding entry from the argv
-        # array
-        cmd = argv[1].lower()
-        del argv[0]
-        del argv[0]
+    # Fetch the command and remove the corresponding entry from the argv
+    # array
+    cmd = argv[1].lower()
+    del argv[0]
+    del argv[0]
 
-        # Depending on the command, launch the corresponding subprogram
-        if cmd == "serve":
-            main_serve(argv)
-        else:
-            logger.error("Invalid subcommand \"{}\"".format(cmd))
-    except Exception as e:
-        logger.fatal(str(e))
-        return -1
-    return 0
+    # Depending on the command, launch the corresponding subprogram
+    if cmd == "serve":
+        main_serve(argv)
+    else:
+        logger.error("Invalid subcommand \"{}\"".format(cmd))
 
 if __name__ == "__main__":
     import sys

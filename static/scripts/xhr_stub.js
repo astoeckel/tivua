@@ -293,9 +293,11 @@ this.tivua.xhr = (function (window) {
 		return new Promise((resolve, reject) => {
 			resolve({
 				"status": "success",
-				"login_methods": {
-					"username_password": true,
-					"cas": true
+				"configuration": {
+					"login_methods": {
+						"username_password": true,
+						"cas": true
+					}
 				}
 			});
 		});

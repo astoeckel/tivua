@@ -22,10 +22,26 @@ this.tivua = this.tivua || {};
 this.tivua.xhr = (function () {
 	"use strict";
 
+	function xhr_fetch_json(method, url, session) {
+		return fetch(url, {
+			"method": method,
+			"credentials": "same-origin",
+		}).then(response => {
+			/* Convert the response to a JSON object */
+			return response.json()
+		})
+	}
+
+	function get_configuration() {
+		return xhr_fetch_json('GET', 'api/configuration');
+	}
+
 	/* Do not expose the real API in case the XHR stub is loaded. */
 	if (tivua.xhr) {
 		return tivua.xhr;
 	} else {
-		return {};
+		return {
+			"get_configuration": get_configuration,
+		};
 	}
 })();

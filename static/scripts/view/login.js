@@ -255,7 +255,8 @@ this.tivua.view.login = (function() {
 		}
 
 		return Promise.all(promises).then((data) => {
-			_show_login_view(root, login_view, data[0].login_methods, logout);
+			_show_login_view(root, login_view,
+				data[0].configuration.login_methods, logout);
 			return login_view;
 		});
 	}

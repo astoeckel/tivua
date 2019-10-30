@@ -15,7 +15,6 @@
 #
 #   You should have received a copy of the GNU Affero General Public License
 #   along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
 """
 Contains code for bundling index.html and its resources.
 
@@ -31,12 +30,14 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def bundle(filename, do_bundle=True, do_minify=True, do_exclude_stub=True):
+def bundle(filename, cache=None, do_bundle=True, do_minify=True, do_exclude_stub=True):
     """
     For the given HTML file, bundles JS and CSS files included between special
     markers. Returns a firtual filesystem descriptor containig the bundled
     scripts.
 
+    @param cache is a dictionary-like object used for caching minified data. If
+           "None" the cache will not be used.
     @param filename is the name of the HTML file that should be bundled
     @param do_bundle if True, this function actually performs bundling. Set to
            False to produce a development version without the stub.
@@ -49,13 +50,37 @@ def bundle(filename, do_bundle=True, do_minify=True, do_exclude_stub=True):
         from tivua.minify import Minify
 
         # Minify the bundle
-        has_minifier = getattr(Minify, "has_{}_minifier".format(ext))
         minifier = getattr(Minify, ext)
+        has_minifier = getattr(Minify, "has_{}_minifier".format(ext))
         if (not do_minify) or (not has_minifier()):
             bundle_data = b'\n'.join(data)
         else:
+            # Check whether the minified version is already stored in the cache
+            bundle_data, bundle_data_min_idx = [], []
+            for i, blob in enumerate(data):
+                hash = hashlib.sha256(blob).hexdigest()
+                if cache and (hash in cache):
+                    logger.debug("Using cached minified version of file {}".format(hash))
+                    bundle_data.append(cache[hash])
+                else:
+                    bundle_data_min_idx.append((i, hash))
+
+            # Minify all the blobs that need to be minified
             with multiprocessing.Pool() as pool:
-                bundle_data = b'\n'.join(pool.map(minifier, data))
+                # Select the subset of blobs that need to be minified and then
+                # minify them
+                data = [data[i] for i, hash in bundle_data_min_idx]
+                data = pool.map(minifier, data)
+
+                # Insert the minified elements into the cache and into the right
+                # place in the bundle
+                for j, (i, hash) in enumerate(bundle_data_min_idx):
+                    bundle_data.insert(i, data[j])
+                    if cache:
+                        cache[hash] = data[j]
+
+            # Concatenate all minified blobs into a single file
+            bundle_data = b'\n'.join(bundle_data)
 
         # Compute the hash and generate a unique filename
         bundle_hash = hashlib.sha256(bundle_data).hexdigest()
@@ -109,11 +134,13 @@ def bundle(filename, do_bundle=True, do_minify=True, do_exclude_stub=True):
         bundle_filename = add_bundle(res, html_name, "css", css_data)
 
         # Reference the bundled/minified JS in the HTML
-        html_replacements[mrange] = "<link rel=\"stylesheet\" href=\"" + bundle_filename + "\" />"
+        html_replacements[
+            mrange] = "<link rel=\"stylesheet\" href=\"" + bundle_filename + "\" />"
 
     # Replace all marked script elements
     script_re1 = re.compile(
-        r"<!-- SCRIPT( STUB)? BEGIN -->(.*?)<!-- SCRIPT( STUB)? END -->", re.DOTALL)
+        r"<!-- SCRIPT( STUB)? BEGIN -->(.*?)<!-- SCRIPT( STUB)? END -->",
+        re.DOTALL)
     script_re2 = re.compile(r"<script.*?src=\"(.*?.js)\"", re.DOTALL)
     for mrange in re.findall(script_re1, html):
         # Skip the script stub if requested
@@ -135,14 +162,17 @@ def bundle(filename, do_bundle=True, do_minify=True, do_exclude_stub=True):
         bundle_filename = add_bundle(res, html_name, "js", js_data)
 
         # Reference the bundled/minified JS in the HTML
-        html_replacements[mrange[1]] = "<script src=\"" + bundle_filename + "\"" + ("" if is_stub else " defer") +"></script>"
+        html_replacements[
+            mrange[1]] = "<script src=\"" + bundle_filename + "\"" + (
+                "" if is_stub else " defer") + "></script>"
 
     # Apply all replacements
     for old, new in html_replacements.items():
         html = html.replace(old, new)
 
     # Minify the resulting HTML
-    bundle_filename = add_bundle(res, html_name, "html", [html.encode("utf-8")])
+    bundle_filename = add_bundle(res, html_name, "html",
+                                 [html.encode("utf-8")])
     return bundle_filename, res
 
 
@@ -161,5 +191,4 @@ if __name__ == "__main__":
     for filename, content in files.items():
         with open(filename, "wb") as f:
             f.write(content["data"])
-
 
