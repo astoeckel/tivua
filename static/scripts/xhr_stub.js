@@ -263,12 +263,6 @@ this.tivua.xhr = (function (window) {
 		});
 	}
 
-	function get_index(session) {
-		return new Promise((resolve, reject) => {
-			
-		});
-	}
-
 	function _get_session_data(session) {
 		const user_id = sessions[session]
 		const user = users[user_id];
