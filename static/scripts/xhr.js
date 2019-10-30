@@ -22,26 +22,109 @@ this.tivua = this.tivua || {};
 this.tivua.xhr = (function () {
 	"use strict";
 
-	function xhr_fetch_json(method, url, session) {
-		return fetch(url, {
+	/**************************************************************************
+	 * XHR helper function                                                    *
+	 **************************************************************************/
+
+	function xhr_fetch_json(method, url, session, data) {
+		/* Create the XHR configuration */
+		const xhr = {
 			"method": method,
-			"credentials": "same-origin",
-		}).then(response => {
-			/* Convert the response to a JSON object */
+			"headers": {},
+			"credentials": "omit",
+		}
+
+		/* Add the API session as "Authorization" field to the header */
+		if (session) {
+			xhr.headers["Authorization"] = "Bearer " + session
+		}
+		if (data !== "undefined") {
+			xhr.headers["Content-Type"] = "application/json";
+			xhr["body"] = JSON.stringify(data)
+		}
+
+		/* Send the XHR and return the response as JSON object */
+		return fetch(url, xhr).then(response => {
 			return response.json()
-		})
+		});
 	}
+
+	/**************************************************************************
+	 * Session management                                                     *
+	 **************************************************************************/
 
 	function get_configuration() {
 		return xhr_fetch_json('GET', 'api/configuration');
 	}
+
+	function get_session_data(session) {
+		return xhr_fetch_json('GET', 'api/session', session);
+	}
+
+	function get_login_challenge() {
+		return xhr_fetch_json('GET', 'api/session/login/challenge');
+	}
+
+	function post_logout(session) {
+		return xhr_fetch_json('POST', 'api/session/logout', session);
+	}
+
+	function post_login(user_name, challenge, response) {
+		return xhr_fetch_json('POST', 'api/session/login', null, {
+			"user_name": user_name,
+			"challenge": challenge,
+			"response": response
+		});
+	}
+
+	/**************************************************************************
+	 * Settings                                                               *
+	 **************************************************************************/
+
+	function get_settings(session) {
+		return xhr_fetch_json('GET', 'api/settings', session);
+	}
+
+	function post_settings(session, settings) {
+		return xhr_fetch_json('POST', 'api/settings', session, settings);
+	}
+
+	/**************************************************************************
+	 * Posts                                                                  *
+	 **************************************************************************/
+	function get_post_list(session, start, limit) {
+		/* Make sure start, limit are integers */
+		start |= 0;
+		limit |= 0;
+
+		/* Fetch the current list of posts */
+		return xhr_fetch_json('GET',
+			`api/posts/list?start=${start}&limit=${limit}`, session);
+	}
+
+
+	/**************************************************************************
+	 * Export the Public API                                                  *
+	 **************************************************************************/
 
 	/* Do not expose the real API in case the XHR stub is loaded. */
 	if (tivua.xhr) {
 		return tivua.xhr;
 	} else {
 		return {
+			"get_session_data": get_session_data,
 			"get_configuration": get_configuration,
+			"get_author_list": () => {throw "Not implemented";},
+			"get_keyword_list": () => {throw "Not implemented";},
+			"get_post": () => {throw "Not implemented";},
+			"create_post": () => {throw "Not implemented";},
+			"update_post": () => {throw "Not implemented";},
+			"get_post_list": get_post_list,
+			"get_login_challenge": get_login_challenge,
+			"get_settings": get_settings,
+			"post_settings": post_settings,
+			"post_logout": post_logout,
+			"post_login": post_login,
 		};
 	}
 })();

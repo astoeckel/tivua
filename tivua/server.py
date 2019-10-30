@@ -16,8 +16,8 @@
 
 import re, os
 import http.server
-import http.client
 import json
+import traceback
 
 ################################################################################
 # LOGGER                                                                       #
@@ -67,6 +67,8 @@ def escape(text):
 ################################################################################
 # REQUEST HANDLERS                                                             #
 ################################################################################
+
+HEX64_RE = re.compile("^[A-Fa-f0-9]{64}$")
 
 ################################################################################
 # Generic filesystem and virtual filesystem handlers                           #
@@ -212,24 +214,108 @@ def _handle_error(code, msg=None):
 ################################################################################
 
 
-def _wrap_api_handler(field, cback, code=200, status="success"):
+def _api_get_session(db, req):
+    """
+    Checks whether the Authorization header in the given request corresponds to
+    a valid session. If yes, queries and returns the session data from the
+    database. The session data is an object containing the following elements:
+
+    {
+        "session": <the session id>,
+        "user_id": <the numerical user id>,
+        "user_name": <the canonical user name>,
+        "display_name": <the user-defined display name>,
+        "role": <the user role string>,
+    }
+
+    """
+
+    assert not db is None, "API request requires authorization, but no DB object was given"
+
+    # Extract the session from the request header
+    authorization = req.headers.get("Authorization")
+    if not authorization:
+        return None
+    authorization = authorization.split(" ")
+    if len(authorization) != 2 or authorization[0].strip().lower() != "bearer":
+        return None
+
+    # Make sure the session ID has the correct format
+    session = authorization[1].strip().lower()
+    if not HEX64_RE.match(session):
+        return None
+
+    # Fetch the session data from the DB
+    return db.get_session_data(session)
+
+
+def _wrap_api_handler(cback,
+                      field=None,
+                      code=200,
+                      status="success",
+                      requires_auth=True,
+                      db=None):
     import codecs
     utf8_writer = codecs.getwriter('utf-8')
 
     def _handler(req, match=None, head=False):
+        # Copy the response code from the outside
+        response_code = code
+
+        # Try the following, report an internal server error if an exception
+        # happens here
+        try:
+            # Handle authentification
+            session = None
+            if requires_auth:
+                session = _api_get_session(db, req)
+                if session is None:
+                    return _handle_api_error(401)(req)
+
+            # If this request is a POST, check for the Content-Length header and
+            # read the provided data into a JSON object
+            body = None
+            if ((req.command.upper() == "POST")
+                    and (req.headers["Content-Length"])):
+                length = int(req.headers.get("Content-Length"))
+                if length > 0:
+                    body = json.loads(req.rfile.read(length))
+
+            # Call the actual callback and obtain the object that should be
+            # serialised and sent back to the client
+            obj = {"status": status}
+            if not head:
+                res = cback(req, match, session, body)
+            else:
+                res = {}
+
+            # If res is "False", there must have been a request validation error
+            if res == False:
+                response_code = 400
+                obj = {"status": "error", "what": "Invalid Request"}
+            elif isinstance(res, str):
+                obj = {"status": "error", "what": res}
+            elif (field is None):
+                assert isinstance(
+                    res, dict
+                ), "\"field\" is None, so API handler result must be a dictionary"
+                for key, value in res.items():
+                    obj[key] = value
+            else:
+                obj[field] = res
+        except Exception as e:
+            response_code = 500
+            obj = {"status": "error", "what": str(e)}
+            traceback.print_exc()
+
         # Send the header
-        req.send_response(code)
+        req.send_response(response_code)
         req.send_header('Content-type', mimetype('json'))
         req.end_headers()
         if head:
             return True
 
-        # Call the actual callback and obtain the object that should be
-        # serialised and sent back to the client
-        try:
-            obj = {"status": status, field: cback(req, match)}
-        except Exception as e:
-            obj = {"status": "error", "what": str(e)}
+        # Send the response
         json.dump(obj, utf8_writer(req.wfile))
         return True
 
@@ -240,17 +326,91 @@ def _handle_api_error(code, msg=None):
     if msg is None:
         msg = http.client.responses[code]
 
-    def _handler(req, match=None, head=False):
+    def _handler(req, match, session, body):
         return msg
 
-    return _wrap_api_handler("what", _handler, code=code, status="error")
+    return _wrap_api_handler(_handler, code=code, requires_auth=False)
 
 
-def _handle_api_configuration(db):
-    def _handler(req, match):
+def _handle_api_get_configuration(db):
+    def _handler(req, match, session, body):
         return db.get_configuration_object()
 
-    return _wrap_api_handler("configuration", _handler)
+    return _wrap_api_handler(_handler, requires_auth=False)
+
+
+def _handle_api_get_session(db):
+    def _handler(req, match, session, body):
+        return session
+
+    return _wrap_api_handler(_handler, db=db)
+
+
+def _handle_api_get_login_challenge(db):
+    def _handler(req, match, session, body):
+        return db.get_login_challenge()
+
+    return _wrap_api_handler(_handler, requires_auth=False)
+
+
+def _handle_api_post_login(db):
+    def _handler(req, match, session, body):
+        # Validate the request
+        if not (body and ('user_name' in body) and ('challenge' in body) and
+                ('response' in body) and HEX64_RE.match(body['challenge'])
+                and HEX64_RE.match(body['response'])):
+            return False
+
+        # Make sure the given challenge is valid
+        challenge = body["challenge"]
+        if not db.check_login_challenge(body["challenge"]):
+            return "%error_invalid_username_password"
+
+        # Try to lookup the user from the DB
+        user = db.get_user_by_name(body['user_name'])
+        if user is None:
+            return "%error_invalid_username_password"
+
+        # Compute the expected password hash
+        expected_response = db.hash_password(
+            bytes.fromhex(user["password"]), challenge)
+        if expected_response != body["response"]:
+            return "%error_invalid_username_password"
+
+        # Create a session for this user
+        session = db.create_session(user["id"])
+
+        # Return the session and the cookie
+        return {
+            "cookie": session,
+            "session": db.get_session_data(session)
+        }
+
+    return _wrap_api_handler(_handler, requires_auth=False)
+
+
+def _handle_api_post_logout(db):
+    def _handler(req, match, session, body):
+        db.delete_session(session["session"])
+        return {}
+
+    return _wrap_api_handler(_handler, db=db)
+
+def _handle_api_get_settings(db):
+    def _handler(req, match, session, body):
+        if (session["user_id"] in db.settings):
+            return db.settings["user_id"]
+        return {}
+
+    return _wrap_api_handler(_handler, field="settings", db=db)
+
+def _handle_api_post_settings(db):
+    def _handler(req, match, session, body):
+        db.settings["user_id"] = json.dumps(body)
+        return body
+
+    return _wrap_api_handler(_handler, field="settings", db=db)
+
 
 
 ################################################################################
@@ -259,13 +419,47 @@ def _handle_api_configuration(db):
 
 
 class Route:
+    """
+    The Route class is a tuple (method, path, callback), where "method" is the
+    HTTP request method (e.g., "GET" or "POST"), "path" is a regular
+    expression string used to match the requested path, and callback is a
+    function that should be called whenever the method and path match a
+    user-request. The callback may return "True" or "None" if the request was
+    handled, or "False", if the request was not handled.
+    """
+
     def __init__(self, method, path, callback):
+        """
+        Constructor of the Route class.
+
+        @param method is the HTTP request method, e.g. ("GET" or "POST"). Must
+               be in uppercase letters. The method is ignored, if the request
+               method is "head".
+        @param path is the requested HTTP path.
+        @param callback is the callback function that should be called whenever
+               both the method and the path match. The callback receives a
+               reference at the request object, the path regular expression
+               match and a flag indicating whether the request was actually a
+               HTTP head request. Must return "True" or "None" if the request
+               was handled, and "False" if the request was declined.
+        """
         self.method = method.upper()
         self.path = re.compile(path)
         self.callback = callback
 
     def exec_on_match(self, req, method, head, path):
-        if (method == self.method) or (head and self.method == "GET"):
+        """
+        Used internally to test whether a request matches the route description.
+        This funciton is called by the Router. Returns False if the path does
+        not match the regular expression given in the constructor, otherwise
+        calls the callback and returns its return value.
+
+        @param req is the request object.
+        @param method is the request method.
+        @param head is True if the method is "HEAD".
+        @param path is the requested path
+        """
+        if (self.method == "*") or (method == self.method) or head:
             match = self.path.match(path)
             if match:
                 return self.callback(req, match, head)
@@ -273,10 +467,28 @@ class Route:
 
 
 class Router:
+    """
+    The Router manages a collection of Route objects and directs incoming
+    requests to the routes.
+    """
+
     def __init__(self, routes):
+        """
+        Initialises the router with the given set of routes.
+
+        @param routes is a list of either Route objects or "None". "None"
+               entries in the list are skipped.
+        """
         self.routes = routes
 
     def exec(self, req):
+        """
+        Executes the router for the given request. Returns True if a route was
+        successfully executed, otherwise sends a 404 error and returns False.
+
+        @param req is the request object (an instance of BaseHTTPRequestHandler)
+        """
+
         # Fetch the method and the path
         method = req.command.upper()
         head = method == "HEAD"
@@ -313,9 +525,7 @@ def create_server_class(db, args):
     no_dev = args.no_dev
 
     # Create the virtual filesystem (VFS) containing the document root
-    logger.info(
-        "Bundling static resources into VFS (this may take a while for fresh Tivua instances)"
-    )
+    logger.info("Bundling static resources into the VFS")
     vfs_index, vfs = bundle(
         os.path.join(root, 'index.html'),
         cache=db.cache,
@@ -334,6 +544,10 @@ def create_server_class(db, args):
 
     # Setup the routes
     router = Router([
+        #
+        # Index page and development mode
+        #
+
         # Always serve the "index.html" file from the VFS when "/" is requested
         Route("GET", r"^/$", _handle_vfs(vfs, vfs_index, "text/html")),
         # When "/index.html" is requested explicitly, serve from the development
@@ -346,10 +560,33 @@ def create_server_class(db, args):
             if no_dev else None,
         # Re-route the request for the favicon to the images subfolder
         Route("GET", r"^/favicon\.ico$", _handle_fs(root, "images/favicon.ico")),
-        # Configuration API request
-        Route("GET", r"^/api/configuration$", _handle_api_configuration(db)),
-        # Unkown API request
-        Route("GET", r"^/(api/.*|api)$", _handle_api_error(404)),
+
+        #
+        # API Requests
+        #
+
+        # Configuration request
+        Route("GET", r"^/api/configuration$", _handle_api_get_configuration(db)),
+        # Settings request
+        Route("GET", r"^/api/settings$", _handle_api_get_settings(db)),
+        # Settings request
+        Route("POST", r"^/api/settings$", _handle_api_post_settings(db)),
+        # Session data request
+        Route("GET", r"^/api/session$", _handle_api_get_session(db)),
+        # Login request
+        Route("POST", r"^/api/session/login$", _handle_api_post_login(db)),
+        # Login challenge API request
+        Route("GET", r"^/api/session/login/challenge$", _handle_api_get_login_challenge(db)),
+        # Logout request
+        Route("POST", r"^/api/session/logout$", _handle_api_post_logout(db)),
+
+        # Unkown API requests
+        Route("*", r"^/(api/.*|api)$", _handle_api_error(404)),
+
+        #
+        # Generic file and VFS requests
+        #
+
         # Try to handle generic requests from the VFS
         Route("GET", r"^/(.*)$", _handle_vfs(vfs)),
         # Last option, fall back to the real filesystem
