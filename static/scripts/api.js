@@ -228,15 +228,6 @@ this.tivua.api = (function (window) {
 		}));
 	}
 
-	/**
-	 * Returns the total number of posts.
-	 */
-	function get_total_post_count() {
-		return _err(get_session().then(session => {
-			return xhr.get_total_post_count(session);
-		}));
-	}
-
 	/**************************************************************************
 	 * SEARCH AND FILTERING                                                   *
 	 **************************************************************************/
@@ -458,7 +449,6 @@ this.tivua.api = (function (window) {
 		"update_post": update_post,
 		"create_post": create_post,
 		"get_post_list": get_post_list,
-		"get_total_post_count": get_total_post_count,
 		"get_settings": get_settings,
 		"post_settings": post_settings,
 		"post_logout": post_logout,

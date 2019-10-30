@@ -256,13 +256,6 @@ this.tivua.xhr = (function (window) {
 		});
 	}
 
-	function get_total_post_count(session) {
-		return new Promise((resolve, reject) => {
-			_check_session(session);
-			resolve(DATA_CONTENT.length);
-		});
-	}
-
 	function _get_session_data(session) {
 		const user_id = sessions[session]
 		const user = users[user_id];
@@ -460,7 +453,6 @@ this.tivua.xhr = (function (window) {
 		"create_post": create_post,
 		"update_post": update_post,
 		"get_post_list": get_post_list,
-		"get_total_post_count": get_total_post_count,
 		"get_login_challenge": get_login_challenge,
 		"get_settings": get_settings,
 		"post_settings": post_settings,
