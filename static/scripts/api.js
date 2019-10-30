@@ -53,6 +53,11 @@ this.tivua.api = (function (window) {
 		"posts_per_page": 50,
 	};
 
+	/* Time until the session cookie expires in days. This is a fairly large
+	   value because the server checks the validity of the session
+	   independently. */
+	let session_timeout_days = 730; // This is approximately what Google uses
+
 	/* Used to avoid out-of-date server responses from spoiling the settings
 	   cache. */
 	let settings_version = 0;
@@ -429,7 +434,8 @@ this.tivua.api = (function (window) {
 				// The _err call above already handled errors, so if we get
 				// here, the status should be "success".
 				if (data["status"] === "success") {
-					utils.set_cookie("session", data["cookie"]);
+					utils.set_cookie("session", data["cookie"],
+					                 session_timeout_days);
 					resolve(data);
 				} else {
 					reject({
