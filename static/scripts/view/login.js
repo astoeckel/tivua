@@ -166,7 +166,7 @@ this.tivua.view.login = (function() {
 				sel_language.appendChild(option);
 			}
 		}
-		sel_language.value = String.locale;
+		sel_language.value = l10n.get_locale();
 
 		// Connect event listeners
 		btn_username_password.addEventListener('click', e => {

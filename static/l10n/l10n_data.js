@@ -208,12 +208,26 @@ this.tivua.l10n = (function () {
 		},
 	}
 
-	// Register the translations
-	String.toLocaleString(l10n_data);
+	let locale = {
+		"default_locale": tivua.utils.get_cookie("locale") || "en-US",
+		"current_locale": tivua.utils.get_cookie("locale") || "en-US",
+		"fallback_locale": "en-US"
+	};
 
-	// Set the default locale
-	String.defaultLocale = tivua.utils.get_cookie("locale") || "en-US";
-	String.locale = String.defaultLocale;
+	function translate(str) {
+		let dict = l10n_data[locale.fallback_locale];
+		let fallback_dict = dict;
+		if (locale.current_locale in l10n_data) {
+			dict = l10n_data[locale.current_locale];
+		}
+		if (str in dict) {
+			return dict[str];
+		}
+		if (str in fallback_dict) {
+			return fallback_dict[str];
+		}
+		return String.toLocaleString(str);
+	}
 
 	/**
 	 * Function used to translate a DOM tree. Attatches the
@@ -228,10 +242,10 @@ this.tivua.l10n = (function () {
 				nd.originalTextContent = null;
 			}
 			if (nd.originalTextContent) {
-				nd.textContent = nd.originalTextContent.toLocaleString();
+				nd.textContent = translate(nd.originalTextContent)
 			} else if (nd.textContent.length > 0 && nd.textContent.charAt(0) == '%') {
 				nd.originalTextContent = nd.textContent;
-				nd.textContent = nd.textContent.toLocaleString();
+				nd.textContent = translate(nd.textContent)
 			}
 		}
 
@@ -257,16 +271,21 @@ this.tivua.l10n = (function () {
 
 	// Sets the locale to the given locale and re-translates the current
 	// document body.
-	function set_locale(locale) {
-		tivua.utils.set_cookie("locale", locale);
-		String.locale = locale;
+	function set_locale(locale_name) {
+		tivua.utils.set_cookie("locale", locale_name);
+		locale.current_locale = locale_name;
 		translate_dom_tree(document.getElementsByTagName("body")[0]);
+	}
+
+	function get_locale() {
+		return locale.current_locale;
 	}
 
 	return {
 		"data": l10n_data,
 		"translate_dom_tree": translate_dom_tree,
 		"set_locale": set_locale,
+		"get_locale": get_locale,
 		"set_node_text": set_node_text
 	};
 })();
