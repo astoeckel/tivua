@@ -236,6 +236,11 @@ this.tivua.view.login = (function() {
 
 		// Replace the current DOM tree with the login view
 		utils.replace_content(root, main);
+
+		// Focus the username input field if this is the only login method
+		if (n_methods == 1 && methods.username_password) {
+			inp_username.focus();
+		}
 	}
 
 	function create_login_view(api, root, logout=false) {
