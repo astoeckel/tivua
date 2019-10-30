@@ -37,7 +37,7 @@ this.tivua.xhr = (function (window) {
 		1: {
 			"user_name": "astoecke",
 			"password_hash": "2fef31c115173ef2abd946a4cbd35afe980d40ff80ea6ff66e31c37e1a4afe34",
-			"full_name": "Andreas Stöckel"
+			"display_name": "Andreas Stöckel",
 		}
 	};
 
@@ -262,7 +262,7 @@ this.tivua.xhr = (function (window) {
 		return {
 			"user_id": user_id,
 			"user_name": user["user_name"],
-			"full_name": user["full_name"],
+			"display_name": user["display_name"],
 		}
 	}
 

@@ -51,10 +51,10 @@ this.tivua.view.menu = (function() {
 		span_user_emblem.style.color = user_color;
 
 		const span_user_initials = main.querySelector(".user_initials");
-		span_user_initials.innerText = session.full_name.charAt(0);
+		span_user_initials.innerText = session.display_name.charAt(0);
 
 		const span_user_name = main.querySelector(".user_name");
-		span_user_name.innerText = session.full_name;
+		span_user_name.innerText = session.display_name;
 
 		/* Query the current view preferences (list or card view) and mark the
 		   buttons accordingly. */
