@@ -30,6 +30,7 @@ logger = logging.getLogger(__name__)
 # HELPER FUNCTIONS                                                             #
 ################################################################################
 
+
 def mimetype(filename):
     """
     Returns the mime type based on the file extension.
@@ -62,6 +63,7 @@ def escape(text):
     return (text.replace('&', '&amp;').replace('<', '&lt;').replace(
         '>', '&gt;').replace('"', '&quot;').replace("'", '&#39;'))
 
+
 ################################################################################
 # REQUEST HANDLERS                                                             #
 ################################################################################
@@ -69,6 +71,7 @@ def escape(text):
 ################################################################################
 # Generic filesystem and virtual filesystem handlers                           #
 ################################################################################
+
 
 def _handle_vfs(vfs, vfs_filename=None, vfs_content_type=None):
     """
@@ -146,9 +149,11 @@ def _handle_fs(document_root, static_filename=None):
 
     return _handler
 
+
 ################################################################################
 # Generic (non-API) error handler                                              #
 ################################################################################
+
 
 def _handle_error(code, msg=None):
     """
@@ -201,9 +206,11 @@ def _handle_error(code, msg=None):
 
     return _handler
 
+
 ################################################################################
 # API handlers                                                                 #
 ################################################################################
+
 
 def _wrap_api_handler(field, cback, code=200, status="success"):
     import codecs
@@ -220,30 +227,29 @@ def _wrap_api_handler(field, cback, code=200, status="success"):
         # Call the actual callback and obtain the object that should be
         # serialised and sent back to the client
         try:
-            obj = {
-                "status": status,
-                field: cback(req, match)
-            }
+            obj = {"status": status, field: cback(req, match)}
         except Exception as e:
-            obj = {
-                "status": "error",
-                "what": str(e)
-            }
+            obj = {"status": "error", "what": str(e)}
         json.dump(obj, utf8_writer(req.wfile))
         return True
 
     return _handler
 
+
 def _handle_api_error(code, msg=None):
     if msg is None:
         msg = http.client.responses[code]
+
     def _handler(req, match=None, head=False):
         return msg
+
     return _wrap_api_handler("what", _handler, code=code, status="error")
+
 
 def _handle_api_configuration(db):
     def _handler(req, match):
         return db.get_configuration_object()
+
     return _wrap_api_handler("configuration", _handler)
 
 
@@ -307,7 +313,9 @@ def create_server_class(db, args):
     no_dev = args.no_dev
 
     # Create the virtual filesystem (VFS) containing the document root
-    logger.info("Bundling static resources into VFS (this may take a while for fresh Tivua instances)")
+    logger.info(
+        "Bundling static resources into VFS (this may take a while for fresh Tivua instances)"
+    )
     vfs_index, vfs = bundle(
         os.path.join(root, 'index.html'),
         cache=db.cache,
@@ -360,3 +368,4 @@ def create_server_class(db, args):
             router.exec(self)
 
     return Server
+
