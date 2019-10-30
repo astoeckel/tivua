@@ -46,7 +46,7 @@ def bundle(filename, cache=None, do_bundle=True, do_minify=True, do_exclude_stub
            source.
     """
 
-    def add_bundle(res, name, ext, data):
+    def add_bundle(res, name, ext, data, filenames):
         from tivua.minify import Minify
 
         # Minify the bundle
@@ -60,12 +60,15 @@ def bundle(filename, cache=None, do_bundle=True, do_minify=True, do_exclude_stub
             for i, blob in enumerate(data):
                 hash = hashlib.sha256(blob).hexdigest()
                 if cache and (hash in cache):
-                    logger.debug("Using cached minified version of file {}".format(hash))
+                    logger.debug("Using cached minified version of file \"{}\"".format(filenames[i]))
                     bundle_data.append(cache[hash])
                 else:
+                    logger.debug("Queuing file \"{}\" for minification".format(filenames[i]))
                     bundle_data_min_idx.append((i, hash))
 
             # Minify all the blobs that need to be minified
+            if len(bundle_data_min_idx):
+                logger.info("Minifying updated {} files. This may take a while...".format(ext.upper()))
             with multiprocessing.Pool() as pool:
                 # Select the subset of blobs that need to be minified and then
                 # minify them
@@ -124,14 +127,15 @@ def bundle(filename, cache=None, do_bundle=True, do_minify=True, do_exclude_stub
         # Bundle the CSS
         if not do_bundle:
             continue
-        css_data = []
+        css_data, css_filenames = [], []
         for mhref in re.finditer(style_re2, mrange):
             css_filename = os.path.join(html_path, mhref[1])
             with open(css_filename, "rb") as f:
                 css_data.append(f.read())
+                css_filenames.append(css_filename)
 
         # Add the bundled file to the result array
-        bundle_filename = add_bundle(res, html_name, "css", css_data)
+        bundle_filename = add_bundle(res, html_name, "css", css_data, css_filenames)
 
         # Reference the bundled/minified JS in the HTML
         html_replacements[
@@ -152,14 +156,15 @@ def bundle(filename, cache=None, do_bundle=True, do_minify=True, do_exclude_stub
         # Bundle the JS
         if not do_bundle:
             continue
-        js_data = []
+        js_data, js_filenames = [], []
         for mhref in re.finditer(script_re2, mrange[1]):
             js_filename = os.path.join(html_path, mhref[1])
             with open(js_filename, "rb") as f:
                 js_data.append(f.read())
+                js_filenames.append(js_filename)
 
         # Add the bundled file to the result array
-        bundle_filename = add_bundle(res, html_name, "js", js_data)
+        bundle_filename = add_bundle(res, html_name, "js", js_data, js_filenames)
 
         # Reference the bundled/minified JS in the HTML
         html_replacements[
@@ -172,7 +177,7 @@ def bundle(filename, cache=None, do_bundle=True, do_minify=True, do_exclude_stub
 
     # Minify the resulting HTML
     bundle_filename = add_bundle(res, html_name, "html",
-                                 [html.encode("utf-8")])
+                                 [html.encode("utf-8")], [filename])
     return bundle_filename, res
 
 
