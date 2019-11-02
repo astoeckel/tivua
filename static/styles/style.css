@@ -1083,6 +1083,11 @@ div.dialogue h1 {
 	font-size: 200%;
 }
 
+div.dialogue h1 span {
+	font-size: 200%;
+	margin-bottom: 0.5em;
+}
+
 div.dialogue > * {
 	margin: 2rem 0;
 }
