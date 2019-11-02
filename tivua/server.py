@@ -235,11 +235,11 @@ def _internal_api_get_session(api, req):
 
 
 def _internal_wrap_api_handler(cback,
-                              field=None,
-                              code=200,
-                              status="success",
-                              requires_auth=True,
-                              api=None):
+                               field=None,
+                               code=200,
+                               status="success",
+                               requires_auth=True,
+                               api=None):
     """
     Common code used to parse API requests. Checks for authentification
     and generates error messages. Deserialises incoming request bodies from
@@ -320,7 +320,8 @@ def _api_error(code, msg=None):
     def _handler(req, query, match, session, body):
         return msg
 
-    return _internal_wrap_api_handler(_handler, code=code, requires_auth=False)
+    return _internal_wrap_api_handler(
+        _handler, field="what", code=code, requires_auth=False)
 
 
 def _api_get_configuration(api):
