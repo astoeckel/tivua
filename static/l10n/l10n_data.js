@@ -102,7 +102,7 @@ this.tivua.l10n = (function () {
 				"Please enter a username",
 			"%error_msg_enter_password":
 				"Please enter a password",
-			"%error_invalid_username_password":
+			"%server_error_authentification":
 				"Invalid username or password",
 			"%username":
 				"Username",
