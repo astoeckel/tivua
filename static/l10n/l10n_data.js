@@ -62,7 +62,7 @@ this.tivua.l10n = (function () {
 			"%header_welcome":
 				"Welcome to Tivua!",
 			"%msg_welcome":
-				"There are no posts yet. Click on the \"Add entry\" button above to create your first Tivua post.",
+				"There are no posts yet. Click on the \"Add entry\" button above to create one.",
 
 			// Menu
 			"%tooltip_menu":
