@@ -19,6 +19,8 @@ import http.server
 import json
 import traceback
 
+from tivua.api import ValidationError, AuthentificationError
+
 ################################################################################
 # LOGGER                                                                       #
 ################################################################################
@@ -68,8 +70,6 @@ def escape(text):
 # REQUEST HANDLERS                                                             #
 ################################################################################
 
-HEX64_RE = re.compile("^[A-Fa-f0-9]{64}$")
-
 ################################################################################
 # Generic filesystem and virtual filesystem handlers                           #
 ################################################################################
@@ -80,7 +80,7 @@ def _handle_vfs(vfs, vfs_filename=None, vfs_content_type=None):
     Creates a handler that resolves file in the virtual filesystem.
     """
 
-    def _handler(req, match=None, head=False):
+    def _handler(req, query=None, match=None, head=False):
         # If no vfs_filename has been specified, check whether the user-provided
         # file is stored in the vfs
         filename = None
@@ -119,7 +119,7 @@ def _handle_fs(document_root, static_filename=None):
     # Get the canonical document root
     document_root = os.path.realpath(document_root)
 
-    def _handler(req, match=None, head=False):
+    def _handler(req, query=None, match=None, head=False):
         # If no vfs_filename has been specified, check whether the user-provided
         # file is stored in the vfs
         filename = None
@@ -193,7 +193,7 @@ def _handle_error(code, msg=None):
     if msg is None:
         msg = http.client.responses[code]
 
-    def _handler(req, match=None, head=False):
+    def _handler(req, query=None, match=None, head=False):
         # Send the header
         req.send_response(code)
         req.send_header('Content-type', mimetype('html'))
@@ -214,23 +214,13 @@ def _handle_error(code, msg=None):
 ################################################################################
 
 
-def _api_get_session(db, req):
+def _internal_api_get_session(api, req):
     """
     Checks whether the Authorization header in the given request corresponds to
-    a valid session. If yes, queries and returns the session data from the
-    database. The session data is an object containing the following elements:
-
-    {
-        "session": <the session id>,
-        "user_id": <the numerical user id>,
-        "user_name": <the canonical user name>,
-        "display_name": <the user-defined display name>,
-        "role": <the user role string>,
-    }
-
+    a valid session. If yes, queries and returns the session data from the API.
     """
 
-    assert not db is None, "API request requires authorization, but no DB object was given"
+    assert not api is None, "Authorization required, but no API object"
 
     # Extract the session from the request header
     authorization = req.headers.get("Authorization")
@@ -240,25 +230,26 @@ def _api_get_session(db, req):
     if len(authorization) != 2 or authorization[0].strip().lower() != "bearer":
         return None
 
-    # Make sure the session ID has the correct format
-    session = authorization[1].strip().lower()
-    if not HEX64_RE.match(session):
-        return None
-
-    # Fetch the session data from the DB
-    return db.get_session_data(session)
+    # Fetch the session data from the API
+    return api.get_session_data(authorization[1].strip().lower())
 
 
-def _wrap_api_handler(cback,
-                      field=None,
-                      code=200,
-                      status="success",
-                      requires_auth=True,
-                      db=None):
+def _internal_wrap_api_handler(cback,
+                              field=None,
+                              code=200,
+                              status="success",
+                              requires_auth=True,
+                              api=None):
+    """
+    Common code used to parse API requests. Checks for authentification
+    and generates error messages. Deserialises incoming request bodies from
+    JSON. Serialises outgoing responses to JSON.
+    """
+
     import codecs
     utf8_writer = codecs.getwriter('utf-8')
 
-    def _handler(req, match=None, head=False):
+    def _handler(req, query=None, match=None, head=False):
         # Copy the response code from the outside
         response_code = code
 
@@ -268,9 +259,9 @@ def _wrap_api_handler(cback,
             # Handle authentification
             session = None
             if requires_auth:
-                session = _api_get_session(db, req)
+                session = _internal_api_get_session(api, req)
                 if session is None:
-                    return _handle_api_error(401)(req)
+                    return _api_error(401)(req)
 
             # If this request is a POST, check for the Content-Length header and
             # read the provided data into a JSON object
@@ -285,17 +276,11 @@ def _wrap_api_handler(cback,
             # serialised and sent back to the client
             obj = {"status": status}
             if not head:
-                res = cback(req, match, session, body)
+                res = cback(req, query, match, session, body)
             else:
                 res = {}
 
-            # If res is "False", there must have been a request validation error
-            if res == False:
-                response_code = 400
-                obj = {"status": "error", "what": "Invalid Request"}
-            elif isinstance(res, str):
-                obj = {"status": "error", "what": res}
-            elif (field is None):
+            if (field is None):
                 assert isinstance(
                     res, dict
                 ), "\"field\" is None, so API handler result must be a dictionary"
@@ -303,10 +288,16 @@ def _wrap_api_handler(cback,
                     obj[key] = value
             else:
                 obj[field] = res
+        except ValidationError:
+            response_code = 400
+            obj = {"status": "error", "what": "%server_error_validation"}
+        except AuthentificationError:
+            response_code = 401
+            obj = {"status": "error", "what": "%server_error_authentification"}
         except Exception as e:
             response_code = 500
-            obj = {"status": "error", "what": str(e)}
-            traceback.print_exc()
+            obj = {"status": "error", "what": "%server_error_unknown"}
+            logger.exception("Error while handling API request")
 
         # Send the header
         req.send_response(response_code)
@@ -322,95 +313,83 @@ def _wrap_api_handler(cback,
     return _handler
 
 
-def _handle_api_error(code, msg=None):
+def _api_error(code, msg=None):
     if msg is None:
         msg = http.client.responses[code]
 
-    def _handler(req, match, session, body):
+    def _handler(req, query, match, session, body):
         return msg
 
-    return _wrap_api_handler(_handler, code=code, requires_auth=False)
+    return _internal_wrap_api_handler(_handler, code=code, requires_auth=False)
 
 
-def _handle_api_get_configuration(db):
-    def _handler(req, match, session, body):
-        return db.get_configuration_object()
+def _api_get_configuration(api):
+    def _handler(req, query, match, session, body):
+        return api.get_configuration_object()
 
-    return _wrap_api_handler(_handler, requires_auth=False)
+    return _internal_wrap_api_handler(_handler, requires_auth=False)
 
 
-def _handle_api_get_session(db):
-    def _handler(req, match, session, body):
+def _api_get_session(api):
+    def _handler(req, query, match, session, body):
         return session
 
-    return _wrap_api_handler(_handler, db=db)
+    return _internal_wrap_api_handler(_handler, field="session", api=api)
 
 
-def _handle_api_get_login_challenge(db):
-    def _handler(req, match, session, body):
-        return db.get_login_challenge()
+def _api_get_login_challenge(api):
+    def _handler(req, query, match, session, body):
+        return api.get_password_login_challenge()
 
-    return _wrap_api_handler(_handler, requires_auth=False)
+    return _internal_wrap_api_handler(_handler, requires_auth=False)
 
 
-def _handle_api_post_login(db):
-    def _handler(req, match, session, body):
+def _api_post_login(api):
+    def _handler(req, query, match, session, body):
         # Validate the request
         if not (body and ('user_name' in body) and ('challenge' in body) and
-                ('response' in body) and HEX64_RE.match(body['challenge'])
-                and HEX64_RE.match(body['response'])):
-            return False
+                ('response' in body)):
+            raise ValidationError()
 
-        # Make sure the given challenge is valid
-        challenge = body["challenge"]
-        if not db.check_login_challenge(body["challenge"]):
-            return "%error_invalid_username_password"
+        # Try to login using a username password combination
+        return api.login_method_username_password(
+            body['user_name'], body['challenge'], body['response'])
 
-        # Try to lookup the user from the DB
-        user = db.get_user_by_name(body['user_name'])
-        if user is None:
-            return "%error_invalid_username_password"
+    return _internal_wrap_api_handler(
+        _handler, field='session', requires_auth=False)
 
-        # Compute the expected password hash
-        expected_response = db.hash_password(
-            bytes.fromhex(user["password"]), challenge)
-        if expected_response != body["response"]:
-            return "%error_invalid_username_password"
 
-        # Create a session for this user
-        session = db.create_session(user["id"])
+def _api_post_logout(api):
+    def _handler(req, query, match, session, body):
+        api.logout(session['sid'])
+        return {}
 
-        # Return the session and the cookie
+    return _internal_wrap_api_handler(_handler, api=api)
+
+
+def _api_get_settings(api):
+    def _handler(req, query, match, session, body):
+        return api.get_user_settings(session['uid'])
+
+    return _internal_wrap_api_handler(_handler, field="settings", api=api)
+
+
+def _api_post_settings(api):
+    def _handler(req, query, match, session, body):
+        return api.update_user_settings(session['uid'], body)
+
+    return _internal_wrap_api_handler(_handler, field="settings", api=api)
+
+
+def _api_get_posts_list(api):
+    def _handler(req, query, match, session, body):
+        print(query)
         return {
-            "cookie": session,
-            "session": db.get_session_data(session)
+            "posts": [],
+            "total": 0,
         }
 
-    return _wrap_api_handler(_handler, requires_auth=False)
-
-
-def _handle_api_post_logout(db):
-    def _handler(req, match, session, body):
-        db.delete_session(session["session"])
-        return {}
-
-    return _wrap_api_handler(_handler, db=db)
-
-def _handle_api_get_settings(db):
-    def _handler(req, match, session, body):
-        if (session["user_id"] in db.settings):
-            return db.settings["user_id"]
-        return {}
-
-    return _wrap_api_handler(_handler, field="settings", db=db)
-
-def _handle_api_post_settings(db):
-    def _handler(req, match, session, body):
-        db.settings["user_id"] = json.dumps(body)
-        return body
-
-    return _wrap_api_handler(_handler, field="settings", db=db)
-
+    return _internal_wrap_api_handler(_handler, api=api)
 
 
 ################################################################################
@@ -447,7 +426,7 @@ class Route:
         self.path = re.compile(path)
         self.callback = callback
 
-    def exec_on_match(self, req, method, head, path):
+    def exec_on_match(self, req, method, head, path, query):
         """
         Used internally to test whether a request matches the route description.
         This funciton is called by the Router. Returns False if the path does
@@ -462,7 +441,7 @@ class Route:
         if (self.method == "*") or (method == self.method) or head:
             match = self.path.match(path)
             if match:
-                return self.callback(req, match, head)
+                return self.callback(req, query, match, head)
         return False
 
 
@@ -481,6 +460,22 @@ class Router:
         """
         self.routes = routes
 
+    @staticmethod
+    def _parse_path(path):
+        from urllib.parse import parse_qs
+
+        # Reject malicious paths
+        if (len(path) == 0) or (path[0] != '/') or (".." in path):
+            return None, None
+
+        # Parse the query string
+        query = {}
+        if "?" in path:
+            path, query = path.split("?", 1)
+            query = parse_qs(query)
+
+        return path, query
+
     def exec(self, req):
         """
         Executes the router for the given request. Returns True if a route was
@@ -489,21 +484,21 @@ class Router:
         @param req is the request object (an instance of BaseHTTPRequestHandler)
         """
 
-        # Fetch the method and the path
+        # Fetch the method and the path, reject malformed paths
         method = req.command.upper()
         head = method == "HEAD"
-        path = req.path
-
-        # Cancel if the path contains a ".." -- this is a malicious request
-        if (len(path) == 0) or (path[0] != '/') or (".." in path):
+        path, query = self._parse_path(req.path)
+        if path is None:
             _handle_error(404)(req, None, head)
             return False
+        logger.debug("Router request for path={}, query={}".format(
+            path, repr(query)))
 
         # Try to execute the request
         for route in self.routes:
             if route is None:
                 continue
-            res = route.exec_on_match(req, method, head, path)
+            res = route.exec_on_match(req, method, head, path, query)
             if res or (res is None):
                 return True
 
@@ -517,7 +512,7 @@ class Router:
 ################################################################################
 
 
-def create_server_class(db, args):
+def create_server_class(api, args):
     from tivua.bundle import bundle
 
     # Fetch some often needed arguments
@@ -528,7 +523,7 @@ def create_server_class(db, args):
     logger.info("Bundling static resources into the VFS")
     vfs_index, vfs = bundle(
         os.path.join(root, 'index.html'),
-        cache=db.cache,
+        cache=api.db.cache,
         do_exclude_stub=True,
     )
 
@@ -566,22 +561,26 @@ def create_server_class(db, args):
         #
 
         # Configuration request
-        Route("GET", r"^/api/configuration$", _handle_api_get_configuration(db)),
+        Route("GET", r"^/api/configuration$", _api_get_configuration(api)),
         # Settings request
-        Route("GET", r"^/api/settings$", _handle_api_get_settings(db)),
+        Route("GET", r"^/api/settings$", _api_get_settings(api)),
         # Settings request
-        Route("POST", r"^/api/settings$", _handle_api_post_settings(db)),
+        Route("POST", r"^/api/settings$", _api_post_settings(api)),
         # Session data request
-        Route("GET", r"^/api/session$", _handle_api_get_session(db)),
+        Route("GET", r"^/api/session$", _api_get_session(api)),
         # Login request
-        Route("POST", r"^/api/session/login$", _handle_api_post_login(db)),
-        # Login challenge API request
-        Route("GET", r"^/api/session/login/challenge$", _handle_api_get_login_challenge(db)),
+        Route("POST", r"^/api/session/login$", _api_post_login(api)),
+        # Login challenge request
+        Route("GET", r"^/api/session/login/challenge$", _api_get_login_challenge(api)),
         # Logout request
-        Route("POST", r"^/api/session/logout$", _handle_api_post_logout(db)),
+        Route("POST", r"^/api/session/logout$", _api_post_logout(api)),
+
+        # List posts request
+        Route("GET", r"^/api/posts/list$", _api_get_posts_list(api)),
+
 
         # Unkown API requests
-        Route("*", r"^/(api/.*|api)$", _handle_api_error(404)),
+        Route("*", r"^/(api/.*|api)$", _api_error(404)),
 
         #
         # Generic file and VFS requests

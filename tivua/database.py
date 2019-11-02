@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 #   Tivua -- Shared research blog
 #   Copyright (C) 2019  Andreas Stöckel
 #
@@ -27,10 +25,7 @@ logger = logging.getLogger(__name__)
 # DATABASE CLASS                                                               #
 ################################################################################
 
-import os
-import re
 import sqlite3
-import time
 
 
 class DatabaseKeyValueStore:
@@ -44,7 +39,7 @@ class DatabaseKeyValueStore:
     properties.
     """
 
-    def __init__(self, conn, table):
+    def __init__(self, db, table):
         """
         Constructor of the DatabaseKeyValueStore class. Copies the given
         parameters.
@@ -52,7 +47,7 @@ class DatabaseKeyValueStore:
         @param conn is the database connection
         @param table is the table the DatabaseKeyValueStore should operate on.
         """
-        self.conn = conn
+        self.db = db
         self.table = table
 
     def lookup(self, key):
@@ -62,23 +57,23 @@ class DatabaseKeyValueStore:
 
         @param key is the key that should be looked up.
         """
-        c = self.conn.cursor()
-        c.execute("SELECT value FROM {} WHERE key = ?".format(self.table),
-                  (key, ))
-        res = c.fetchone()
-        return None if (res is None) else res[0]
+        with Transaction(self.db) as t:
+            t.execute("SELECT value FROM {} WHERE key = ?".format(self.table),
+                      (key, ))
+            return t.fetchone()[0]
 
     def __contains__(self, key):
-        c = self.conn.cursor()
-        c.execute("SELECT 1 FROM {} WHERE key = ?".format(self.table), (key, ))
-        return not (c.fetchone() is None)
+        with Transaction(self.db) as t:
+            t.execute("SELECT 1 FROM {} WHERE key = ?".format(self.table),
+                      (key, ))
+            return bool(t.fetchone())
 
     def __delitem__(self, key):
-        c = self.conn.cursor()
-        c.execute("DELETE FROM {} WHERE key = ?".format(self.table), (key, ))
-        if c.rowcount == 0:
-            raise KeyError(key)
-        self.conn.commit()
+        with Transaction(self.db) as t:
+            t.execute("DELETE FROM {} WHERE key = ?".format(self.table),
+                      (key, ))
+            if t.rowcount == 0:
+                raise KeyError(key)
 
     def __getitem__(self, key):
         res = self.lookup(key)
@@ -87,11 +82,102 @@ class DatabaseKeyValueStore:
         return res
 
     def __setitem__(self, key, value):
-        c = self.conn.cursor()
-        c.execute(
-            "INSERT INTO {}(key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value=?"
-            .format(self.table), (key, value, value))
-        self.conn.commit()
+        with Transaction(self.db) as t:
+            t.execute(
+                "INSERT INTO {}(key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value=?"
+                .format(self.table), (key, value, value))
+
+
+class Transaction:
+    """
+    The Transaction helper implements nested transactions ontop of the Database
+    class. All commands executed within one transaction are atomic, that is
+    either the entire transaction is applied, or none of it. This class is
+    intended to be used with the "with-resources" statement. In case an
+    exception occurs inside of a transaction, the transaction is completely
+    rolled back.
+
+    The Transaction class implements part of the Cursor interface.
+    """
+
+    class NoneArray:
+        def __bool__(self):
+            return False
+
+        def __getitem__(self, key):
+            return None
+
+    def __init__(self, db):
+        self.db = db
+        self.cursor = None
+        self.level = None
+        self.savepoint = None
+        self.parent = None
+
+    def __enter__(self):
+        # Make sure we do not double-enter the same transaction object
+        assert self.cursor is None
+
+        # If there is another transaction active at the moment, inherit the
+        # level from that transaction
+        if self.db.transaction:
+            self.level = self.db.transaction.level + 1
+            self.parent = self.db.transaction
+        else:
+            self.level = 0
+            self.parent = None
+
+        # Set this transaction as the current transaction
+        self.db.transaction = self
+
+        # Create a unique savepoint name
+        self.savepoint = "sp_{}".format(self.level)
+
+        # Start a new sqlite transaction
+        self.cursor = self.db.conn.cursor()
+        self.cursor.execute("SAVEPOINT {}".format(self.savepoint))
+
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        # Make sure we actually entered the transaction
+        assert not self.cursor is None
+
+        # Reset the transaction object
+        self.db.transaction = self.parent
+
+        # Either rollback or commit the transaction, depending on whether
+        # there was an exception
+        if exc_type is None:
+            self.cursor.execute("RELEASE {}".format(self.savepoint))
+        else:
+            logger.debug("Rolling back transaction {}".format(self.savepoint))
+            self.cursor.execute("ROLLBACK TO {}".format(self.savepoint))
+
+        # Reset the level and cursor variables
+        self.level, self.parent, self.savepoint, self.cursor = [None] * 4
+
+    def execute(self, *args, **kwargs):
+        return self.cursor.execute(*args, **kwargs)
+
+    def fetchone(self, *args, **kwargs):
+        res = self.cursor.fetchone(*args, **kwargs)
+        if res is None:
+            return Transaction.NoneArray()  # Allow subscripts
+        return res
+
+    def fetchall(self, *args, **kwargs):
+        return self.cursor.fetchall(*args, **kwargs)
+
+    @property
+    def rowcount(self):
+        assert not self.cursor is None
+        return self.cursor.rowcount
+
+    @property
+    def lastrowid(self):
+        assert not self.cursor is None
+        return self.cursor.lastrowid
 
 
 class Database:
@@ -136,7 +222,7 @@ class Database:
         )""",
         "sessions":
         """CREATE TABLE sessions(
-            id TEXT PRIMARY KEY,
+            sid TEXT PRIMARY KEY,
             uid INTEGER,
             mtime INTEGER
         )""",
@@ -157,17 +243,22 @@ class Database:
         )""",
         "settings":
         """CREATE TABLE settings(
-            key TEXT PRIMARY KEY,
+            key INT PRIMARY KEY,
             value TEXT
         )""",
     }
 
-    def __init__(self, filename):
+    def __init__(self, filename=":memory:"):
         """
         Creates the Database object, does not open the database yet -- this can
         only be accomplished by using a Python "with" statement.
+
+        @param filename is the file in which the data should be stored. This
+        parameter defaults to ":memory:", which tells SQLite to write the
+        database to volatile memory.
         """
         self.filename = filename
+        self.transaction = None
 
     def __enter__(self):
         """
@@ -175,18 +266,25 @@ class Database:
         exist yet.
         """
         logger.debug("Opening database file \"{}\"".format(self.filename))
-        self.conn = sqlite3.connect(self.filename)
+
+        # Open the database with isolation_level=None, which disables the commit
+        # logic of the Python wrapper
+        self.conn = sqlite3.connect(self.filename, isolation_level=None)
+
+        # Prepate the database for first-time use
         self._configure_db()
         self._create_tables()
-        self._create_configuration()
-        self._create_initial_user()
+        self._create_functions()
+
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
         """
-        Closes the database connection.
+        Performs some cleanup tasks and closes the database connection.
         """
         logger.debug("Closing database file \"{}\"".format(self.filename))
+
+        # Closes the connection
         self.conn.close()
 
     def _configure_db(self):
@@ -202,6 +300,8 @@ class Database:
         exception if there is a mismatch between the current DB schema and the
         DB schema used in the Database.
         """
+        import re
+
         c = self.conn.cursor()
         canonicalise_whitespace = re.compile(r"\s+")
         for table, sql in Database.SQL_TABLES.items():
@@ -218,241 +318,115 @@ class Database:
                     ("Table \"{}\" is out of date. Please upgrade to a new " +
                      "database by exporting your current Tivua DB and " +
                      "importing it into a new instance.").format(table))
-        self.conn.commit()
 
-    def _create_configuration(self):
+    @staticmethod
+    def now():
+        import time
+        return int(time.time())
+
+    def _create_functions(self):
         """
-        Initialises non-existent configuration keys to default values.
-        """
-        # Generate the cryptographic salt used to hash passwords
-        if not ("salt" in self.config):
-            salt = os.urandom(32).hex()
-            self.config["salt"] = salt
-            logger.info("Initialized password salt to \"{}\"".format(salt))
-
-        # Setup the login methods
-        if not ("login_method_username_password" in self.config):
-            self.config["login_method_username_password"] = True
-        if not ("login_method_cas" in self.config):
-            self.config["login_method_cas"] = False
-
-    def _create_initial_user(self):
-        """
-        If there are no users, administrating Tivua becomes somewhat hard.
-        Correspondingly, Tivua creates an empty admin user account the first
-        time the database is initialised.
-        """
-        if len(self.list_users()) == 0:
-            # Create a random password and print it to the log
-            password = self.create_random_password()
-            logger.warning(
-                "No user found; created new user \"admin\" with password \"{}\""
-                .format(password))
-
-            # Actually create the user
-            self.create_user(
-                name='admin',
-                display_name='Admin',
-                role='admin',
-                auth_method='password',
-                password=self.hash_password(password),
-                reset_password=True)
-
-    #
-    # Configuration and cache dictionaries
-    #
-
-    def get_configuration_object(self):
-        """
-        Returns a JSON serialisable object containing the global configuration
-        options.
+        Registers the now() function -- this function returns the current Unix
+        timestamp.
         """
 
-        c = self.config
-        return {
-            "login_methods": {
-                "username_password": c["login_method_username_password"] == "1",
-                "cas": c["login_method_cas"] == "1",
-            }
-        }
+        self.conn.create_function("now", 0, Database.now)
+
+    ############################################################################
+    # Configuration and cache dictionaries                                     #
+    ############################################################################
 
     @property
     def config(self):
-        return DatabaseKeyValueStore(self.conn, "configuration")
+        return DatabaseKeyValueStore(self, "configuration")
 
     @property
     def settings(self):
-        return DatabaseKeyValueStore(self.conn, "settings")
+        return DatabaseKeyValueStore(self, "settings")
 
     @property
     def cache(self):
-        return DatabaseKeyValueStore(self.conn, "cache")
+        return DatabaseKeyValueStore(self, "cache")
 
     @property
     def challenges(self):
-        return DatabaseKeyValueStore(self.conn, "challenges")
+        return DatabaseKeyValueStore(self, "challenges")
 
     ############################################################################
     # Session management                                                       #
     ############################################################################
 
-    # Number of iterations in the PBKDF2 HMAC algorithm
-    PBKDF2_COUNT = 10000
-
-    # Timeout for a challenge to expire in seconds. This should be fairly small;
-    # challenges are usually requested by the client directly before sending
-    # the login request.
-    CHALLENGE_TIMEOUT = 60  # one minute timeout for actually using a challenge
-
-    # Sessions time out when not used for a while. Forces users to login again
-    # after the given time has expired.
-    SESSION_TIMEOUT = 15 * 24 * 60 * 60
-
-    def hash_password(self, password, salt=None):
+    def purge_stale_challenges(self, max_age):
         """
-        Computes the hashed password using PBKDF2 and the salt stored in the
-        database.
-
-        @param password is the password the should be hashed. May either be a
-               bytes object, or a string -- strings are encoded as utf-8
-        @param salt if None, the salt is looked up from the database, otherwise
-               the specified hex-string is used.
-        @return a hex-string containing the hashed password.
+        Deletes challenges older than the specified maximum age.
         """
-        import hashlib
-        if isinstance(password, str):
-            password = password.encode("utf-8")
-        if salt is None:
-            salt = self.config["salt"]
-        return hashlib.pbkdf2_hmac("sha256", password, bytes.fromhex(salt),
-                                   Database.PBKDF2_COUNT).hex()
+        with Transaction(self) as t:
+            t.execute("DELETE FROM challenges WHERE now() - value > ?",
+                      (max_age, ))
+            return t.rowcount > 0
 
-    def get_login_challenge(self):
+    def purge_stale_sessions(self, max_age):
         """
-        Creates a login challenge and returns an object containing both the
-        challenge and the salt.
+        Delete sessions older than the specified maximum age.
         """
+        with Transaction(self) as t:
+            t.execute("DELETE FROM sessions WHERE now() - mtime > ?",
+                      (max_age, ))
+            return t.rowcount > 0
 
-        # Fetch the current UNIX time and create a random challenge
-        now = int(time.time())
-        challenge = os.urandom(32).hex()
-
-        # Store the challenge and its creation time in the database
-        self.challenges[challenge] = now
-
-        # Purge old login challenges
-        c = self.conn.cursor()
-        c.execute("DELETE FROM challenges WHERE value < ?",
-                  (now - Database.CHALLENGE_TIMEOUT, ))
-        self.conn.commit()
-
-        # Return a challenge object ready to be sent to the client
-        return {"salt": self.config["salt"], "challenge": challenge}
-
-    def check_login_challenge(self, challenge):
-        """
-        Returns True and deletes the given challenge if it existed, returns
-        False if the challenge is invalid (i.e. too old).
-        """
-
-        # Fetch the current time in seconds
-        now = int(time.time())
-
-        # Check whether the callenge exists
-        if not challenge in self.challenges:
-            return False
-
-        # Fetch the challenge creation time
-        ctime = self.challenges[challenge]
-
-        # Delete the challenge
-        del self.challenges[challenge]
-
-        # Return True if the challenge was valid
-        return (now - ctime) < Database.CHALLENGE_TIMEOUT
-
-    def create_session(self, user_id):
+    def create_session(self, sid, uid):
         """
         Creates a session for the given user and returns the session identifier.
         """
+        with Transaction(self) as t:
+            t.execute(
+                "INSERT INTO sessions(sid, uid, mtime) VALUES (?, ?, now())",
+                (sid, uid))
 
-        # Create a random session id
-        now = int(time.time())
-        session = os.urandom(32).hex()
-
-        # Create a cursor and create the session table entry
-        c = self.conn.cursor()
-        c.execute("INSERT INTO sessions(id, uid, mtime) VALUES (?, ?, ?)",
-                  (session, user_id, now))
-        self.conn.commit()
-
-        return session
-
-    def get_session_data(self, session):
-        """
-        Provides session information for the given session.
-        """
-
-        # Purge old sessions from the session table
-        c = self.conn.cursor()
-        now = int(time.time())
-        c.execute("DELETE FROM sessions WHERE mtime < ?",
-                  (now - Database.SESSION_TIMEOUT, ))
-        self.conn.commit()
-
-        # Lookup the session from the session table
-        c = self.conn.cursor()
-        c.execute("SELECT uid FROM sessions WHERE id = ? LIMIT 1", (session, ))
-        res = c.fetchone()
-        if res is None:
-            return None
-
-        # Fetch the user data for the given session, add the session information
-        user = self.get_user_by_id(res[0])
-        if user is None:
-            return None
-
-        # The session was acquired successfully, advance the session time
-        c = self.conn.cursor()
-        c.execute("UPDATE sessions SET mtime = ? WHERE id = ?", (now, session))
-        self.conn.commit()
-
-        # Return the session object
-        return {
-            "session": session,
-            "user_id": res[0],
-            "user_name": user["name"],
-            "display_name": user["display_name"],
-            "role": user["role"],
-            "reset_password": user["reset_password"]
-        }
-
-    def delete_session(self, session):
+    def delete_session(self, sid):
         """
         Deletes the session with the given identifier.
         """
-        c = self.conn.cursor()
-        c.execute("DELETE FROM sessions WHERE id = ?", (session, ))
-        if c.rowcount == 0:
-            return False
-        self.conn.commit()
-        return True
+        with Transaction(self) as t:
+            t.execute("DELETE FROM sessions WHERE sid = ?", (sid, ))
+            return t.rowcount > 0
 
-    #
-    # User management
-    #
+    def update_session_mtime(self, sid):
+        """
+        Advances the modification time for the given session id.
+        """
+        with Transaction(self) as t:
+            t.execute("UPDATE sessions SET mtime = now() WHERE sid = ?",
+                      (sid, ))
+            return t.rowcount > 0
+
+    def get_session_uid(self, sid):
+        """
+        Returns the uid associated with the given session or -1 if the session
+        does not exist.
+        """
+        with Transaction(self) as t:
+            t.execute("SELECT uid FROM sessions WHERE sid = ?", (sid, ))
+            return t.fetchone()[0]
+
+    ############################################################################
+    # User management                                                          #
+    ############################################################################
 
     @staticmethod
     def _make_user_from_tuple(t):
+        """
+        Helper-function used to convert a user record to a JSON-like object.
+        """
         return {
-            "id": t[0],
+            "uid": t[0],
             "name": t[1],
             "display_name": t[2],
             "role": t[3],
             "auth_method": t[4],
             "password": t[5],
             "reset_password": bool(t[6])
-        }
+        } if t else None
 
     def create_user(self,
                     name,
@@ -464,41 +438,43 @@ class Database:
         """
         Creates a new user with the given properties.
         """
-        c = self.conn.cursor()
-        c.execute(
-            """
-            INSERT INTO users
-            (name, display_name, role, auth_method, password, reset_password)
-            VALUES (?, ?, ?, ?, ?, ?)""",
-            (name.lower(), display_name, role, auth_method, password,
-             reset_password))
-        self.conn.commit()
-        return c.lastrowid
+        with Transaction(self) as t:
+            t.execute(
+                """
+                INSERT INTO users
+                (name, display_name, role, auth_method, password, reset_password)
+                VALUES (?, ?, ?, ?, ?, ?)""",
+                (name.lower(), display_name, role, auth_method, password,
+                 reset_password))
+            return t.lastrowid
+
+    def delete_user(self, uid):
+        """
+        Deletes the user with the given id, returns true if the 
+        """
+        with Transaction(self) as t:
+            t.execute("""DELETE FROM users WHERE uid = ?""", (uid, ))
+            return t.rowcount > 0
 
     def list_users(self):
         """
         Returns a table containing information about all users.
         """
-        c = self.conn.cursor()
-        c.execute("""SELECT uid, name, display_name, role, auth_method,
-                            password, reset_password
-                     FROM users""")
-        return list(map(self._make_user_from_tuple, c.fetchall()))
+        with Transaction(self) as t:
+            t.execute("""SELECT uid, name, display_name, role, auth_method,
+                                password, reset_password
+                         FROM users ORDER BY uid""")
+            return list(map(self._make_user_from_tuple, t.fetchall()))
 
     def get_user_by_name(self, user_name):
         """
         Returns an object describing the user with the given user_name, or None
         if the user does not exist.
         """
-
-        # Fetch the corresponding row from the DB
-        c = self.conn.cursor()
-        c.execute(
-            """SELECT uid, name, display_name, role, auth_method,
-                            password, reset_password
-                     FROM users WHERE name=? LIMIT 1""", (user_name.lower(), ))
-        res = c.fetchone()
-        return None if (res is None) else self._make_user_from_tuple(res)
+        with Transaction(self) as t:
+            t.execute("""SELECT * FROM users WHERE name=? LIMIT 1""",
+                      (user_name, ))
+            return self._make_user_from_tuple(t.fetchone())
 
     def get_user_by_id(self, uid):
         """
@@ -507,34 +483,14 @@ class Database:
         """
 
         # Fetch the corresponding row from the DB
-        c = self.conn.cursor()
-        c.execute(
-            """SELECT uid, name, display_name, role, auth_method,
-                            password, reset_password
-                     FROM users WHERE uid=? LIMIT 1""", (int(uid), ))
-        res = c.fetchone()
-        return None if (res is None) else self._make_user_from_tuple(res)
+        with Transaction(self) as t:
+            t.execute("""SELECT * FROM users WHERE uid=? LIMIT 1""",
+                      (int(uid), ))
+            return self._make_user_from_tuple(t.fetchone())
 
-    @staticmethod
-    def create_random_password(n=10):
-        """
-        Creates a random password. Eliminates modulo bias by reading multiple
-        bytes from the random source at once.
-        """
-        alphabet = "23456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz"
-        password = [" "] * n
-        accu, mul = 0, 16
-        for i, r in enumerate(os.urandom(mul * n)):
-            if i % mul == mul - 1:
-                password[i // mul] = alphabet[accu % len(alphabet)]
-                accu = 0
-            else:
-                accu = (accu << 8) + r
-        return "".join(password)
-
-    #
-    # Export and import
-    #
+    ############################################################################
+    # Export and import                                                        #
+    ############################################################################
 
     def export_to_json(self):
         # Dumps the database into a JSON serialisable object
@@ -543,26 +499,4 @@ class Database:
     def import_from_json(self):
         # Imports the database from a JSON serialisable object
         return
-
-
-if __name__ == "__main__":
-    """
-    Testbed for messing around with the Tivua database
-    """
-    import sys
-    if (len(sys.argv) != 2):
-        sys.stderr.write("Usage: {} <SQLITE_FILE>\n".format(sys.argv[0]))
-        sys.exit(1)
-
-    logging.basicConfig(
-        format='[%(levelname)s] %(message)s', level=logging.DEBUG)
-    with Database(sys.argv[1]) as db:
-        #        print(db.create_user(
-        #                    name="admin",
-        #                    display_name="Admin",
-        #                    role="admin",
-        #                    auth_method="password",
-        #                    password="foo",
-        #                    reset_password=True))
-        print(db.list_users())
 

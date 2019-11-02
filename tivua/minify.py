@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 #   Tivua -- Shared research blog
 #   Copyright (C) 2019  Andreas Stöckel
 #
@@ -15,8 +13,13 @@
 #
 #   You should have received a copy of the GNU Affero General Public License
 #   along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 """
-Contains code for bundling index.html and its resources.
+@file minify.py
+
+Wrapper code for minifying HTML, CSS and JS code. Runs corresponding external
+programs in subprocesses. Fails gracefully (i.e., does nothing) in case those
+programs are not installed.
 
 @author Andreas Stöckel
 """

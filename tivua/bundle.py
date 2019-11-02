@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 #   Tivua -- Shared research blog
 #   Copyright (C) 2019  Andreas Stöckel
 #

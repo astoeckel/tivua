@@ -70,6 +70,7 @@ def main_serve(argv):
     # Start the database
     import tivua.server
     import tivua.database
+    import tivua.api
 
     # Make sure TCP servers can quickly reuse the port after the application
     # exits
@@ -86,8 +87,11 @@ def main_serve(argv):
 
     # Open the database connection
     with tivua.database.Database(args.db) as db:
+        # Create an API instance and connect the database to it
+        api = tivua.api.API(db)
+
         # Start the HTTP server
-        Server = tivua.server.create_server_class(db, args)
+        Server = tivua.server.create_server_class(api, args)
         with socketserver.TCPServer((args.bind, args.port), Server) as httpd:
             logger.info("Serving on http://{}:{}/".format(args.bind, args.port))
             try:
