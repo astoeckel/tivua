@@ -895,6 +895,43 @@ main.cards div.entry > div.content {
 }
 
 /******************************************************************************
+ * MAIN CARD VIEW -- MESSAGES                                                 *
+ ******************************************************************************/
+
+main.cards div.message {
+	margin-top: 5rem;
+	text-align: center;
+	background-color: white;
+	padding: 2rem;
+	box-shadow: 0 0 7px silver;
+}
+
+main.cards div.message > h1 {
+	font-size: 200%;
+	color: #5c3566;
+	padding: 1rem 2rem;
+}
+
+main.cards div.message > h1 > span {
+	font-size: 200%;
+	display: block;
+	margin-bottom: 0.5em;
+}
+
+main.cards div.message > hr {
+	border: none;
+	border-bottom: 3px solid #5c3566;
+}
+
+main.cards div.message > span {
+	display: block;
+	max-width: 20em;
+	line-height: 1.5em;
+	padding: 1rem 2rem;
+}
+
+
+/******************************************************************************
  * MAIN EDITOR VIEW                                                           *
  ******************************************************************************/
 

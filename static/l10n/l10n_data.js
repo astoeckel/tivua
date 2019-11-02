@@ -58,6 +58,12 @@ this.tivua.l10n = (function () {
 			"%msg_confirm_no":
 				"No",
 
+			// Welcome screen
+			"%header_welcome":
+				"Welcome to Tivua!",
+			"%msg_welcome":
+				"There are no posts yet. Click on the \"Add entry\" button above to create your first Tivua post.",
+
 			// Menu
 			"%tooltip_menu":
 				"Displays the main menu",
@@ -112,6 +118,10 @@ this.tivua.l10n = (function () {
 				". Report bugs at ",
 			"%copyright_string_end":
 				".",
+
+			// Card view
+			"%msg_no_posts":
+				"No posts.",
 
 			// Editor view
 			"%header_new_entry":

@@ -49,6 +49,8 @@ this.tivua.view.cards = (function() {
 	 * Updates the pagination elements on the card view. 
 	 */
 	function _update_card_view_pagination(api, root, events, settings, view, total, start, i0, i1) {
+		const l10n = tivua.l10n;
+
 		// Function accessing the posts_per_page setting
 		const posts_per_page = () => settings["posts_per_page"];
 
@@ -66,9 +68,13 @@ this.tivua.view.cards = (function() {
 		const go_to_page = (page) => events.on_go_to_page(page, pp);
 
 		// Update the post counter
-		view.querySelector("#lbl_post_start").innerText = i0;
-		view.querySelector("#lbl_post_end").innerText = i1;
-		view.querySelector("#lbl_post_total").innerText = total;
+		if (total > 0) {
+			view.querySelector("#lbl_post_start").innerText = i0;
+			view.querySelector("#lbl_post_end").innerText = i1;
+			view.querySelector("#lbl_post_total").innerText = total;
+		} else {
+			l10n.set_node_text(view.querySelector("#lbl_post"), "%msg_no_posts");
+		}
 
 		// Update the page select box
 		const sel_page = view.querySelector("#sel_page");
@@ -302,6 +308,14 @@ this.tivua.view.cards = (function() {
 						'click', utils.exec("#edit,id=" + post.id));
 					container.appendChild(card);
 				}
+			}
+
+			// Show a message in case there are no messages
+			// TODO: Distinguish between there being no responses because of an
+			// empty search or a fresh instance
+			if (total == 0) {
+				const msg = utils.import_template('tmpl_card_view_welcome');
+				main.appendChild(msg);
 			}
 
 			// Menu button
