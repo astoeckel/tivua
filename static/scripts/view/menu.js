@@ -41,7 +41,7 @@ this.tivua.view.menu = (function() {
 		const div_overlay = main.querySelector("div.overlay");
 
 		/* Fetch the color associated wit the user */
-		const user_color = tivua.colors.author_id_to_color(session.user_id, true);
+		const user_color = tivua.colors.author_id_to_color(session.uid, true);
 
 		/* Setup the user information */
 		const h1_user = main.querySelector("h1");

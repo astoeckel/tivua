@@ -59,12 +59,12 @@ this.tivua.xhr = (function (window) {
 		return x;
 	}
 
-	function _check_session(session) {
-		_assert(session in sessions);
-		return sessions[session];
+	function _check_session(sid) {
+		_assert(sid in sessions);
+		return sessions[sid];
 	}
 
-	function _get_user_id(user_name) {
+	function _get_uid(user_name) {
 		for (let key in users) {
 			if (users[key]["user_name"] === user_name) {
 				return key | 0;
@@ -79,9 +79,9 @@ this.tivua.xhr = (function (window) {
 
 	challenges = {}
 
-	function get_author_list(session) {
+	function get_author_list(sid) {
 		return new Promise((resolve, reject) => {
-			_check_session(session);
+			_check_session(sid);
 			resolve({
 				"status": "success",
 				"authors": DATA_AUTHORS.slice()
@@ -89,9 +89,9 @@ this.tivua.xhr = (function (window) {
 		});
 	}
 
-	function get_keyword_list(session) {
+	function get_keyword_list(sid) {
 		return new Promise((resolve, reject) => {
-			_check_session(session);
+			_check_session(sid);
 			let keywords = {};
 			for (let post of DATA_CONTENT) {
 				for (let keyword of (post["keywords"] || [])) {
@@ -109,9 +109,9 @@ this.tivua.xhr = (function (window) {
 		});
 	}
 
-	function get_post(session, id) {
+	function get_post(sid, id) {
 		return new Promise((resolve, reject) => {
-			_check_session(session);
+			_check_session(sid);
 
 			/* Make sure "id" is an integer */
 			id |= 0;
@@ -193,9 +193,9 @@ this.tivua.xhr = (function (window) {
 		post["keywords"] = new_keywords;
 	}
 
-	function create_post(session, post) {
+	function create_post(sid, post) {
 		return new Promise((resolve, reject) => {
-			_check_session(session);
+			_check_session(sid);
 			_validate_and_canonicalise_post(post);
 
 			/* Create a new ID for the post */
@@ -217,17 +217,17 @@ this.tivua.xhr = (function (window) {
 			/* Sort all posts by date */
 			DATA_CONTENT = DATA_CONTENT.sort((a, b) => b["date"] - a["date"]);
 
-			get_post(session, id).then(resolve).catch(reject);
+			get_post(sid, id).then(resolve).catch(reject);
 		});
 	}
 
-	function update_post(session, post) {
+	function update_post(sid, post) {
 		
 	}
 
-	function get_post_list(session, start, limit) {
+	function get_post_list(sid, start, limit) {
 		return new Promise((resolve, reject) => {
-			_check_session(session);
+			_check_session(sid);
 
 			/* Make sure start, limit are integers */
 			start |= 0;
@@ -257,24 +257,24 @@ this.tivua.xhr = (function (window) {
 		});
 	}
 
-	function _get_session_data(session) {
-		const user_id = sessions[session]
-		const user = users[user_id];
+	function _get_session_data(sid) {
+		const uid = sessions[sid]
+		const user = users[uid];
 		return {
-			"session": session,
-			"user_id": user_id,
+			"sid": sid,
+			"uid": uid,
 			"user_name": user["user_name"],
 			"display_name": user["display_name"],
 			"role": user["role"],
 		}
 	}
 
-	function get_session_data(session) {
+	function get_session_data(sid) {
 		return new Promise((resolve, reject) => {
-			_check_session(session);
+			_check_session(sid);
 			resolve({
 				"status": "success",
-				"session": _get_session_data(session),
+				"session": _get_session_data(sid),
 			});
 		});
 	}
@@ -291,21 +291,21 @@ this.tivua.xhr = (function (window) {
 		});
 	}
 
-	function get_settings(session) {
+	function get_settings(sid) {
 		return new Promise((resolve, reject) => {
-			const user_id = _check_session(session);
+			const uid = _check_session(sid);
 			resolve({
 				"status": "success",
-				"settings": (user_id in user_settings) ? user_settings[user_id] : {},
+				"settings": (uid in user_settings) ? user_settings[uid] : {},
 			});
 		});
 	}
 
-	function post_settings(session, settings) {
+	function post_settings(sid, settings) {
 		return new Promise((resolve, reject) => {
-			const user_id = _check_session(session);
-			if (!(user_id in user_settings)) {
-				user_settings[user_id] = {};
+			const uid = _check_session(sid);
+			if (!(uid in user_settings)) {
+				user_settings[uid] = {};
 			}
 
 			const valid_settings= {
@@ -321,11 +321,11 @@ this.tivua.xhr = (function (window) {
 					})
 					return;
 				}
-				user_settings[user_id][key] = settings[key];
+				user_settings[uid][key] = settings[key];
 			}
 			resolve({
 				"status": "success",
-				"settings": user_settings[user_id],
+				"settings": user_settings[uid],
 			});
 		});
 	}
@@ -347,10 +347,10 @@ this.tivua.xhr = (function (window) {
 		});
 	}
 
-	function post_logout(session) {
+	function post_logout(sid) {
 		return new Promise((resolve, reject) => {
-			_check_session(session);
-			delete sessions[session];
+			_check_session(sid);
+			delete sessions[sid];
 			resolve({
 				"status": "success",
 			});
@@ -388,8 +388,8 @@ this.tivua.xhr = (function (window) {
 			}
 
 			// Get the user id for the given user_name
-			const user_id = _get_user_id(user_name);
-			if (user_id === null) {
+			const uid = _get_uid(user_name);
+			if (uid === null) {
 				resolve(failure);
 				return;
 			}
@@ -397,7 +397,7 @@ this.tivua.xhr = (function (window) {
 			// Compute the password hash for the given challenge and compare
 			// it to the expected response
 			const pbkdf2_count = 10000;
-			const user = users[user_id];
+			const user = users[uid];
 			const expected_response = sjcl.codec.hex.fromBits(sjcl.misc.pbkdf2(
 				sjcl.codec.hex.toBits(user["password_hash"]),
 				sjcl.codec.hex.toBits(challenge),
@@ -409,13 +409,12 @@ this.tivua.xhr = (function (window) {
 			}
 
 			// Create a new session
-			const session = sjcl.codec.hex.fromBits(sjcl.random.randomWords(8));
-			sessions[session] = user_id;
+			const sid = sjcl.codec.hex.fromBits(sjcl.random.randomWords(8));
+			sessions[sid] = uid;
 
 			resolve({
 				"status": "success",
-				"cookie": session,
-				"session": _get_session_data(session)
+				"session": _get_session_data(sid)
 			});
 		});
 	}

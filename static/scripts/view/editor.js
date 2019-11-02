@@ -166,7 +166,7 @@ this.tivua.view.editor = (function() {
 			/* Otherwise, we're creating a new post. Set some sane defaults for
 			   the author and the date. */
 			main.querySelector("#btn_delete").style.display = "none";
-			sel_author.value = session["user_id"];
+			sel_author.value = session["uid"];
 			inp_date.value = utils.format_date(utils.get_now_as_utc_date(), '-');
 		}
 

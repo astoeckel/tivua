@@ -75,7 +75,7 @@ this.tivua.api = (function (window) {
 		function handle(data, resolve, reject) {
 			if (data && ("status" in data) && (data["status"] === "error")) {
 				if ((data["what"] === "%access_denied")) {
-					utils.set_cookie("session", "");
+					utils.set_cookie("sid", "");
 					if (tivua.api.on_access_denied) {
 						tivua.api.on_access_denied();
 					}
@@ -93,16 +93,16 @@ this.tivua.api = (function (window) {
 		});
 	}
 
-	function _cached(session, key, callback) {
+	function _cached(sid, key, callback) {
 		/* Check whether the data is already in the cache */
-		if (session in cache[key]) {
+		if (sid in cache[key]) {
 			let res = {};
 			res["status"] = "success";
-			res[key] = cache[key][session];
+			res[key] = cache[key][sid];
 			return res;
 		}
 		return callback().then((data) => {
-			cache[key][session] = data[key];
+			cache[key][sid] = data[key];
 			return data;
 		});
 	}
@@ -119,8 +119,8 @@ this.tivua.api = (function (window) {
 	 * Returns a list of available authors.
 	 */
 	function get_author_list() {
-		return _err(get_session().then(session => {
-			return _cached(session, "authors", () => xhr.get_author_list(session));
+		return _err(get_sid().then(sid => {
+			return _cached(sid, "authors", () => xhr.get_author_list(sid));
 		}));
 	}
 
@@ -128,8 +128,8 @@ this.tivua.api = (function (window) {
 	 * Returns a list of keywords used so far.
 	 */
 	function get_keyword_list() {
-		return _err(get_session().then(session => {
-			return _cached(session, "keywords", () => xhr.get_keyword_list(session));
+		return _err(get_sid().then(sid => {
+			return _cached(sid, "keywords", () => xhr.get_keyword_list(sid));
 		}));
 	}
 
@@ -137,22 +137,22 @@ this.tivua.api = (function (window) {
 	 * Returns the post with the given id.
 	 */
 	function get_post(id) {
-		return _err(get_session().then(session => {
-			return xhr.get_post(session, id);
+		return _err(get_sid().then(sid => {
+			return xhr.get_post(sid, id);
 		}));
 	}
 
 	/**
 	 * Writes new keywords found in the given post to the keyword cache.
 	 */
-	function _update_keyword_cache(session, post) {
+	function _update_keyword_cache(sid, post) {
 		/* Do nothing if the cache has not been initialized */
-		if (!(session in cache["keywords"])) {
+		if (!(sid in cache["keywords"])) {
 			return;
 		}
 
 		/* Update the local keyword cache */
-		let _cache = cache["keywords"][session];
+		let _cache = cache["keywords"][sid];
 		for (let keyword of (post["keywords"] || [])) {
 			if (typeof keyword !== "string") {
 				continue;
@@ -194,9 +194,9 @@ this.tivua.api = (function (window) {
 	 *     - "keywords" (optional) is a comma separated list of keywords.
 	 */
 	function create_post(post) {
-		return _err(get_session().then(session => {
-			_update_keyword_cache(session, post);
-			return xhr.create_post(session, _canonicalise_post(post));
+		return _err(get_sid().then(sid => {
+			_update_keyword_cache(sid, post);
+			return xhr.create_post(sid, _canonicalise_post(post));
 		}));
 	}
 
@@ -213,9 +213,9 @@ this.tivua.api = (function (window) {
 	 *       This field will be incremented by one after the update is complete.
 	 */
 	function update_post(id, post) {
-		return _err(get_session().then(session => {
-			_update_keyword_cache(session, post);
-			return xhr.update_post(session, id | 0, _canonicalise_post(post));
+		return _err(get_sid().then(sid => {
+			_update_keyword_cache(sid, post);
+			return xhr.update_post(sid, id | 0, _canonicalise_post(post));
 		}));
 	}
 
@@ -223,8 +223,8 @@ this.tivua.api = (function (window) {
 	 * Returns a list of posts starting with the given date.
 	 */
 	function get_post_list(start, limit) {
-		return _err(get_session().then(session => {
-			return xhr.get_post_list(session, start, limit);
+		return _err(get_sid().then(sid => {
+			return xhr.get_post_list(sid, start, limit);
 		}));
 	}
 
@@ -236,8 +236,8 @@ this.tivua.api = (function (window) {
 	 * Downloads the search index for the given trigram group.
 	 */
 	function get_index(initial_letter) {
-		return _err(get_session().then(session => {
-			return xhr.get_index(session, initial_letter);
+		return _err(get_sid().then(sid => {
+			return xhr.get_index(sid, initial_letter);
 		}));
 	}
 
@@ -245,14 +245,14 @@ this.tivua.api = (function (window) {
 	 * USER SETTINGS                                                          *
 	 **************************************************************************/
 
-	function _update_settings_cache(session, authorative, version, settings) {
+	function _update_settings_cache(sid, authorative, version, settings) {
 		/* If the response is authorative, reset the cache, otherwise use the
 		   existing cache object. */
 		let s_cache;
 		if (authorative && (version >= settings_version)) {
-			s_cache = cache.settings[session] = {};
+			s_cache = cache.settings[sid] = {};
 		} else {
-			s_cache = (session in cache.settings) ? cache.settings[session] : {};
+			s_cache = (sid in cache.settings) ? cache.settings[sid] : {};
 		}
 
 		/* Merge the default settings into the cache */
@@ -278,36 +278,36 @@ this.tivua.api = (function (window) {
 	}
 
 	function get_settings() {
-		return _err(get_session().then(session => {
+		return _err(get_sid().then(sid => {
 			/* If the settings are cached, use the settings stored in the
 			   cache. */
-			if (session in cache.settings) {
+			if (sid in cache.settings) {
 				return {
 					"status": "success",
-					"settings": cache.settings[session],
+					"settings": cache.settings[sid],
 				};
 			} else {
 				/* Otherwise, actually perform a request. */
-				return xhr.get_settings(session).then(
+				return xhr.get_settings(sid).then(
 					_update_settings_cache.bind(
-						this, session, true, settings_version));
+						this, sid, true, settings_version));
 			}
 		}));
 	}
 
 	function post_settings(settings) {
-		return _err(get_session().then(session => {
+		return _err(get_sid().then(sid => {
 			/* Merge the requested change into the settings cache. Mark this as
 			   an unauthorative update. */
-			_update_settings_cache(session, false, settings_version,
+			_update_settings_cache(sid, false, settings_version,
 					{"settings": settings});
 
 			/* Send the updated data to the server. The server will return the
 			   current settings. Merge those into the settings cache. */
 			settings_version += 1;
-			return xhr.post_settings(session, settings).then(
+			return xhr.post_settings(sid, settings).then(
 					_update_settings_cache.bind(
-						this, session, true, settings_version));
+						this, sid, true, settings_version));
 		}));
 	}
 
@@ -316,13 +316,13 @@ this.tivua.api = (function (window) {
 	 **************************************************************************/
 
 	/**
-	 * The get_session() function returns a promise returning current session
+	 * The get_sid() function returns a promise returning current session
 	 * identifier in case a session is active, otherwise returns an empty
 	 * session identifier.
 	 */
-	function get_session() {
+	function get_sid() {
 		return new Promise((resolve, reject) => {
-			let session = utils.get_cookie("session");
+			let session = utils.get_cookie("sid");
 			if (session === null || session === "") {
 				reject({"status": "error", "what": "No active session"});
 			} else {
@@ -336,15 +336,15 @@ this.tivua.api = (function (window) {
 	 * associated with the current session.
 	 */
 	function get_session_data() {
-		return _err(get_session().then(session => {
-			if (session in cache.session_data) {
+		return _err(get_sid().then(sid => {
+			if (sid in cache.session_data) {
 				return {
 					"status": "success",
-					"session": cache.session_data[session],
+					"session": cache.session_data[sid],
 				};
 			} else {
-				return xhr.get_session_data(session).then((session_data) => {
-					cache.session_data[session] = session_data.session;
+				return xhr.get_session_data(sid).then((session_data) => {
+					cache.session_data[sid] = session_data.session;
 					return session_data;
 				});
 			}
@@ -353,17 +353,17 @@ this.tivua.api = (function (window) {
 
 	function post_logout() {
 		return new Promise((resolve, reject) => {
-			get_session()
-				.then(session => {
+			get_sid()
+				.then(sid => {
 					// Send the actual logout request
-					return xhr.post_logout(session);
+					return xhr.post_logout(sid);
 				})
 				.catch(err => {
 					// Do nothing here. Logging out is always successful.
 				})
 				.finally(() => {
 					// Delete the local session cookie
-					utils.set_cookie("session", "");
+					utils.set_cookie("sid", "");
 
 					// Reset the cache
 					_reset_cache();
@@ -425,7 +425,9 @@ this.tivua.api = (function (window) {
 				// The _err call above already handled errors, so if we get
 				// here, the status should be "success".
 				if (data["status"] === "success") {
-					utils.set_cookie("session", data["cookie"],
+					const sid = data["session"]["sid"];
+					cache["session_data"][sid] = data["session"];
+					utils.set_cookie("sid", data["session"]["sid"],
 					                 session_timeout_days);
 					resolve(data);
 				} else {
@@ -440,7 +442,7 @@ this.tivua.api = (function (window) {
 
 
 	return {
-		"get_session": get_session,
+		"get_sid": get_sid,
 		"get_session_data": get_session_data,
 		"get_configuration": get_configuration,
 		"get_author_list": get_author_list,
