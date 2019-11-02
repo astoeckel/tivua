@@ -220,13 +220,13 @@ this.tivua.l10n = (function () {
 		if (locale.current_locale in l10n_data) {
 			dict = l10n_data[locale.current_locale];
 		}
-		if (str in dict) {
+		if (dict && str in dict) {
 			return dict[str];
 		}
-		if (str in fallback_dict) {
+		if (fallback_dict && str in fallback_dict) {
 			return fallback_dict[str];
 		}
-		return String.toLocaleString(str);
+		return str.toLocaleString();
 	}
 
 	/**
