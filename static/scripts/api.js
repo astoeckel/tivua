@@ -385,6 +385,12 @@ this.tivua.api = (function (window) {
 	 * @param password is the password entered by the user.
 	 */
 	function post_login(username, password) {
+		// Backup the OAC handler, an "access denied" error here should
+		// not result in the login dialogue to popup, we already are in
+		// the login dialogue
+		const oac_handler = tivua.api.on_access_denied;
+		tivua.api.on_access_denied = null;
+
 		return _err(post_logout().then(() => {
 			return xhr.get_login_challenge();
 		}).then(data => {
@@ -437,7 +443,10 @@ this.tivua.api = (function (window) {
 					});
 				}
 			});
-		}));
+		})).finally(() => {
+			// Restore the OAC handler
+			tivua.api.on_access_denied = oac_handler;
+		});
 	}
 
 
