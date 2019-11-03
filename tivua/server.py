@@ -261,7 +261,7 @@ def _internal_wrap_api_handler(cback,
             if requires_auth:
                 session = _internal_api_get_session(api, req)
                 if session is None:
-                    return _api_error(401)(req)
+                    return _api_error(401, "%server_error_unauthorized")(req)
 
             # If this request is a POST, check for the Content-Length header and
             # read the provided data into a JSON object

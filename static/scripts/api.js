@@ -74,7 +74,7 @@ this.tivua.api = (function (window) {
 	function _err(api_promise) {
 		function handle(data, resolve, reject) {
 			if (data && ("status" in data) && (data["status"] === "error")) {
-				if ((data["what"] === "%access_denied")) {
+				if ((data["what"] === "%server_error_unauthorized")) {
 					utils.set_cookie("sid", "");
 					if (tivua.api.on_access_denied) {
 						tivua.api.on_access_denied();
