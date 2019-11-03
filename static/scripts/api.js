@@ -229,19 +229,6 @@ this.tivua.api = (function (window) {
 	}
 
 	/**************************************************************************
-	 * SEARCH AND FILTERING                                                   *
-	 **************************************************************************/
-
-	/**
-	 * Downloads the search index for the given trigram group.
-	 */
-	function get_index(initial_letter) {
-		return _err(get_sid().then(sid => {
-			return xhr.get_index(sid, initial_letter);
-		}));
-	}
-
-	/**************************************************************************
 	 * USER SETTINGS                                                          *
 	 **************************************************************************/
 
