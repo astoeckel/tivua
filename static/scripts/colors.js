@@ -41,7 +41,7 @@ this.tivua.colors = (function () {
 	function author_id_to_hue(id) {
 		// Compute the hue using the golden ratio
 		const gr = 1.618033987;
-		return ((256 * id * gr + 120) | 0) % 256;
+		return ((256 * (id - 1) * gr + 120) | 0) % 256;
 	}
 
 	function author_id_to_color(id, is_bg=true) {

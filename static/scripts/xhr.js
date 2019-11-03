@@ -45,7 +45,7 @@ this.tivua.xhr = (function () {
 
 		/* Send the XHR and return the response as JSON object */
 		return fetch(url, xhr).then(response => {
-			return response.json()
+			return response.json();
 		});
 	}
 
@@ -92,6 +92,7 @@ this.tivua.xhr = (function () {
 	/**************************************************************************
 	 * Posts                                                                  *
 	 **************************************************************************/
+
 	function get_post_list(session, start, limit) {
 		/* Make sure start, limit are integers */
 		start |= 0;
@@ -102,6 +103,29 @@ this.tivua.xhr = (function () {
 			`api/posts/list?start=${start}&limit=${limit}`, session);
 	}
 
+	function get_post(session, pid) {
+		/* Make sure the post id is an integer */
+		pid |= 0;
+
+		/* Fetch the post */
+		return xhr_fetch_json('GET', `api/posts?pid=${pid}`, session);
+	}
+
+	/**************************************************************************
+	 * Keywords                                                               *
+	 **************************************************************************/
+
+	function get_keyword_list(session, start, limit) {
+		return xhr_fetch_json('GET', 'api/keywords/list', session);
+	}
+
+	/**************************************************************************
+	 * Users                                                                  *
+	 **************************************************************************/
+
+	function get_user_list(session) {
+		return xhr_fetch_json('GET', 'api/users/list', session);
+	}
 
 	/**************************************************************************
 	 * Export the Public API                                                  *
@@ -114,9 +138,9 @@ this.tivua.xhr = (function () {
 		return {
 			"get_session_data": get_session_data,
 			"get_configuration": get_configuration,
-			"get_author_list": () => {throw "Not implemented";},
-			"get_keyword_list": () => {throw "Not implemented";},
-			"get_post": () => {throw "Not implemented";},
+			"get_user_list": get_user_list,
+			"get_keyword_list": get_keyword_list,
+			"get_post": get_post,
 			"create_post": () => {throw "Not implemented";},
 			"update_post": () => {throw "Not implemented";},
 			"get_post_list": get_post_list,

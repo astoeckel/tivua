@@ -24,6 +24,7 @@ database calls.
 """
 
 import re, os, json
+from dataclasses import astuple, asdict
 from tivua.database import Transaction
 
 ################################################################################
@@ -43,6 +44,10 @@ class ValidationError(ValueError):
 
 
 class AuthentificationError(RuntimeError):
+    pass
+
+
+class NotFoundError(RuntimeError):
     pass
 
 
@@ -84,25 +89,31 @@ class API:
 
     def _init_users(self):
         """
-        If there are no users, administrating Tivua becomes somewhat hard.
-        Correspondingly, Tivua creates an empty admin user account the first
-        time the database is initialised.
+        If there is no administrative user, creates one. An administrative user
+        is a user that has administrative rights or is named "admin". The latter
+        rule is added in such that the auto-generated admin user can be
+        explicitly deactivated.
         """
-        if len(self.db.list_users()) == 0:
-            # Create a random password and print it to the log
-            password = self.create_random_password()
-            logger.warning(
-                "No user found; created new user \"admin\" with password \"{}\""
-                .format(password))
 
-            # Actually create the user
-            self.db.create_user(
-                name='admin',
-                display_name='Admin',
-                role='admin',
-                auth_method='password',
-                password=self._hash_password(password),
-                reset_password=True)
+        # Try to find a user with administrative rights or user named "admin"
+        for user in self.db.list_users():
+            if user.name == "admin" or user.role == "admin":
+                return
+
+        # Create a random password and print it to the log
+        password = self.create_random_password()
+        logger.warning(
+            "No admin user found; created new user \"admin\" with password \"{}\""
+            .format(password))
+
+        # Actually create the user
+        self.db.create_user(
+            name='admin',
+            display_name='Admin',
+            role='admin',
+            auth_method='password',
+            password=self._hash_password(password),
+            reset_password=True)
 
     ############################################################################
     # Configuration                                                            #
@@ -297,23 +308,23 @@ class API:
                 raise AuthentificationError()
 
             # Make sure the user can actually login using a password
-            if user["auth_method"] != "password":
+            if user.auth_method != "password":
                 raise AuthentificationError()
 
             # Make sure the user has the right permissions
-            if self.lookup_role_permissions(user["role"]) <= 0:
+            if self.lookup_role_permissions(user.role) <= 0:
                 raise AuthentificationError()
 
             # Compute the expected password hash
             expected_response = self._hash_password(
-                bytes.fromhex(user["password"]), challenge)
+                bytes.fromhex(user.password), challenge)
             if expected_response != response:
                 raise AuthentificationError()
 
             # Okay, all this worked. Let's create a session for the user and
             # return the sid
             sid = os.urandom(32).hex()
-            self.db.create_session(sid, user["uid"])
+            self.db.create_session(sid, user.uid)
             return self.get_session_data(sid)
 
     # Login should be a constant time function -- otherwise we're leaking
@@ -392,10 +403,10 @@ class API:
             return {
                 "sid": sid,
                 "uid": uid,
-                "user_name": user["name"],
-                "display_name": user["display_name"],
-                "role": user["role"],
-                "reset_password": user["reset_password"],
+                "user_name": user.name,
+                "display_name": user.display_name,
+                "role": user.role,
+                "reset_password": user.reset_password,
             }
 
     ############################################################################
@@ -447,3 +458,76 @@ class API:
             self.db.settings[uid] = settings_str
             return settings
 
+    ############################################################################
+    # Posts                                                                    #
+    ############################################################################
+
+    @staticmethod
+    def _post_split_keywords(post):
+        """
+        Helper function that splits post keywords into an array before returning
+        them the callers of the post functions.
+        """
+        post["keywords"] = post["keywords"].split(",")
+        return post
+
+    def get_post_list(self, start, limit):
+        """
+        Returns the posts in the specified range ordered by date.
+        """
+
+        # Make sure the given parameters are valid
+        if not (isinstance(start, int) and isinstance(limit, int) and start >= 0):
+            raise ValidationError()
+
+        # Select the posts
+        posts = self.db.list_posts(start, limit)
+
+        # Convert the posts to dictionaries
+        return list(map(API._post_split_keywords, map(asdict, posts)))
+
+    def get_post(self, pid):
+        """
+        Returns the post with the given PID or None if the post does not exist.
+        """
+        post = self.db.get_post(pid)
+        return None if post is None else API._post_split_keywords(asdict(post))
+
+    def get_total_post_count(self):
+        return self.db.total_post_count()
+
+    ############################################################################
+    # Keywords                                                                 #
+    ############################################################################
+
+    def get_keyword_list(self):
+        """
+        Returns a list of used keywords.
+        """
+        return self.db.get_keyword_list()
+
+    ############################################################################
+    # Users                                                                    #
+    ############################################################################
+
+    def get_user_list(self, include_credentials=False):
+        """
+        Returns a list of user objects.
+        """
+        res = {}
+        for user in self.db.list_users():
+            user_dict = asdict(user)
+
+            # If "include_credentials" is set to False, remove confidential
+            # information. This information is only required when an
+            # administrator is managing users
+            if not include_credentials:
+                del user_dict["role"]
+                del user_dict["auth_method"]
+                del user_dict["reset_password"]
+
+            # Always remove the password hash from the user dictionary.
+            del user_dict["password"]
+
+            res[user.uid] = user_dict
+        return res

@@ -86,9 +86,11 @@ def test_session_management_timeouts():
 
 
 def test_user_management():
+    from dataclasses import asdict
+
     with Database(":memory:") as db:
         # Some user data
-        user_1 = {
+        user_1 = User(**{
             "uid": 1,
             "name": "jdoe",
             "display_name": "Joane Doe",
@@ -96,8 +98,8 @@ def test_user_management():
             "auth_method": "password",
             "password": "S3kr3t",
             "reset_password": True,
-        }
-        user_2 = {
+        })
+        user_2 = User(**{
             "uid": 2,
             "name": "jdoe2",
             "display_name": "Jo Doe",
@@ -105,16 +107,16 @@ def test_user_management():
             "auth_method": "cas",
             "password": "Pa55wort",
             "reset_password": False,
-        }
+        })
 
         # Create two users
         assert len(db.list_users()) == 0
         assert db.create_user(
             **{x: y
-               for x, y in user_1.items() if x != "uid"}) == 1
+               for x, y in asdict(user_1).items() if x != "uid"}) == 1
         assert db.create_user(
             **{x: y
-               for x, y in user_2.items() if x != "uid"}) == 2
+               for x, y in asdict(user_2).items() if x != "uid"}) == 2
 
         assert db.list_users() == [user_1, user_2]
 

@@ -29,22 +29,28 @@ logger = logging.getLogger(__name__)
 
 import argparse
 
+DEFAULT_DB = './tivua.sqlite'
+
 def check_port_number(i):
     i = int(i)
     if (i <= 0) or (i > 65535):
         raise argparse.ArgumentTypeError("Invalid port number")
     return i
 
-def create_parser_serve():
+def create_parser_default():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--db',
         help='Location of the database file',
         type=str,
-        default='./tivua.sqlite')
+        default=DEFAULT_DB)
     parser.add_argument('--verbose',
-        help='Port number',
+        help='Print debug log messages',
         action='store_true')
+    return parser
+
+def create_parser_serve():
+    parser = create_parser_default()
     parser.add_argument('--port',
         help='Port number',
         type=check_port_number,
@@ -62,14 +68,46 @@ def create_parser_serve():
         default='./static/')
     return parser
 
+def create_parser_import():
+    parser = create_parser_default()
+    parser.add_argument('file',
+        help='The backup to import. The value \'-\' reads the dump from stdin',
+        default='-', nargs='?')
+    return parser
+
+def create_parser_export():
+    parser = create_parser_default()
+    parser.add_argument('file',
+        help='The backup file to export to. The value \'-\' writes the dump to stdout',
+        type=str,
+        default='-', nargs='?')
+    return parser
+
+
 ################################################################################
 # MAIN PROGRAM                                                                 #
 ################################################################################
 
-def main_serve(argv):
-    # Start the database
-    import tivua.server
+def _parse_default_args(parser_ctor, argv):
+    """
+    Helper function that parses the arguments shared by all Tivua sub-programs.
+    """
     import tivua.database
+
+    # Create the argument parser and parse the provided arguments
+    args = parser_ctor().parse_args(argv)
+
+    # Increase the verbosity
+    if args.verbose:
+        logging.getLogger().setLevel(logging.DEBUG)
+
+    # Open the database
+    db = tivua.database.Database(args.db)
+
+    return args, db
+
+def main_serve(argv):
+    import tivua.server
     import tivua.api
 
     # Make sure TCP servers can quickly reuse the port after the application
@@ -78,15 +116,10 @@ def main_serve(argv):
     socketserver.TCPServer.allow_reuse_address = True
 
     # Parse the command line arguments
-    args = create_parser_serve().parse_args(argv)
-
-    # If the verbosity is set to "verbose", set the right level for the root
-    # logger.
-    if args.verbose:
-        logging.getLogger().setLevel(logging.DEBUG)
+    args, db = _parse_default_args(create_parser_serve, argv)
 
     # Open the database connection
-    with tivua.database.Database(args.db) as db:
+    with db:
         # Create an API instance and connect the database to it
         api = tivua.api.API(db)
 
@@ -98,6 +131,53 @@ def main_serve(argv):
                 httpd.serve_forever()
             except KeyboardInterrupt:
                 pass
+
+def main_import(argv):
+    import time, sys, json, datetime
+    import tivua.database
+
+    # Parse the command line arguments
+    args, db = _parse_default_args(create_parser_import, argv)
+
+    # Open the target file
+    if args.file == '-':
+        file = sys.stdin
+        must_close_file = False
+    else:
+        file = open(args.file, 'r')
+        must_close_file = True
+
+    try:
+        # Open the database
+        with db:
+            # Deserialise the provided JSON file
+            obj = json.load(file)
+
+            # Create a backup of the database
+            backup_filename = '.tivua_backup_{date:%Y-%m-%d_%H_%M_%S}.json'.format(date=datetime.datetime.now())
+            logger.warning('Writing database backup to \"{}\"'.format(backup_filename))
+            with open(backup_filename, 'w') as backup_file:
+                json.dump(db.export_to_json(), backup_file)
+
+            # Import the database
+            try:
+                logger.info('Purging the database and importing data...')
+                db.import_from_json(obj)
+                logger.info('Done!')
+            except:
+                logger.exception('There was an error while importing the data, the database should have been rolled back to its original state.')
+    finally:
+        # Make sure to close the input file
+        if must_close_file:
+            file.close()
+
+def main_export(argv):
+    import tivua.database
+
+    # Parse the command line arguments
+    args = create_parser_export().parse_args(argv)
+
+    pass
 
 def main(argv):
     # Setup logging
@@ -119,6 +199,10 @@ def main(argv):
     # Depending on the command, launch the corresponding subprogram
     if cmd == "serve":
         main_serve(argv)
+    elif cmd == "import":
+        main_import(argv)
+    elif cmd == "export":
+        main_export(argv)
     else:
         logger.error("Invalid subcommand \"{}\"".format(cmd))
 

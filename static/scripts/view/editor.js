@@ -67,15 +67,15 @@ this.tivua.view.editor = (function() {
 		}
 	}
 
-	function _validate_author(authors, btn_save, sel_author, span_author_error) {
+	function _validate_author(users, btn_save, sel_author, span_author_error) {
 		const l10n = tivua.l10n;
 		let author_id = -1;
 		if ((sel_author.value | 0) === parseInt(sel_author.value)) {
 			author_id = sel_author.value | 0;
 		}
 		let valid = false;
-		for (let author of authors) {
-			if (author_id == author["id"]) {
+		for (let author of users) {
+			if (author_id == author.uid) {
 				valid = true;
 				break;
 			}
@@ -107,7 +107,7 @@ this.tivua.view.editor = (function() {
 		return valid;
 	}
 
-	function show_editor_view(api, root, events, authors, session, post) {
+	function show_editor_view(api, root, events, users, session, post) {
 		const l10n = tivua.l10n;
 
 		/* Instantiate the editor view DOM nodes */
@@ -141,11 +141,11 @@ this.tivua.view.editor = (function() {
 			'lineWrapping': true
 		});
 
-		/* Add all possible authors to the dropdown list */
-		authors = authors.sort((a, b) => a.display_name.localeCompare(b.display_name));
-		for (let author of authors) {
+		/* Add all possible users to the dropdown list */
+		users = Object.values(users).sort((a, b) => a.display_name.localeCompare(b.display_name));
+		for (let author of users) {
 			const option = document.createElement("option");
-			option.setAttribute("value", author.id);
+			option.setAttribute("value", author.uid);
 			option.innerText = author.display_name;
 			sel_author.appendChild(option);
 		}
@@ -205,7 +205,7 @@ this.tivua.view.editor = (function() {
 		});
 
 		/* Hook up all validation code */
-		let validate_author = () => _validate_author(authors, btn_save, sel_author, span_author_error);
+		let validate_author = () => _validate_author(users, btn_save, sel_author, span_author_error);
 		let validate_date = () => _validate_date(btn_save, inp_date, span_date_error);
 		let validate_keywords = () => _validate_keywords(btn_save, inp_keywords, inp_keywords_tagger._wrapper, span_keywords_error);
 
@@ -291,11 +291,11 @@ this.tivua.view.editor = (function() {
 			/* Canonicalise the "id" parameter */
 			id = (id === undefined) ? undefined : (id | 0);
 
-			/* Initialise the spellchecker, load the list of authors, and -- if
-			 * applicable -- the requested post */
+			/* Initialise the spellchecker, load the list of users, and -- if
+			   applicable -- the requested post */
 			const promises = [
 				tivua.spellcheck.init(),
-				api.get_author_list(),
+				api.get_user_list(),
 				api.get_session_data(),
 			];
 			if (id >= 0) {
@@ -304,10 +304,10 @@ this.tivua.view.editor = (function() {
 
 			/* Show the editor */
 			Promise.all(promises).then((data) => {
-				const authors = data[1].authors;
+				const users = data[1].users;
 				const session = data[2].session;
 				const post = (promises.length > 3) ? data[3].post : null;
-				show_editor_view(api, root, events, authors, session, post);
+				show_editor_view(api, root, events, users, session, post);
 				resolve(events);
 			}).catch((err) => reject(err))
 		});

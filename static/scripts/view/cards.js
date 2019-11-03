@@ -156,12 +156,15 @@ this.tivua.view.cards = (function() {
 		}
 	}
 
-	function _create_card_view_card(post) {
+	function _create_card_view_card(post, users) {
+		/* Fetch the posts' author */
+		const user = users[post["author"]];
+
 		const tmpl = utils.import_template('tmpl_card_view_card');
-		tmpl.querySelector(".author").innerText = post["author_display_name"];
+		tmpl.querySelector(".author").innerText = user.display_name;
 		tmpl.querySelector(".meta").setAttribute("style",
-			  "color: " + colors.author_id_to_color(post["author"], false) + ";"
-			+ "background-color: " + colors.author_id_to_color(post["author"], true) + ";");
+			  "color: " + colors.author_id_to_color(user.uid, false) + ";"
+			+ "background-color: " + colors.author_id_to_color(user.uid, true) + ";");
 		tmpl.querySelector(".date").innerText = utils.format_date(post["date"]);
 
 		const div_content = tivua.render(post["content"]);
@@ -192,11 +195,12 @@ this.tivua.view.cards = (function() {
 			"menuClass": "search",
 			"source": (term, response) => {
 				const matches = (x) => (x.toLowerCase().includes(term.toLowerCase()));
-				api.get_author_list().then((data) => {
+				api.get_user_list().then((data) => {
 					const res = [];
-					for (let author of data.authors) {
-						if (matches(author["display_name"]) || matches(author["user_name"])) {
-							res.push(author["display_name"] + " (" + author["user_name"] + ")");
+					for (let uid in data.users) {
+						const author = data.users[uid];
+						if (matches(author["display_name"]) || matches(author["name"])) {
+							res.push(author["display_name"] + " (" + author["name"] + ")");
 						}
 					}
 					response(res);
@@ -207,7 +211,7 @@ this.tivua.view.cards = (function() {
 		});
 	}
 
-	function show_card_view(api, root, events, settings, start) {
+	function show_card_view(api, root, events, settings, users, start) {
 		// Update the navigation part of the card view
 		const view = utils.import_template('tmpl_card_view');
 		const main = view.querySelector("main");
@@ -302,10 +306,10 @@ this.tivua.view.cards = (function() {
 				main.appendChild(container);
 
 				for (let post of posts_) {
-					const card = _create_card_view_card(post);
+					const card = _create_card_view_card(post, users);
 					const btn_edit = card.querySelector(".meta > button");
 					btn_edit.addEventListener(
-						'click', utils.exec("#edit,id=" + post.id));
+						'click', utils.exec("#edit,id=" + post.pid));
 					container.appendChild(card);
 				}
 			}
@@ -349,9 +353,16 @@ this.tivua.view.cards = (function() {
 			"on_go_to_page": () => { throw "Not implemented"; }
 		}
 
-		// Fetch the user-settings and build the card view
-		return api.get_settings().then((settings) => {
-			return show_card_view(api, root, events, settings.settings, start)
+		// Fetch the user settings and the list of users and build the card
+		// view
+		const promises = [
+			api.get_settings(),
+			api.get_user_list(),
+		];
+		return Promise.all(promises).then((data) => {
+			const settings = data[0].settings;
+			const users = data[1].users;
+			return show_card_view(api, root, events, settings, users, start)
 		});
 	}
 

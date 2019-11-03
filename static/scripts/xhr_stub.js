@@ -79,7 +79,7 @@ this.tivua.xhr = (function (window) {
 
 	challenges = {}
 
-	function get_author_list(sid) {
+	function get_user_list(sid) {
 		return new Promise((resolve, reject) => {
 			_check_session(sid);
 			resolve({
@@ -447,7 +447,7 @@ this.tivua.xhr = (function (window) {
 	return _wrap_xhr_stub({
 		"get_session_data": get_session_data,
 		"get_configuration": get_configuration,
-		"get_author_list": get_author_list,
+		"get_user_list": get_user_list,
 		"get_keyword_list": get_keyword_list,
 		"get_post": get_post,
 		"create_post": create_post,

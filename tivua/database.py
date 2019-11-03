@@ -26,6 +26,30 @@ logger = logging.getLogger(__name__)
 ################################################################################
 
 import sqlite3
+from dataclasses import dataclass, asdict, astuple
+
+
+@dataclass(order=True)
+class Post:
+    pid: int = None
+    revision: int = 0
+    author: int = None
+    content: str = ""
+    keywords: str = ""
+    date: int = None
+    ctime: int = None
+    cuid: int = None
+
+
+@dataclass(order=True)
+class User:
+    uid: int = None
+    name: str = None
+    display_name: str = None
+    role: str = "inactive"
+    auth_method: str = "password"
+    password: str = "0000000000000000000000000000000000000000000000000000000000000000"
+    reset_password: bool = True
 
 
 class DatabaseKeyValueStore:
@@ -196,13 +220,24 @@ class Database:
         "posts":
         """CREATE TABLE posts(
             pid INTEGER PRIMARY KEY AUTOINCREMENT,
-            id INTEGER,
+            revision INTEGER,
+            author INTEGER,
+            content TEXT,
+            keywords TEXT,
+            date INTEGER,
+            ctime INTEGER,
+            cuid INTEGER
+        )""",
+        "posts_history":
+        """CREATE TABLE posts_history(
+            pid INTEGER,
             revision INTEGER,
             author INTEGER,
             content TEXT,
             date INTEGER,
             ctime INTEGER,
-            cuid INTEGER
+            cuid INTEGER,
+            CONSTRAINT unique_pid_rev UNIQUE (pid, revision)
         )""",
         "keywords":
         """CREATE TABLE keywords(
@@ -274,6 +309,7 @@ class Database:
         # Prepate the database for first-time use
         self._configure_db()
         self._create_tables()
+        self._create_indices()
         self._create_functions()
 
         return self
@@ -319,10 +355,48 @@ class Database:
                      "database by exporting your current Tivua DB and " +
                      "importing it into a new instance.").format(table))
 
+    def _create_indices(self):
+        """
+        Creates all indices required for efficient operation of the database.
+        """
+        c = self.conn.cursor()
+        c.execute(
+            """CREATE INDEX IF NOT EXISTS keywords_pid_index ON keywords(pid)"""
+        )
+        c.execute(
+            """CREATE INDEX IF NOT EXISTS keywords_keyword_index ON keywords(keyword)"""
+        )
+        c.execute(
+            """CREATE INDEX IF NOT EXISTS posts_date_index ON posts(date DESC)"""
+        )
+        c.execute(
+            """CREATE INDEX IF NOT EXISTS posts_pid_index ON posts(pid)""")
+
     @staticmethod
     def now():
+        """
+        Returns an integer corresponding to the current Unix timestamp.
+        """
         import time
         return int(time.time())
+
+    @staticmethod
+    def today():
+        """
+        Returns a Unix timestamp corresponding to noon, today, in UTC.
+        """
+        from datetime import date, datetime, timezone
+        today = date.today()
+        return int(
+            datetime(
+                today.year,
+                today.month,
+                today.day,
+                12,
+                0,
+                0,
+                0,
+                tzinfo=timezone.utc).timestamp())
 
     def _create_functions(self):
         """
@@ -418,15 +492,7 @@ class Database:
         """
         Helper-function used to convert a user record to a JSON-like object.
         """
-        return {
-            "uid": t[0],
-            "name": t[1],
-            "display_name": t[2],
-            "role": t[3],
-            "auth_method": t[4],
-            "password": t[5],
-            "reset_password": bool(t[6])
-        } if t else None
+        return User(*t) if t else None
 
     def create_user(self,
                     name,
@@ -489,14 +555,192 @@ class Database:
             return self._make_user_from_tuple(t.fetchone())
 
     ############################################################################
+    # Posts                                                                    #
+    ############################################################################
+
+    @staticmethod
+    def _make_post_from_tuple(t):
+        """
+        Helper function used to convert a database result to a post.
+        """
+        return Post(*t) if t else None
+
+    def list_posts(self, start=0, limit=-1):
+        """
+        Lists the newest revision of each post, ordered by date.
+        """
+        with Transaction(self) as t:
+            t.execute(
+                """SELECT * FROM posts ORDER BY date DESC
+                   LIMIT ? OFFSET ?""", (limit, start))
+            return list(map(lambda x: Post(*(x[0:6])), t.fetchall()))
+
+    def get_post(self, pid):
+        """
+        Returns the post with the given pid.
+        """
+        with Transaction(self) as t:
+            t.execute("""SELECT * FROM posts WHERE pid = ? LIMIT 1""", (pid,))
+            return self._make_post_from_tuple(t.fetchone())
+
+    def total_post_count(self):
+        """
+        Counts the total number of posts of a certain id.
+        """
+        with Transaction(self) as t:
+            t.execute("""SELECT COUNT() FROM posts""")
+            return t.fetchone()[0]
+
+    ############################################################################
+    # Keywords                                                                 #
+    ############################################################################
+
+    def get_keyword_list(self):
+        with Transaction(self) as t:
+            t.execute("SELECT keyword, COUNT(pid) FROM keywords GROUP BY keyword ORDER BY keyword");
+            return {key: count for key, count in t.fetchall()}
+
+    ############################################################################
     # Export and import                                                        #
     ############################################################################
 
+    def purge_all(self):
+        # Resets the database to its initial state
+        with Transaction(self) as t:
+            for table in Database.SQL_TABLES.keys():
+                t.execute("""DELETE FROM {}""".format(table))
+
     def export_to_json(self):
         # Dumps the database into a JSON serialisable object
-        return
+        return None
 
-    def import_from_json(self):
-        # Imports the database from a JSON serialisable object
-        return
+    def _import_posts_from_json(self, table, obj, import_keywords=True):
+        """
+        Used internally to restore an array of posts from a deserialised JSON
+        object.
+        """
+        keywords = []
+        with Transaction(self) as t:
+            for post in obj:
+                # Convert the post to a Post object
+                p = Post(**post)
+
+                # The post pid is mandatory
+                if p.pid is None:
+                    raise ValueError("Post pid must be set")
+
+                # There must be either an author or a cuid
+                if (p.author is None) and (p.cuid is None):
+                    raise ValueError("Post author or cuid must be set")
+                elif p.author is None:
+                    p.author = p.cuid
+                elif p.cuid is None:
+                    p.cuid = p.author
+
+                # There must be either a ctime or a date
+                if (p.ctime is None) and (p.date is None):
+                    raise ValueError("Post ctime or date must be set")
+                elif p.ctime is None:
+                    p.ctime = p.date
+                elif p.date is None:
+                    p.date = p.ctime
+
+                # Store the keywords
+                for keyword in p.keywords.split(","):
+                    keyword = keyword.strip()
+                    if keyword:
+                        keywords.append((p.pid, keyword))
+
+                # Import the post
+                t.execute(
+                    """INSERT INTO {}(pid, revision, author, content, keywords,
+                                      date, ctime, cuid)
+                             VALUES (?, ?, ?, ?, ?, ?, ?, ?)""".format(table),
+                    astuple(p))
+
+            # Import the keywords
+            if import_keywords:
+                for values in keywords:
+                    t.execute(
+                        """INSERT INTO keywords(pid, keyword) VALUES (?, ?)""",
+                        values)
+
+    def _import_users_from_json(self, obj):
+        """
+        Used internally to restore an array of users from a deserialised JSON
+        object.
+        """
+
+        def _mkusername(name):
+            """
+            Creates a username from a display name
+            """
+            parts = name.trim().split(" ")
+            if (len(parts) == 0):
+                return ""
+            elif (len(parts) == 1):
+                username = parts[0]
+            else:
+                username = name[0].lower() + parts[-1].lower()
+            username = username.replace("ö", "oe")
+            username = username.replace("ä", "ae")
+            username = username.replace("ü", "ue")
+            username = username.replace("ß", "ss")
+            username = str(username.encode("punycode"), "ascii")[0:8]
+            return username
+
+        with Transaction(self) as t:
+            for user in obj:
+                # Convert the user to a User object
+                u = User(**user)
+
+                # The user uid is mandatory
+                if u.uid is None:
+                    raise ValueError("User uid must be set")
+
+                # One of name and display_name is mandatory
+                if (u.name is None) and (u.display_name is None):
+                    raise ValueError("User name or display_name must be set")
+                elif u.name is None:
+                    u.name = _mkusername(u.display_name)
+                elif u.display_name is None:
+                    u.display_name = u.name
+
+                # Make sure the username matches the username regular expression
+                # TODO (Move import/export to API)
+                t.execute(
+                    """INSERT INTO users(uid, name, display_name, role,
+                                         auth_method, password, reset_password)
+                       VALUES(?, ?, ?, ?, ?, ?, ?)""", astuple(u))
+
+    def import_from_json(self, obj):
+        """
+        Restors a database backup formerly created by the export_to_json
+        function. This will delete the current content of the database.
+
+        @param obj is a Python object that has been deserialised from JSON
+        """
+
+        # Make sure that this operation is atomic
+        with Transaction(self):
+            # Delete everything in the database
+            self.purge_all()
+
+            # Go through all restorable tables (i.e., it doesn't make much sense
+            # to backup the challenges, sessions, cache, keywords tables).
+            #            if "configuration" in obj:
+            #                self._import_configuration_from_json(obj["configuration"])
+            if "posts" in obj:
+                self._import_posts_from_json("posts", obj["posts"])
+            if "posts_history" in obj:
+                self._import_posts_from_json(
+                    "posts_history",
+                    obj["posts_history"],
+                    insert_keywords=False)
+            if "users" in obj:
+                self._import_users_from_json(obj["users"])
+
+
+#            if "settings" in obj:
+#                self._import_settings_from_json(obj["settings"])
 

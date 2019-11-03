@@ -41,7 +41,7 @@ this.tivua.api = (function (window) {
 	const cache = {};
 	function _reset_cache() {
 		cache["keywords"] = {};
-		cache["authors"] = {};
+		cache["users"] = {};
 		cache["session_data"] = {};
 		cache["settings"] = {};
 	}
@@ -116,11 +116,11 @@ this.tivua.api = (function (window) {
 	}
 
 	/**
-	 * Returns a list of available authors.
+	 * Returns a list of available users.
 	 */
-	function get_author_list() {
+	function get_user_list() {
 		return _err(get_sid().then(sid => {
-			return _cached(sid, "authors", () => xhr.get_author_list(sid));
+			return _cached(sid, "users", () => xhr.get_user_list(sid));
 		}));
 	}
 
@@ -441,7 +441,7 @@ this.tivua.api = (function (window) {
 		"get_sid": get_sid,
 		"get_session_data": get_session_data,
 		"get_configuration": get_configuration,
-		"get_author_list": get_author_list,
+		"get_user_list": get_user_list,
 		"get_keyword_list": get_keyword_list,
 		"get_post": get_post,
 		"update_post": update_post,

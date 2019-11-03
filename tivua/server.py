@@ -19,7 +19,7 @@ import http.server
 import json
 import traceback
 
-from tivua.api import ValidationError, AuthentificationError
+from tivua.api import ValidationError, AuthentificationError, NotFoundError
 
 ################################################################################
 # LOGGER                                                                       #
@@ -77,7 +77,7 @@ def escape(text):
 
 def _handle_vfs(vfs, vfs_filename=None, vfs_content_type=None):
     """
-    Creates a handler that resolves file in the virtual filesystem.
+    Creates a handler that resolves a file in the virtual filesystem.
     """
 
     def _handler(req, query=None, match=None, head=False):
@@ -113,7 +113,7 @@ def _handle_vfs(vfs, vfs_filename=None, vfs_content_type=None):
 
 def _handle_fs(document_root, static_filename=None):
     """
-    Creates a handler that resolves file in the virtual filesystem.
+    Creates a handler that resolves a file in the virtual filesystem.
     """
 
     # Get the canonical document root
@@ -247,7 +247,6 @@ def _internal_wrap_api_handler(cback,
     """
 
     import codecs
-    utf8_writer = codecs.getwriter('utf-8')
 
     def _handler(req, query=None, match=None, head=False):
         # Copy the response code from the outside
@@ -293,7 +292,10 @@ def _internal_wrap_api_handler(cback,
             obj = {"status": "error", "what": "%server_error_validation"}
         except AuthentificationError:
             response_code = 401
-            obj = {"status": "error", "what": "%server_error_authentification"}
+            obj = {"status": "error", "what": "%server_error_unauthorized"}
+        except NotFoundError:
+            response_code = 404
+            obj = {"status": "error", "what": "%server_error_not_found"}
         except Exception as e:
             response_code = 500
             obj = {"status": "error", "what": "%server_error_unknown"}
@@ -307,7 +309,7 @@ def _internal_wrap_api_handler(cback,
             return True
 
         # Send the response
-        json.dump(obj, utf8_writer(req.wfile))
+        req.wfile.write(json.dumps(obj).encode('utf-8'))
         return True
 
     return _handler
@@ -321,7 +323,7 @@ def _api_error(code, msg=None):
         return msg
 
     return _internal_wrap_api_handler(
-        _handler, field="what", code=code, requires_auth=False)
+        _handler, field="what", status="error", code=code, requires_auth=False)
 
 
 def _api_get_configuration(api):
@@ -384,13 +386,53 @@ def _api_post_settings(api):
 
 def _api_get_posts_list(api):
     def _handler(req, query, match, session, body):
-        print(query)
+        # Validate the arguments
+        try:
+            start, limit = 0, -1
+            if "start" in query:
+                start = int(query["start"][0])
+            if "limit" in query:
+                limit = int(query["limit"][0])
+        except:
+            raise ValidationError()
+
+        # Execute the query
         return {
-            "posts": [],
-            "total": 0,
+            "posts": api.get_post_list(start, limit),
+            "total": api.get_total_post_count(),
         }
 
     return _internal_wrap_api_handler(_handler, api=api)
+
+
+def _api_get_post(api):
+    def _handler(req, query, match, session, body):
+        # Validate the arguments
+        try:
+            pid = int(query["pid"][0] if "pid" in query else "nan")
+        except:
+            raise ValidationError()
+
+        # Try to fetch the post
+        post = api.get_post(pid)
+        if post is None:
+            raise NotFoundError()
+        return post
+
+    return _internal_wrap_api_handler(_handler, field="post", api=api)
+
+def _api_get_users_list(api):
+    def _handler(req, query, match, session, body):
+        return api.get_user_list()
+
+    return _internal_wrap_api_handler(_handler, field="users", api=api)
+
+
+def _api_get_keywords_list(api):
+    def _handler(req, query, match, session, body):
+        return api.get_keyword_list()
+
+    return _internal_wrap_api_handler(_handler, field="keywords", api=api)
 
 
 ################################################################################
@@ -546,14 +588,17 @@ def create_server_class(api, args):
 
         # Always serve the "index.html" file from the VFS when "/" is requested
         Route("GET", r"^/$", _handle_vfs(vfs, vfs_index, "text/html")),
+
         # When "/index.html" is requested explicitly, serve from the development
         # VFS, which may be equal to the normal VFS (see above)
         Route("GET", r"^/index\.html$",
               _handle_vfs(dev_vfs, dev_vfs_index, "text/html")),
+
         # If development is disabled, answer with a 404 when any non-minified
         # sources are requested
         Route("GET", r"^/(lib|scripts|styles)/(?!.*(\.min\.js|\.min\.css)).*$", _handle_error(404)) \
             if no_dev else None,
+
         # Re-route the request for the favicon to the images subfolder
         Route("GET", r"^/favicon\.ico$", _handle_fs(root, "images/favicon.ico")),
 
@@ -561,23 +606,17 @@ def create_server_class(api, args):
         # API Requests
         #
 
-        # Configuration request
         Route("GET", r"^/api/configuration$", _api_get_configuration(api)),
-        # Settings request
         Route("GET", r"^/api/settings$", _api_get_settings(api)),
-        # Settings request
         Route("POST", r"^/api/settings$", _api_post_settings(api)),
-        # Session data request
         Route("GET", r"^/api/session$", _api_get_session(api)),
-        # Login request
         Route("POST", r"^/api/session/login$", _api_post_login(api)),
-        # Login challenge request
         Route("GET", r"^/api/session/login/challenge$", _api_get_login_challenge(api)),
-        # Logout request
         Route("POST", r"^/api/session/logout$", _api_post_logout(api)),
-
-        # List posts request
         Route("GET", r"^/api/posts/list$", _api_get_posts_list(api)),
+        Route("GET", r"^/api/posts$", _api_get_post(api)),
+        Route("GET", r"^/api/users/list$", _api_get_users_list(api)),
+        Route("GET", r"^/api/keywords/list$", _api_get_keywords_list(api)),
 
 
         # Unkown API requests
