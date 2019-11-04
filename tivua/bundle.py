@@ -57,7 +57,7 @@ def bundle(filename, cache=None, do_bundle=True, do_minify=True, do_exclude_stub
             bundle_data, bundle_data_min_idx = [], []
             for i, blob in enumerate(data):
                 hash = hashlib.sha256(blob).hexdigest()
-                if cache and (hash in cache):
+                if (not cache is None) and (hash in cache):
                     logger.debug("Using cached minified version of file \"{}\"".format(filenames[i]))
                     bundle_data.append(cache[hash])
                 else:
@@ -77,7 +77,7 @@ def bundle(filename, cache=None, do_bundle=True, do_minify=True, do_exclude_stub
                 # place in the bundle
                 for j, (i, hash) in enumerate(bundle_data_min_idx):
                     bundle_data.insert(i, data[j])
-                    if cache:
+                    if not cache is None:
                         cache[hash] = data[j]
 
             # Concatenate all minified blobs into a single file
