@@ -801,8 +801,11 @@ main.cards:not(.continuous) div.card_container {
 }
 
 main.cards:not(.continuous) div.entry > div.content {
-	max-height: 40rem;
 	overflow: auto;
+}
+
+main.cards:not(.continuous) div.entry {
+	max-height: 40rem;
 }
 
 main.cards:not(.continuous) div.entry > div.content:after {
@@ -837,7 +840,9 @@ main.cards:not(.continuous) div.card_container {
 }
 
 main.cards div.entry {
-	display: inline-block;
+	display: grid;
+	grid-template-rows: auto 1fr auto;
+
 	justify-self: stretch;
 	align-self: stretch;
 	background-color: white;
@@ -852,7 +857,9 @@ main.cards div.entry {
 }
 
 main.cards div.entry > div.meta {
+	flex: 0 0 auto;
 	display: flex;
+	align-self: start;
 	align-items: center;
 	padding: 0.5rem 0;
 	border-radius: 5px 5px 0px 0px;
@@ -890,8 +897,40 @@ main.cards div.entry > div.meta > button.edit:focus::before {
 }
 
 main.cards div.entry > div.content {
+	align-self: stretch;
+	justify-self: start;
+	flex: 1 1 auto;
 	padding: 1rem 2rem;
 	line-height: 1.75;
+}
+
+main.cards div.entry > div.extra {
+	align-self: end;
+	flex: 0 0 auto;
+	padding: 0.5rem 1rem;
+	font-size: 90%;
+	text-align: right;
+	background-color: #fafafa;
+}
+
+main.cards div.entry > div.extra > span.tags {
+	display: block;
+}
+
+main.cards div.entry > div.extra > span.history {
+	display: block;
+	font-style: italic;
+}
+
+main.cards div.entry > div.extra > span.tags > span.tag {
+	font-weight: bold;
+	border-radius: 0.25rem;
+	display: inline-block;
+	margin: 0.25rem;
+	margin-right: 0;
+	padding: 0.25rem;
+	color: white;
+	background-color: #999;
 }
 
 /******************************************************************************

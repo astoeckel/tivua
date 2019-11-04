@@ -122,6 +122,8 @@ this.tivua.l10n = (function () {
 			// Card view
 			"%msg_no_posts":
 				"No posts.",
+			"%msg_post_history":
+				"Last edited on %date by %author",
 
 			// Editor view
 			"%header_new_entry":
@@ -293,6 +295,7 @@ this.tivua.l10n = (function () {
 
 	return {
 		"data": l10n_data,
+		"translate": translate,
 		"translate_dom_tree": translate_dom_tree,
 		"set_locale": set_locale,
 		"get_locale": get_locale,

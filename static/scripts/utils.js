@@ -150,6 +150,23 @@ this.tivua.utils = (function (window) {
 	}
 
 	/**
+	 * Converts the given local timestamp to a UTC timestamp pointing at noon of
+	 * the same day.
+	 */
+	function local_time_as_utc_date(timestamp) {
+		const time = (timestamp instanceof Date) ? timestamp : new Date(timestamp * 1000);
+		const date = new Date();
+		date.setUTCFullYear(time.getFullYear());
+		date.setUTCMonth(time.getMonth());
+		date.setUTCDate(time.getDate());
+		date.setUTCHours(12);
+		date.setUTCMinutes(0);
+		date.setUTCSeconds(0);
+		date.setUTCMilliseconds(0);
+		return Math.trunc(date.valueOf() / 1000);
+	}
+
+	/**
 	 * Converts a string of the form "YYYY-MM-DD" to a Date() object pointing at
 	 * noon, UTC of the given date.
 	 *
@@ -274,6 +291,7 @@ this.tivua.utils = (function (window) {
 		'set_cookie': set_cookie,
 		'to_normalised_ascii_string': to_normalised_ascii_string,
 		'format_date': format_date,
+		'local_time_as_utc_date': local_time_as_utc_date,
 		'string_to_utc_date': string_to_utc_date,
 		'get_now_as_utc_date': get_now_as_utc_date,
 		'execute_action': execute_action,

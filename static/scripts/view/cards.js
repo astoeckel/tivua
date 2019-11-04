@@ -160,16 +160,67 @@ this.tivua.view.cards = (function() {
 		/* Fetch the posts' author */
 		const user = users[post["author"]];
 
-		const tmpl = utils.import_template('tmpl_card_view_card');
-		tmpl.querySelector(".author").innerText = user.display_name;
-		tmpl.querySelector(".meta").setAttribute("style",
-			  "color: " + colors.author_id_to_color(user.uid, false) + ";"
-			+ "background-color: " + colors.author_id_to_color(user.uid, true) + ";");
-		tmpl.querySelector(".date").innerText = utils.format_date(post["date"]);
+		const color_bg = colors.author_id_to_color(user.uid, true);
+		const color_fg = colors.author_id_to_color(user.uid, false);
 
+		const tmpl = utils.import_template('tmpl_card_view_card');
+
+		/* Set the metadata */
+		const div_meta = tmpl.querySelector(".meta");
+		const span_date = tmpl.querySelector(".meta .date");
+		const span_author = tmpl.querySelector(".meta .author");
+
+		span_author.innerText = user.display_name;
+		span_date.innerText = utils.format_date(post["date"]);
+		div_meta.setAttribute("style", `color: ${color_fg}; background-color: ${color_bg};`);
+
+		/* Update the content */
+		const div_entry = tmpl.querySelector(".entry");
+		const div_content_placeholder = tmpl.querySelector(".content");
 		const div_content = tivua.render(post["content"]);
 		div_content.setAttribute("class", "content");
-		tmpl.querySelector(".entry").appendChild(div_content);
+		div_entry.replaceChild(div_content, div_content_placeholder);
+
+		/* Show extra data if there is any to be shown */
+		const has_keywords = post.keywords.length > 0;
+		const has_history_info = (post.cuid != post.author) ||
+			(utils.local_time_as_utc_date(post.ctime) > post.date);
+
+		const div_extra = tmpl.querySelector(".extra");
+		const span_tags = tmpl.querySelector(".extra .tags");
+		const span_history = tmpl.querySelector(".extra .history");
+
+		/* Display keywords if there are any keywords associated with the post */
+		if (has_keywords) {
+			for (let keyword of post.keywords) {
+				const span_tag = document.createElement("span");
+				span_tag.setAttribute('class', "tag");
+				span_tag.innerText = keyword;
+				span_tag.style.backgroundColor = color_bg;
+				span_tags.appendChild(span_tag);
+			}
+		} else {
+			span_tags.style.display = 'none';
+		}
+
+		/* Display information about the post history if the post author is not
+		   equal to the person who commited the post or the change timestamp is
+		   larger than the listed date (i.e. the post was changed after the
+		   fact)*/
+		if (has_history_info) {
+			const l10n = tivua.l10n;
+			span_history.innerText =
+				l10n.translate("%msg_post_history")
+					.replace("%date", utils.format_date(post.ctime, "/"))
+					.replace("%author", users[post.cuid].display_name);
+		} else {
+			span_history.style.display = 'none';
+		}
+
+		/* Hide the extra information if it is not needed */
+		if (!(has_history_info || has_keywords)) {
+			div_extra.style.display = 'none';
+		}
 
 		return tmpl;
 	}
