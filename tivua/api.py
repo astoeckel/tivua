@@ -59,6 +59,54 @@ class ConflictError(RuntimeError):
     pass
 
 
+class Perms:
+    """
+    Class containing constants representing individual permissions.
+    """
+
+    # Permission indicating that either no permissions are required or that the
+    # user does not have any permissions (is inactive)
+    NONE = 0
+
+    # Permission indicating that the user must be able to read to perform this
+    # action
+    CAN_READ = 1
+
+    # Permission indicating that the user must be able to write to perform this
+    # action
+    CAN_WRITE = 2
+
+    # Permission indicating that the user has/must have special admin rights
+    # to be# able to perform this action
+    CAN_ADMIN = 4
+
+    # List of user roles
+    USER_ROLES = {
+        # Inactive users cannot login. Users should be marked as "inactive"
+        # instead of deleting them to preserve their posts.
+        "inactive": NONE,
+
+        # A "reader" is not able to create or edit any posts, but may still
+        # read them.
+        "reader": CAN_READ,
+
+        # A author user can both read and write posts.
+        "author": CAN_READ | CAN_WRITE,
+
+        # A admin user can read, write and administrate a Tivua instance.
+        "admin": CAN_READ | CAN_WRITE | CAN_ADMIN,
+    }
+
+    @staticmethod
+    def lookup_role_permissions(role):
+        """
+        Converts a "role" string into a set of permissions.
+        """
+        if not role in Perms.USER_ROLES:
+            return Perms.NONE
+        return Perms.USER_ROLES[role]
+
+
 class API:
     ############################################################################
     # Initialization                                                           #
@@ -157,7 +205,7 @@ class API:
         elif isinstance(o, type_):
             return True
         elif (type_ is bool) and type(o) is int:
-            return True # Allow conversion from int -> bool
+            return True  # Allow conversion from int -> bool
         else:
             return False
 
@@ -175,7 +223,8 @@ class API:
     def _dataclass_check_types(o):
         for name, field in o.__dataclass_fields__.items():
             if not API._is_type_or_none(getattr(o, name), field.type):
-                logger.debug("Expected {} but got {}".format(str(field.type), type(getattr(o, name))))
+                logger.debug("Expected {} but got {}".format(
+                    str(field.type), type(getattr(o, name))))
                 raise ValidationError("%server_error_invalid_type")
 
     ############################################################################
@@ -273,28 +322,6 @@ class API:
     # Regular expression describing a valid user name
     USER_RE = re.compile("^[a-z0-9._-]{2,16}$")
 
-    # Possible user permissions
-    PERM_CAN_READ = 1
-    PERM_CAN_WRITE = 2
-    PERM_CAN_ADMIN = 4
-
-    # List of user roles
-    USER_ROLES = {
-        # Inactive users cannot login. Users should be marked as "inactive"
-        # instead of deleting them to preserve their posts.
-        "inactive": 0,
-
-        # A "reader" is not able to create or edit any posts, but may still
-        # read them.
-        "reader": PERM_CAN_READ,
-
-        # A author user can both read and write posts.
-        "author": PERM_CAN_READ | PERM_CAN_WRITE,
-
-        # A admin user can read, write and administrate a Tivua instance.
-        "admin": PERM_CAN_READ | PERM_CAN_WRITE | PERM_CAN_ADMIN,
-    }
-
     def get_password_login_challenge(self):
         """
         Creates a login challenge and returns an object containing both the
@@ -312,7 +339,10 @@ class API:
             self.db.challenges[challenge] = self.db.now()
 
             # Return a challenge object ready to be sent to the client
-            return {"salt": self.db.configuration["salt"], "challenge": challenge}
+            return {
+                "salt": self.db.configuration["salt"],
+                "challenge": challenge
+            }
 
     def _check_password_login_challenge(self, challenge):
         """
@@ -333,15 +363,6 @@ class API:
             del self.db.challenges[challenge]
 
             return True
-
-    @staticmethod
-    def lookup_role_permissions(role):
-        """
-        Converts a "role" string into a set of permissions.
-        """
-        if not role in API.USER_ROLES:
-            return 0
-        return API.USER_ROLES[role]
 
     def _login_method_username_password(self, user_name, challenge, response):
         """
@@ -375,7 +396,7 @@ class API:
                 raise AuthentificationError()
 
             # Make sure the user has the right permissions
-            if self.lookup_role_permissions(user.role) <= 0:
+            if Perms.lookup_role_permissions(user.role) <= 0:
                 raise AuthentificationError()
 
             # Compute the expected password hash
@@ -717,6 +738,13 @@ class API:
             if old_post is None:
                 raise NotFoundError()
 
+            # Do nothing if there is no difference between the old and new post
+            if (old_post.author == p.author) and (
+                    old_post.date == p.date) and (
+                        old_post.keywords == p.keywords) and (
+                            old_post.content == p.content):
+                return API._post_to_dict(p)
+
             # Make sure that the revision of the given post is equal to the
             # revision of the old post; increment the revision of the post that
             # is to be stored.
@@ -730,7 +758,9 @@ class API:
             # Remove keywords associated with the old post
             keywords = self.db.keywords
             for keyword in API._split(old_post.keywords):
-                keywords[keyword] = keywords[keyword] - {pid,}
+                keywords[keyword] = keywords[keyword] - {
+                    pid,
+                }
 
             # Update the post in the normal posts table
             if self.db.update_post(p) == 0:
@@ -879,7 +909,9 @@ class API:
                     if keyword in keywords:
                         keywords[keyword].add(post.pid)
                     else:
-                        keywords[keyword] = {post.pid,}
+                        keywords[keyword] = {
+                            post.pid,
+                        }
 
             # Insert the keywords into the database; the keywords dictionary
             # is a MultiDict, i.e., it stores a set per keyword

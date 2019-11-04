@@ -238,12 +238,25 @@ def _internal_wrap_api_handler(cback,
                                field=None,
                                code=200,
                                status="success",
-                               requires_auth=True,
+                               perms=Perms.CAN_READ,
                                api=None):
     """
     Common code used to parse API requests. Checks for authentification
     and generates error messages. Deserialises incoming request bodies from
     JSON. Serialises outgoing responses to JSON.
+
+    @param cback callback method that should be called to actually handle the
+           API request. The callback method receives the request, the parsed
+           query string, the matched regular expression, the session, and the
+           parsed request body.
+    @param field is the key in the returned JSON object the callback return
+           value should be written to. If set to None, the returned object is 
+           directly merged into the return object.
+    @param code is the code that should be written to the response.
+    @param status is the status code that should be written to the response.
+    @param perms indicates the required user permissions. If set to Perms.NONE,
+           no user authentification is required.
+    @param api is a reference at the api instance.
     """
 
     import codecs
@@ -257,9 +270,13 @@ def _internal_wrap_api_handler(cback,
         try:
             # Handle authentification
             session = None
-            if requires_auth:
+            if perms != Perms.NONE:
                 session = _internal_api_get_session(api, req)
                 if session is None:
+                    return _api_error(401, "%server_error_unauthorized")(req)
+
+                # Make sure the user has the required permissions
+                if not (Perms.lookup_role_permissions(session["role"]) & perms):
                     return _api_error(401, "%server_error_unauthorized")(req)
 
             # If this request is a POST, check for the Content-Length header and
@@ -274,6 +291,8 @@ def _internal_wrap_api_handler(cback,
             # Call the actual callback and obtain the object that should be
             # serialised and sent back to the client
             obj = {"status": status}
+
+            # Never call the callback if this is a HEAD request
             if not head:
                 res = cback(req, query, match, session, body)
             else:
@@ -326,14 +345,14 @@ def _api_error(code, msg=None):
         return msg
 
     return _internal_wrap_api_handler(
-        _handler, field="what", status="error", code=code, requires_auth=False)
+        _handler, field="what", status="error", code=code, perms=Perms.NONE)
 
 
 def _api_get_configuration(api):
     def _handler(req, query, match, session, body):
         return api.get_configuration_object()
 
-    return _internal_wrap_api_handler(_handler, requires_auth=False)
+    return _internal_wrap_api_handler(_handler, perms=Perms.NONE)
 
 
 def _api_get_session(api):
@@ -347,7 +366,7 @@ def _api_get_login_challenge(api):
     def _handler(req, query, match, session, body):
         return api.get_password_login_challenge()
 
-    return _internal_wrap_api_handler(_handler, requires_auth=False)
+    return _internal_wrap_api_handler(_handler, perms=Perms.NONE)
 
 
 def _api_post_login(api):
@@ -362,7 +381,7 @@ def _api_post_login(api):
             body['user_name'], body['challenge'], body['response'])
 
     return _internal_wrap_api_handler(
-        _handler, field='session', requires_auth=False)
+        _handler, field='session', perms=Perms.NONE)
 
 
 def _api_post_logout(api):
@@ -420,7 +439,7 @@ def _api_post_posts_create(api):
         # Try to create the post
         return api.create_post(body)
 
-    return _internal_wrap_api_handler(_handler, field="post", api=api)
+    return _internal_wrap_api_handler(_handler, field="post", api=api, perms=Perms.CAN_WRITE)
 
 def _api_post_posts_update(api):
     def _handler(req, query, match, session, body):
@@ -441,7 +460,7 @@ def _api_post_posts_update(api):
         # Try to update an already existing post
         return api.update_post(body)
 
-    return _internal_wrap_api_handler(_handler, field="post", api=api)
+    return _internal_wrap_api_handler(_handler, field="post", api=api, perms=Perms.CAN_WRITE)
 
 def _api_get_post(api):
     def _handler(req, query, match, session, body):
