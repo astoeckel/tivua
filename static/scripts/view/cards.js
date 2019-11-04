@@ -115,7 +115,7 @@ this.tivua.view.cards = (function() {
 				// Compute a new "pp" variable
 				settings["posts_per_page"] = new_settings.settings["posts_per_page"];
 				const pp = (posts_per_page() < 0) ? total : posts_per_page();
-				const new_page = (Math.floor(start / pp) * pp) | 0;
+				const new_page = Math.floor(start / pp) | 0;
 
 				// Remove this loading bar, a new one will be added once
 				// we go to the next page
