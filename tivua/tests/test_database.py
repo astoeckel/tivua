@@ -43,6 +43,142 @@ def test_transactions():
         assert db.settings[4] == "foo"
 
 
+def test_keywords_dict():
+    with Database(':memory:') as db:
+        keywords = db.keywords
+
+        # Empty dictionary
+        assert len(keywords) == 0
+
+        # Add a single keyword
+        keywords["foo"] = 184
+        assert len(keywords) == 1
+        assert keywords["foo"] == {184,}
+        assert "foo" in keywords
+        assert list(keywords.items()) == [("foo", {184,})]
+        assert list(keywords.keys()) == ["foo"]
+        assert list(keywords.values()) == [{184,}]
+        assert list(keywords.key_counts()) == [("foo", 1)]
+
+        # Add another keyword
+        keywords["bar"] = 897
+        assert len(keywords) == 2
+        assert "bar" in keywords
+        assert keywords["bar"] == {897}
+        assert list(keywords.items()) == [("bar", {897,}), ("foo", {184,}),]
+        assert list(keywords.keys()) == ["bar", "foo"]
+        assert list(keywords.values()) == [{897,}, {184,},]
+        assert list(keywords.key_counts()) == [("bar", 1), ("foo", 1)]
+
+        # Add another post to the keyword
+        keywords["foo"] = 583
+        assert len(keywords) == 2
+        assert "foo" in keywords
+        assert keywords["foo"] == {184, 583}
+        assert list(keywords.items()) == [("bar", {897,}), ("foo", {184, 583}),]
+        assert list(keywords.keys()) == ["bar", "foo"]
+        assert list(keywords.values()) == [{897,}, {184, 583},]
+        assert list(keywords.key_counts()) == [("bar", 1), ("foo", 2)]
+
+        # Try to add the same pair again -- nothing should change
+        keywords["foo"] = 583
+        assert len(keywords) == 2
+        assert "foo" in keywords
+        assert keywords["foo"] == {184, 583}
+        assert list(keywords.items()) == [("bar", {897,}), ("foo", {184, 583}),]
+        assert list(keywords.keys()) == ["bar", "foo"]
+        assert list(keywords.values()) == [{897,}, {184, 583},]
+        assert list(keywords.key_counts()) == [("bar", 1), ("foo", 2)]
+
+        # Explicitly assign a set to the multi dict
+        keywords["foo"] = {1,2,3}
+        assert len(keywords) == 2
+        assert "foo" in keywords
+        assert keywords["foo"] == {1, 2, 3}
+        assert list(keywords.items()) == [("bar", {897,}), ("foo", {1, 2, 3}),]
+        assert list(keywords.keys()) == ["bar", "foo"]
+        assert list(keywords.values()) == [{897,}, {1, 2, 3},]
+        assert list(keywords.key_counts()) == [("bar", 1), ("foo", 3)]
+
+        # Delete an entry from the dictionary
+        del keywords["bar"]
+        assert len(keywords) == 1
+        assert not "bar" in keywords
+        assert list(keywords.items()) == [("foo", {1, 2, 3}),]
+        assert list(keywords.keys()) == ["foo"]
+        assert list(keywords.values()) == [{1, 2, 3},]
+        assert list(keywords.key_counts()) == [("foo", 3)]
+
+        # Delete the last
+        del keywords["foo"]
+        assert len(keywords) == 0
+        assert not "foo" in keywords
+        assert list(keywords.items()) == []
+        assert list(keywords.keys()) == []
+        assert list(keywords.values()) == []
+        assert list(keywords.key_counts()) == []
+
+        # Deleting a non-existing entry should raise an exception
+        with pytest.raises(KeyError):
+            del keywords["foo"]
+
+        # Accessing a non-existing entry should raise an exception
+        with pytest.raises(KeyError):
+            keywords["foo"]
+
+
+def test_cache_dict():
+    with Database(':memory:') as db:
+        cache = db.cache
+
+        # Empty dictionary
+        assert len(cache) == 0
+
+        # Add a single keyword
+        cache["foo"] = b"bar"
+        assert len(cache) == 1
+        assert cache["foo"] == b"bar"
+        assert "foo" in cache
+        assert list(cache.items()) == [("foo", b"bar")]
+        assert list(cache.keys()) == ["foo"]
+        assert list(cache.values()) == [b"bar"]
+        assert list(cache.key_counts()) == [("foo", 1)]
+
+        # Add another keyword
+        cache["bar"] = b"test"
+        assert len(cache) == 2
+        assert "bar" in cache
+        assert cache["bar"] == b"test"
+        assert list(cache.items()) == [("bar", b"test"), ("foo", b"bar")]
+        assert list(cache.keys()) == ["bar", "foo"]
+        assert list(cache.values()) == [b"test", b"bar"]
+        assert list(cache.key_counts()) == [("bar", 1), ("foo", 1)]
+
+        # Override the first keyword
+        cache["foo"] = b"test2"
+        assert len(cache) == 2
+        assert "bar" in cache
+        assert cache["bar"] == b"test"
+        assert list(cache.items()) == [("bar", b"test"), ("foo", b"test2")]
+        assert list(cache.keys()) == ["bar", "foo"]
+        assert list(cache.values()) == [b"test", b"test2"]
+        assert list(cache.key_counts()) == [("bar", 1), ("foo", 1)]
+
+        # Delete an entry from the dictionary
+        del cache["bar"]
+
+        # Delete the last key
+        del cache["foo"]
+
+        # Deleting a non-existing entry should raise an exception
+        with pytest.raises(KeyError):
+            del cache["foo"]
+
+        # Accessing a non-existing entry should raise an exception
+        with pytest.raises(KeyError):
+            cache["foo"]
+
+
 def test_session_management():
     with Database(':memory:') as db:
         # Create and delete sessions
@@ -91,7 +227,7 @@ def test_user_management():
     with Database(":memory:") as db:
         # Some user data
         user_1 = User(**{
-            "uid": 1,
+            "uid": 2,
             "name": "jdoe",
             "display_name": "Joane Doe",
             "role": "admin",
@@ -100,7 +236,7 @@ def test_user_management():
             "reset_password": True,
         })
         user_2 = User(**{
-            "uid": 2,
+            "uid": None, # This will automatically generate a uid
             "name": "jdoe2",
             "display_name": "Jo Doe",
             "role": "inactive",
@@ -111,24 +247,23 @@ def test_user_management():
 
         # Create two users
         assert len(db.list_users()) == 0
-        assert db.create_user(
-            **{x: y
-               for x, y in asdict(user_1).items() if x != "uid"}) == 1
-        assert db.create_user(
-            **{x: y
-               for x, y in asdict(user_2).items() if x != "uid"}) == 2
+        assert db.create_user(user_1) == 2
+        assert db.create_user(user_2) == 3
+
+        # Update the uid
+        user_2.uid = 3
 
         assert db.list_users() == [user_1, user_2]
 
         assert db.get_user_by_name("jdoe") == user_1
-        assert db.get_user_by_id(1) == user_1
+        assert db.get_user_by_id(user_1.uid) == user_1
         assert db.get_user_by_name("jdoe2") == user_2
-        assert db.get_user_by_id(2) == user_2
+        assert db.get_user_by_id(user_2.uid) == user_2
         assert db.get_user_by_name("jdoe3") is None
-        assert db.get_user_by_id(3) is None
+        assert db.get_user_by_id(100) is None
 
-        assert db.delete_user(3) == False
-        assert db.delete_user(2) == True
-        assert db.get_user_by_id(2) is None
+        assert db.delete_user(100) == False
+        assert db.delete_user(user_2.uid) == True
+        assert db.get_user_by_id(user_2.uid) is None
         assert db.list_users() == [user_1,]
 
