@@ -19,7 +19,7 @@ import http.server
 import json
 import traceback
 
-from tivua.api import ValidationError, AuthentificationError, NotFoundError
+from tivua.api import *
 
 ################################################################################
 # LOGGER                                                                       #
@@ -296,6 +296,9 @@ def _internal_wrap_api_handler(cback,
         except NotFoundError:
             response_code = 404
             obj = {"status": "error", "what": "%server_error_not_found"}
+        except ConflictError:
+            response_code = 409
+            obj = {"status": "error", "what": "%server_error_conflict"}
         except Exception as e:
             response_code = 500
             obj = {"status": "error", "what": "%server_error_unknown"}
@@ -404,6 +407,41 @@ def _api_get_posts_list(api):
 
     return _internal_wrap_api_handler(_handler, api=api)
 
+def _api_post_posts_create(api):
+    def _handler(req, query, match, session, body):
+        # Make sure there is no pid, cuid, or ctime in the body
+        if ("pid" in body) or ("cuid" in body) or ("ctime" in body):
+            raise ValidationError()
+
+        # Set the cuid and ctime
+        body["cuid"] = session["uid"]
+        body["ctime"] = api.db.now()
+
+        # Try to create the post
+        return api.create_post(body)
+
+    return _internal_wrap_api_handler(_handler, field="post", api=api)
+
+def _api_post_posts_update(api):
+    def _handler(req, query, match, session, body):
+        # Make sure there is no pid, cuid, or ctime in the body
+        if ("pid" in body) or ("cuid" in body) or ("ctime" in body):
+            raise ValidationError()
+
+        # Set the pid
+        try:
+            body["pid"] = int(query["pid"][0]) if "pid" in query else "nan"
+        except:
+            raise ValidationError()
+
+        # Set the cuid and ctime
+        body["cuid"] = session["uid"]
+        body["ctime"] = api.db.now()
+
+        # Try to update an already existing post
+        return api.update_post(body)
+
+    return _internal_wrap_api_handler(_handler, field="post", api=api)
 
 def _api_get_post(api):
     def _handler(req, query, match, session, body):
@@ -596,7 +634,7 @@ def create_server_class(api, args):
 
         # If development is disabled, answer with a 404 when any non-minified
         # sources are requested
-        Route("GET", r"^/(lib|scripts|styles)/(?!.*(\.min\.js|\.min\.css)).*$", _handle_error(404)) \
+        Route("GET", r"^/(lib|scripts|styles)/(?!(.*(\.min\.js|\.min\.css)|dict/|fonts/)).*$", _handle_error(404)) \
             if no_dev else None,
 
         # Re-route the request for the favicon to the images subfolder
@@ -614,10 +652,11 @@ def create_server_class(api, args):
         Route("GET", r"^/api/session/login/challenge$", _api_get_login_challenge(api)),
         Route("POST", r"^/api/session/logout$", _api_post_logout(api)),
         Route("GET", r"^/api/posts/list$", _api_get_posts_list(api)),
+        Route("POST", r"^/api/posts/create$", _api_post_posts_create(api)),
         Route("GET", r"^/api/posts$", _api_get_post(api)),
+        Route("POST", r"^/api/posts$", _api_post_posts_update(api)),
         Route("GET", r"^/api/users/list$", _api_get_users_list(api)),
         Route("GET", r"^/api/keywords/list$", _api_get_keywords_list(api)),
-
 
         # Unkown API requests
         Route("*", r"^/(api/.*|api)$", _api_error(404)),

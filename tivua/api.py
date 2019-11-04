@@ -23,13 +23,9 @@ database calls.
 @author Andreas Stöckel
 """
 
-import re, os, json
-from dataclasses import astuple, asdict
-from tivua.database import Transaction
-
 ################################################################################
-# LOGGER                                                                       #
-################################################################################
+# LOGGING                                                                      #
+###############################################################################
 
 import logging
 logger = logging.getLogger(__name__)
@@ -38,8 +34,16 @@ logger = logging.getLogger(__name__)
 # PUBLIC INTERFACE                                                             #
 ################################################################################
 
+import re, os, json
+from dataclasses import astuple, asdict
+
+from tivua.database import Transaction, Post, User
+
 
 class ValidationError(ValueError):
+    """
+    Exception raised whenever a user-provided value could not be validated.
+    """
     pass
 
 
@@ -48,6 +52,10 @@ class AuthentificationError(RuntimeError):
 
 
 class NotFoundError(RuntimeError):
+    pass
+
+
+class ConflictError(RuntimeError):
     pass
 
 
@@ -63,17 +71,36 @@ class API:
         least one user and that all configuration options exist.
         """
         self.db = db
-        if perform_initialisation:
+        self.perform_initialisation = perform_initialisation
+        self._init()
+
+    def __enter__(self):
+        """
+        Opens the underlying database.
+        """
+        self.db.__enter__()
+        self._init()
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        """
+        Closes the underlying database
+        """
+        self.db.__exit__(exc_type, exc_value, traceback)
+
+    def _init(self):
+        if self.db.open and self.perform_initialisation:
             with Transaction(self.db):
                 self._init_configuration()
                 self._init_users()
+            self.perform_initialisation = False
 
     def _init_configuration(self):
         """
         Initialises non-existent configuration keys to default values.
         """
         # Fetch the config dict
-        config = self.db.config
+        config = self.db.configuration
 
         # Generate the cryptographic salt used to hash passwords
         if not ("salt" in config):
@@ -108,12 +135,48 @@ class API:
 
         # Actually create the user
         self.db.create_user(
-            name='admin',
-            display_name='Admin',
-            role='admin',
-            auth_method='password',
-            password=self._hash_password(password),
-            reset_password=True)
+            User(
+                name='admin',
+                display_name='Admin',
+                role='admin',
+                auth_method='password',
+                password=self._hash_password(password),
+                reset_password=True))
+
+    ############################################################################
+    # Helper functions                                                         #
+    ############################################################################
+
+    @staticmethod
+    def _is_type_or_none(o, type_):
+        """
+        Makes sure the given object o is either None or of the given type.
+        """
+        if o is None:
+            return True
+        elif isinstance(o, type_):
+            return True
+        elif (type_ is bool) and type(o) is int:
+            return True # Allow conversion from int -> bool
+        else:
+            return False
+
+    @staticmethod
+    def _dataclass_from_dict(D, x):
+        """
+        Instantiates the given dataclass "D" from a dictionary "x".
+        In particular, only passes the keys in "x" to the data class constructor
+        that are also valid fields in the dataclass.
+        """
+        keys = set(D.__dataclass_fields__.keys()) & set(x.keys())
+        return D(**{key: x[key] for key in keys})
+
+    @staticmethod
+    def _dataclass_check_types(o):
+        for name, field in o.__dataclass_fields__.items():
+            if not API._is_type_or_none(getattr(o, name), field.type):
+                logger.debug("Expected {} but got {}".format(str(field.type), type(getattr(o, name))))
+                raise ValidationError("%server_error_invalid_type")
 
     ############################################################################
     # Configuration                                                            #
@@ -125,7 +188,7 @@ class API:
         options.
         """
         with Transaction(self.db):
-            c = self.db.config
+            c = self.db.configuration
             return {
                 "login_methods": {
                     "username_password":
@@ -162,7 +225,7 @@ class API:
         if isinstance(password, str):
             password = password.encode("utf-8")
         if salt is None:
-            salt = self.db.config["salt"]
+            salt = self.db.configuration["salt"]
         if isinstance(salt, str):
             if not API.HEX64_RE.match(salt):
                 raise ValidationError()
@@ -208,7 +271,7 @@ class API:
     CHALLENGE_TIMEOUT = 60  # one minute timeout for actually using a challenge
 
     # Regular expression describing a valid user name
-    USER_RE = re.compile("^[a-z0-9._-]{3,16}$")
+    USER_RE = re.compile("^[a-z0-9._-]{2,16}$")
 
     # Possible user permissions
     PERM_CAN_READ = 1
@@ -249,7 +312,7 @@ class API:
             self.db.challenges[challenge] = self.db.now()
 
             # Return a challenge object ready to be sent to the client
-            return {"salt": self.db.config["salt"], "challenge": challenge}
+            return {"salt": self.db.configuration["salt"], "challenge": challenge}
 
     def _check_password_login_challenge(self, challenge):
         """
@@ -432,10 +495,10 @@ class API:
         """
         Merges the currently stored settings with the given settings object.
         Returns the updated settings object.
-
-        TODO: Provide method to not update the settings, as currently an
-        ill-behaving client has no chance to remove setting keys.
         """
+
+        # TODO: Provide method to not update the settings, as currently an
+        # ill-behaving client has no chance to remove setting keys.
 
         # Make sure the "settings" object is a dictionary
         if not isinstance(settings, dict):
@@ -459,16 +522,126 @@ class API:
             return settings
 
     ############################################################################
-    # Posts                                                                    #
+    # Posts and keywords                                                       #
     ############################################################################
 
+    # Minimum length of a single keyword
+    KEYWORDS_MIN_LEN = 2
+
+    # Maximum length of a single keyword
+    KEYWORDS_MAX_LEN = 30
+
+    # Maximum number of keywords per post
+    KEYWORDS_MAX_COUNT = 10
+
+    # Regular expression used to split a keyword into individual keywords
+    KEYWORDS_SPLIT_RE = re.compile("[\n;:().,!?/]")
+
     @staticmethod
-    def _post_split_keywords(post):
+    def coerce_keywords(keywords):
+        """
+        Either converts a list of keywords or a keywords string into a valid
+        keywords string exactly as it is being stored in the database.
+        """
+
+        # Just do nothing if there are no keywords
+        if keywords is None:
+            return None
+
+        # Temporarily convert the keywords into a list
+        if isinstance(keywords, list):
+            keywords_list = keywords
+        elif isinstance(keywords, str):
+            keywords_list = re.split(API.KEYWORDS_SPLIT_RE, keywords)
+        else:
+            raise ValidationError("%server_error_invalid_type")
+
+        # Trim any whitespace and convert to lowercase
+        keywords_list = map(lambda x: x.strip().lower(), keywords_list)
+
+        # Remove empty keywords, convert the iterator to a list
+        keywords_list = list(filter(lambda x: x, keywords_list))
+
+        # Convert the keywords to a list and check that the total number of
+        # keywords does not exceed the maximum
+        if len(keywords_list) > API.KEYWORDS_MAX_COUNT:
+            raise ValidationError("%server_error_too_many_keywords")
+
+        # Remove duplicates while preserving their order
+        keywords_set = set()
+        i = 0
+        while i < len(keywords_list):
+            keyword = keywords_list[i]
+            if keyword in keywords_set:
+                del keywords_list[i]
+            else:
+                keywords_set.add(keyword)
+                i += 1
+
+        # Make sure the keywords are not longer or shorter than the minimum/
+        # maximum length
+        for keyword in keywords_list:
+            if (len(keyword) > API.KEYWORDS_MAX_LEN) or (len(keyword) <
+                                                         API.KEYWORDS_MIN_LEN):
+                raise ValidationError("%server_error_invalid_keyword_len")
+
+        # Return a string with the keywords separated by ","
+        return ",".join(keywords_list)
+
+    @staticmethod
+    def coerce_post(post):
+        """
+        Converts a dictionary describing a post into a tivua.database.Post
+        object.
+        """
+        # Convert the post to a Post object
+        p = Post(**post)
+
+        # There must be either an author or a cuid
+        if (p.author is None) and (p.cuid is None):
+            raise ValidationError("%server_error_require_author_or_cuid")
+        elif p.author is None:
+            p.author = p.cuid
+        elif p.cuid is None:
+            p.cuid = p.author
+
+        # There must be either a ctime or a date
+        if (p.ctime is None) and (p.date is None):
+            raise ValueError("%server_error_equire_date_or_ctime")
+        elif p.ctime is None:
+            p.ctime = p.date
+        elif p.date is None:
+            p.date = p.ctime
+
+        # Coerce the keywords
+        p.keywords = API.coerce_keywords(p.keywords)
+
+        # Make sure all types are correct
+        API._dataclass_check_types(p)
+
+        return p
+
+    @staticmethod
+    def _split(s, r=","):
+        return list(filter(lambda x: x, s.split(r)))
+
+    @staticmethod
+    def _post_to_dict(post):
         """
         Helper function that splits post keywords into an array before returning
-        them the callers of the post functions.
+        them to the callers of the post functions.
         """
-        post["keywords"] = post["keywords"].split(",")
+
+        # Return nothing if the post object is empty
+        if post is None:
+            return None
+
+        # Convert the post object dataclass to a dictionary
+        post = asdict(post)
+
+        # Convert the keywords to a list
+        post["keywords"] = API._split(post["keywords"])
+
         return post
 
     def get_post_list(self, start, limit):
@@ -477,24 +650,98 @@ class API:
         """
 
         # Make sure the given parameters are valid
-        if not (isinstance(start, int) and isinstance(limit, int) and start >= 0):
+        if not (isinstance(start, int) and isinstance(limit, int)
+                and start >= 0):
             raise ValidationError()
 
         # Select the posts
         posts = self.db.list_posts(start, limit)
 
         # Convert the posts to dictionaries
-        return list(map(API._post_split_keywords, map(asdict, posts)))
+        return list(map(API._post_to_dict, posts))
 
     def get_post(self, pid):
         """
         Returns the post with the given PID or None if the post does not exist.
         """
-        post = self.db.get_post(pid)
-        return None if post is None else API._post_split_keywords(asdict(post))
+        return API._post_to_dict(self.db.get_post(pid))
 
     def get_total_post_count(self):
+        """
+        Returns the total number of posts.
+        """
         return self.db.total_post_count()
+
+    def create_post(self, post):
+        """
+        Creates a new post.
+        """
+
+        # Coerce the post into a new Post object, make sure the pid is set to
+        # "None"; otherwise the post would not get its own pid
+        p = API.coerce_post(post)
+        if not p.pid is None:
+            raise ValidationError()
+
+        # The revision must be set to zero
+        if p.revision != 0:
+            raise ValidationError()
+
+        # Insert the post into the database
+        with Transaction(self.db):
+            # Create the post in the database
+            p.pid = self.db.create_post(p)
+
+            # Insert keywords
+            keywords = self.db.keywords
+            for keyword in API._split(p.keywords):
+                keywords[keyword] = p.pid
+
+            # Convert the post back to a dictionary
+            return API._post_to_dict(p)
+
+    def update_post(self, post):
+        """
+        Updates an already existing post.
+        """
+
+        # Coerce the given post into a Post object, make sure the pid is set
+        p = API.coerce_post(post)
+        if p.pid is None:
+            raise ValidationError()
+
+        with Transaction(self.db):
+            # Fetch the post that is supposed to be updated
+            pid = p.pid
+            old_post = self.db.get_post(pid)
+            if old_post is None:
+                raise NotFoundError()
+
+            # Make sure that the revision of the given post is equal to the
+            # revision of the old post; increment the revision of the post that
+            # is to be stored.
+            if old_post.revision != p.revision:
+                raise ConflictError()
+            p.revision += 1
+
+            # Insert the old post into the history table
+            self.db.create_post(old_post, history=True)
+
+            # Remove keywords associated with the old post
+            keywords = self.db.keywords
+            for keyword in API._split(old_post.keywords):
+                keywords[keyword] = keywords[keyword] - {pid,}
+
+            # Update the post in the normal posts table
+            if self.db.update_post(p) == 0:
+                raise NotFoundError()
+
+            # Insert the new keywords
+            keywords = self.db.keywords
+            for keyword in API._split(p.keywords):
+                keywords[keyword] = pid
+
+            return API._post_to_dict(p)
 
     ############################################################################
     # Keywords                                                                 #
@@ -502,13 +749,93 @@ class API:
 
     def get_keyword_list(self):
         """
-        Returns a list of used keywords.
+        Returns an object containing the used keywords and their absolute
+        counts.
         """
-        return self.db.get_keyword_list()
+        return {key: count for key, count in self.db.keywords.key_counts()}
 
     ############################################################################
     # Users                                                                    #
     ############################################################################
+
+    # Replacements used to construct user names; in particular, transcribe
+    # German umlauts correctly
+    USERNAME_REPLACEMENTS = {
+        "ö": "oe",
+        "ä": "ae",
+        "ü": "ue",
+        "ß": "ss",
+        "ð": "dh",
+        "þ": "th",
+    }
+
+    # Maximum length of the display_name property
+    MAX_DISPLAY_NAME_LEN = 32
+
+    @staticmethod
+    def make_username(name):
+        """
+        Creates a username from a display name.
+        """
+        import unicodedata
+
+        # Try to split the name into first and last name
+        parts = API._split(name.strip().lower(), " ")
+        if (len(parts) == 0):
+            raise ValidationError("Name may not be empty")
+        elif (len(parts) == 1):
+            username = parts[0]
+        else:
+            username = parts[0][0] + parts[-1]
+
+        # Apply some replacements
+        for src, tar in API.USERNAME_REPLACEMENTS.items():
+            username = username.replace(src, tar)
+
+        # Convert the string to ascii
+        username = unicodedata.normalize('NFKD', username)
+        return str(username.encode('ascii', 'ignore'), 'ascii')[0:8]
+
+    @staticmethod
+    def coerce_user(user):
+        """
+        Turns a "user" dictionary into a valid tivua.database.User object.
+        Throws a ValidationError exception in case the user dictionary is
+        invalid.
+        """
+
+        # Try to create a User object
+        u = API._dataclass_from_dict(User, user)
+
+        # One of name and display_name is mandatory
+        if (u.name is None) and (u.display_name is None):
+            raise ValidationError("%server_error_no_name")
+        elif u.name is None:
+            u.name = API.make_username(u.display_name)
+
+        # Strip the name and the display name
+        u.name = u.name.strip().lower()
+        if u.display_name:
+            u.display_name = u.display_name.strip()
+
+            # Capitalise the first letter of the display name
+            if len(u.display_name) > 0:
+                u.display_name = u.display_name[0:1].upper(
+                ) + u.display_name[1:]
+
+            # Make sure the display name is not longer than the given display
+            # name
+            if len(u.display_name) > API.MAX_DISPLAY_NAME_LEN:
+                raise ValidationError("%server_error_invalid_display_name")
+
+        # Make sure the name matches the user name regular expression
+        if not API.USER_RE.match(u.name):
+            raise ValidationError("%server_error_invalid_name")
+
+        # Make sure all types are correct
+        API._dataclass_check_types(u)
+
+        return u
 
     def get_user_list(self, include_credentials=False):
         """
@@ -526,8 +853,111 @@ class API:
                 del user_dict["auth_method"]
                 del user_dict["reset_password"]
 
-            # Always remove the password hash from the user dictionary.
+            # Always remove the password hash from the user dictionary
             del user_dict["password"]
 
             res[user.uid] = user_dict
         return res
+
+    ############################################################################
+    # Export and import                                                        #
+    ############################################################################
+
+    def _rebuild_keywords(self):
+        """
+        Given the current list of posts, rebuilds the index that maps keywords
+        onto a set of posts. This function is used after importing a backup.
+        """
+        with Transaction(self.db):
+            # Delete all keywords
+            self.db.keywords.clear()
+
+            # List all posts and construct a mapping between posts and keywords
+            keywords = {}
+            for post in self.db.list_posts():
+                for keyword in API._split(post.keywords):
+                    if keyword in keywords:
+                        keywords[keyword].add(post.pid)
+                    else:
+                        keywords[keyword] = {post.pid,}
+
+            # Insert the keywords into the database; the keywords dictionary
+            # is a MultiDict, i.e., it stores a set per keyword
+            for keyword, pids in keywords.items():
+                self.db.keywords[keyword] = pids
+
+    def export_to_object(self):
+        """
+        Exports the entire database into a JSON serialisable object. Some tables
+        with volatile data (such as the "cache", "challenges", and "sessions"
+        tables) will not be exported.
+        """
+        with Transaction(self.db) as t:
+            # Export the configuration options
+            config_obj = {}
+            for key, value in self.db.configuration.items():
+                config_obj[key] = value
+
+            # Export the posts
+            posts_arr = []
+            for post in self.db.list_posts():
+                posts_arr.append(asdict(post))
+
+            # Export the post history
+            posts_history_arr = []
+            for post in self.db.list_posts(history=True):
+                posts_history_arr.append(asdict(post))
+
+            # Export the users
+            users_arr = []
+            for user in self.db.list_users():
+                users_arr.append(asdict(user))
+
+            # Export the user settings
+            settings_obj = {}
+            for key, value in self.db.settings.items():
+                settings_obj[key] = value
+
+            # Return the completely assembled object
+            return {
+                "configuration": config_obj,
+                "posts": posts_arr,
+                "posts_history": posts_history_arr,
+                "users": users_arr,
+                "settings": settings_obj
+            }
+
+    def import_from_object(self, obj):
+        """
+        Restors a database backup formerly created by the export_to_json
+        function. This will delete the current content of the database.
+
+        @param obj is a Python object that has been deserialised from JSON
+        """
+
+        # Make sure that this operation is atomic
+        with Transaction(self.db):
+            # Delete everything in the database
+            self.db.purge()
+
+            # Go through all restorable tables (i.e., it doesn't make much sense
+            # to backup the challenges, sessions, cache, keywords tables).
+            if "configuration" in obj:
+                for key, value in obj["configuration"].items():
+                    self.db.configuration[key] = value
+            if "posts" in obj:
+                for post in obj["posts"]:
+                    self.db.create_post(API.coerce_post(post))
+            if "posts_history" in obj:
+                for post in obj["posts_history"]:
+                    self.db.create_post(API.coerce_post(post), history=True)
+            if "users" in obj:
+                for user in obj["users"]:
+                    self.db.create_user(API.coerce_user(user))
+            if "settings" in obj:
+                for key, value in obj["settings"].items():
+                    self.db.settings[key] = value
+
+            # Rebuild the keywords table
+            self._rebuild_keywords()
+

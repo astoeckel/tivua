@@ -88,11 +88,12 @@ def create_parser_export():
 # MAIN PROGRAM                                                                 #
 ################################################################################
 
-def _parse_default_args(parser_ctor, argv):
+def _parse_default_args(parser_ctor, argv, perform_initialisation=False):
     """
     Helper function that parses the arguments shared by all Tivua sub-programs.
     """
     import tivua.database
+    import tivua.api
 
     # Create the argument parser and parse the provided arguments
     args = parser_ctor().parse_args(argv)
@@ -104,7 +105,10 @@ def _parse_default_args(parser_ctor, argv):
     # Open the database
     db = tivua.database.Database(args.db)
 
-    return args, db
+    # Create the api object and connect it to the database
+    api = tivua.api.API(db, perform_initialisation)
+
+    return args, api
 
 def main_serve(argv):
     import tivua.server
@@ -116,13 +120,11 @@ def main_serve(argv):
     socketserver.TCPServer.allow_reuse_address = True
 
     # Parse the command line arguments
-    args, db = _parse_default_args(create_parser_serve, argv)
+    args, api = _parse_default_args(create_parser_serve, argv, 
+        perform_initialisation=True)
 
     # Open the database connection
-    with db:
-        # Create an API instance and connect the database to it
-        api = tivua.api.API(db)
-
+    with api:
         # Start the HTTP server
         Server = tivua.server.create_server_class(api, args)
         with socketserver.TCPServer((args.bind, args.port), Server) as httpd:
@@ -134,12 +136,11 @@ def main_serve(argv):
 
 def main_import(argv):
     import time, sys, json, datetime
-    import tivua.database
 
     # Parse the command line arguments
-    args, db = _parse_default_args(create_parser_import, argv)
+    args, api = _parse_default_args(create_parser_import, argv)
 
-    # Open the target file
+    # Open the source file
     if args.file == '-':
         file = sys.stdin
         must_close_file = False
@@ -149,7 +150,7 @@ def main_import(argv):
 
     try:
         # Open the database
-        with db:
+        with api:
             # Deserialise the provided JSON file
             obj = json.load(file)
 
@@ -157,12 +158,12 @@ def main_import(argv):
             backup_filename = '.tivua_backup_{date:%Y-%m-%d_%H_%M_%S}.json'.format(date=datetime.datetime.now())
             logger.warning('Writing database backup to \"{}\"'.format(backup_filename))
             with open(backup_filename, 'w') as backup_file:
-                json.dump(db.export_to_json(), backup_file)
+                json.dump(api.export_to_object(), backup_file, indent=4)
+                backup_file.write("\n")
 
-            # Import the database
             try:
                 logger.info('Purging the database and importing data...')
-                db.import_from_json(obj)
+                api.import_from_object(obj)
                 logger.info('Done!')
             except:
                 logger.exception('There was an error while importing the data, the database should have been rolled back to its original state.')
@@ -172,12 +173,31 @@ def main_import(argv):
             file.close()
 
 def main_export(argv):
-    import tivua.database
+    import json
 
     # Parse the command line arguments
     args = create_parser_export().parse_args(argv)
 
-    pass
+    # Parse the command line arguments
+    args, api = _parse_default_args(create_parser_import, argv)
+
+    # Open the target file
+    if args.file == '-':
+        file = sys.stdout
+        must_close_file = False
+    else:
+        file = open(args.file, 'w')
+        must_close_file = True
+
+    try:
+        with api:
+            json.dump(api.export_to_object(), file, indent=4)
+        file.write("\n")
+    finally:
+        # Make sure to close the input file
+        if must_close_file:
+            file.close()
+
 
 def main(argv):
     # Setup logging

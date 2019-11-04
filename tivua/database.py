@@ -14,20 +14,33 @@
 #   You should have received a copy of the GNU Affero General Public License
 #   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+"""
+@file database.py
+
+Provides the Database class, an abstraction over the underlying database system.
+The Database class is purely a data store, it does not perform any validation
+of the given data. Furthermore, some operations have to be split into multiple
+database calls. These operations are performed by the API class.
+
+@author Andreas Stöckel
+"""
+
+# Import 
+from tivua.database_dictionary import make_database_dict_class
+from tivua.database_transaction import Transaction
+
 ################################################################################
-# LOGGER                                                                       #
+# LOGGING                                                                      #
 ################################################################################
 
 import logging
 logger = logging.getLogger(__name__)
 
 ################################################################################
-# DATABASE CLASS                                                               #
+# DATA CLASSES                                                                 #
 ################################################################################
 
-import sqlite3
 from dataclasses import dataclass, asdict, astuple
-
 
 @dataclass(order=True)
 class Post:
@@ -52,157 +65,12 @@ class User:
     reset_password: bool = True
 
 
-class DatabaseKeyValueStore:
-    """
-    The DatabaseKeyValueStore class provides a key value store on top of a
-    SQLite table containing the columns "key" and "value", where "key" is a
-    primary key. It implements a persistent dictionary.
+################################################################################
+# DATABASE CLASS                                                               #
+################################################################################
 
-    Instances of this class should not be created by the user -- the Database
-    class will create such instances as part of its "config" and "cache"
-    properties.
-    """
-
-    def __init__(self, db, table):
-        """
-        Constructor of the DatabaseKeyValueStore class. Copies the given
-        parameters.
-
-        @param conn is the database connection
-        @param table is the table the DatabaseKeyValueStore should operate on.
-        """
-        self.db = db
-        self.table = table
-
-    def lookup(self, key):
-        """
-        Looks up the given key. Returns the associated value or None if the
-        key-value pair does not exist.
-
-        @param key is the key that should be looked up.
-        """
-        with Transaction(self.db) as t:
-            t.execute("SELECT value FROM {} WHERE key = ?".format(self.table),
-                      (key, ))
-            return t.fetchone()[0]
-
-    def __contains__(self, key):
-        with Transaction(self.db) as t:
-            t.execute("SELECT 1 FROM {} WHERE key = ?".format(self.table),
-                      (key, ))
-            return bool(t.fetchone())
-
-    def __delitem__(self, key):
-        with Transaction(self.db) as t:
-            t.execute("DELETE FROM {} WHERE key = ?".format(self.table),
-                      (key, ))
-            if t.rowcount == 0:
-                raise KeyError(key)
-
-    def __getitem__(self, key):
-        res = self.lookup(key)
-        if res is None:
-            raise KeyError(key)
-        return res
-
-    def __setitem__(self, key, value):
-        with Transaction(self.db) as t:
-            t.execute(
-                "INSERT INTO {}(key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value=?"
-                .format(self.table), (key, value, value))
-
-
-class Transaction:
-    """
-    The Transaction helper implements nested transactions ontop of the Database
-    class. All commands executed within one transaction are atomic, that is
-    either the entire transaction is applied, or none of it. This class is
-    intended to be used with the "with-resources" statement. In case an
-    exception occurs inside of a transaction, the transaction is completely
-    rolled back.
-
-    The Transaction class implements part of the Cursor interface.
-    """
-
-    class NoneArray:
-        def __bool__(self):
-            return False
-
-        def __getitem__(self, key):
-            return None
-
-    def __init__(self, db):
-        self.db = db
-        self.cursor = None
-        self.level = None
-        self.savepoint = None
-        self.parent = None
-
-    def __enter__(self):
-        # Make sure we do not double-enter the same transaction object
-        assert self.cursor is None
-
-        # If there is another transaction active at the moment, inherit the
-        # level from that transaction
-        if self.db.transaction:
-            self.level = self.db.transaction.level + 1
-            self.parent = self.db.transaction
-        else:
-            self.level = 0
-            self.parent = None
-
-        # Set this transaction as the current transaction
-        self.db.transaction = self
-
-        # Create a unique savepoint name
-        self.savepoint = "sp_{}".format(self.level)
-
-        # Start a new sqlite transaction
-        self.cursor = self.db.conn.cursor()
-        self.cursor.execute("SAVEPOINT {}".format(self.savepoint))
-
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        # Make sure we actually entered the transaction
-        assert not self.cursor is None
-
-        # Reset the transaction object
-        self.db.transaction = self.parent
-
-        # Either rollback or commit the transaction, depending on whether
-        # there was an exception
-        if exc_type is None:
-            self.cursor.execute("RELEASE {}".format(self.savepoint))
-        else:
-            logger.debug("Rolling back transaction {}".format(self.savepoint))
-            self.cursor.execute("ROLLBACK TO {}".format(self.savepoint))
-
-        # Reset the level and cursor variables
-        self.level, self.parent, self.savepoint, self.cursor = [None] * 4
-
-    def execute(self, *args, **kwargs):
-        return self.cursor.execute(*args, **kwargs)
-
-    def fetchone(self, *args, **kwargs):
-        res = self.cursor.fetchone(*args, **kwargs)
-        if res is None:
-            return Transaction.NoneArray()  # Allow subscripts
-        return res
-
-    def fetchall(self, *args, **kwargs):
-        return self.cursor.fetchall(*args, **kwargs)
-
-    @property
-    def rowcount(self):
-        assert not self.cursor is None
-        return self.cursor.rowcount
-
-    @property
-    def lastrowid(self):
-        assert not self.cursor is None
-        return self.cursor.lastrowid
-
+class SchemaOutOfDateError(RuntimeError):
+    pass
 
 class Database:
     """
@@ -210,6 +78,11 @@ class Database:
     user information is stored. The Database object has to be used in
     conjunction with the Python "with" statement; the database will be opened
     upon entering the statement and closed when leaving the statement.
+
+    This class does not perform (much) validation of the given data, and some
+    of these operations on their own may negatively impact the consistency of
+    the data (e.g., adding posts without also updating the keywords table). Use
+    the functions in the API class instead of directly calling Database methods.
     """
 
     #
@@ -234,6 +107,7 @@ class Database:
             revision INTEGER,
             author INTEGER,
             content TEXT,
+            keywords TEXT,
             date INTEGER,
             ctime INTEGER,
             cuid INTEGER,
@@ -242,7 +116,8 @@ class Database:
         "keywords":
         """CREATE TABLE keywords(
             keyword TEXT,
-            pid INTEGER
+            pid INTEGER,
+            CONSTRAINT unique_keyword_pid UNIQUE (keyword, pid)
         )""",
         "users":
         """CREATE TABLE users(
@@ -263,8 +138,8 @@ class Database:
         )""",
         "challenges":
         """CREATE TABLE challenges(
-            key TEXT PRIMARY KEY,
-            value INTEGER
+            challenge TEXT PRIMARY KEY,
+            ctime INTEGER
         )""",
         "cache":
         """CREATE TABLE cache(
@@ -278,10 +153,18 @@ class Database:
         )""",
         "settings":
         """CREATE TABLE settings(
-            key INT PRIMARY KEY,
-            value TEXT
+            uid INT PRIMARY KEY,
+            obj TEXT
         )""",
     }
+
+    # Dictionary type used to store keywords. This is a special dictionary type
+    # that assigns a set
+    KeywordsDict = make_database_dict_class("keywords", "keyword", "pid", True)
+    ChallengesDict = make_database_dict_class("challenges", "challenge", "ctime")
+    CacheDict = make_database_dict_class("cache")
+    ConfigurationDict = make_database_dict_class("configuration")
+    SettingsDict = make_database_dict_class("settings", "uid", "obj")
 
     def __init__(self, filename=":memory:"):
         """
@@ -294,6 +177,7 @@ class Database:
         """
         self.filename = filename
         self.transaction = None
+        self.conn = None
 
     def __enter__(self):
         """
@@ -304,6 +188,7 @@ class Database:
 
         # Open the database with isolation_level=None, which disables the commit
         # logic of the Python wrapper
+        import sqlite3
         self.conn = sqlite3.connect(self.filename, isolation_level=None)
 
         # Prepate the database for first-time use
@@ -322,6 +207,7 @@ class Database:
 
         # Closes the connection
         self.conn.close()
+        self.conn = None
 
     def _configure_db(self):
         """
@@ -350,27 +236,29 @@ class Database:
                 logger.debug("Creating table \"{}\"".format(table))
                 c.execute(sql)
             elif canonicalise_whitespace.sub(res[0], " ") != sql:
-                raise Exception(
+                raise SchemaOutOfDateError(
                     ("Table \"{}\" is out of date. Please upgrade to a new " +
-                     "database by exporting your current Tivua DB and " +
-                     "importing it into a new instance.").format(table))
+                     "database by exporting your current database using the " +
+                     "old Tivua version and then importing the backup into a " +
+                     "new instance.").format(table))
 
     def _create_indices(self):
         """
         Creates all indices required for efficient operation of the database.
         """
-        c = self.conn.cursor()
-        c.execute(
-            """CREATE INDEX IF NOT EXISTS keywords_pid_index ON keywords(pid)"""
-        )
-        c.execute(
-            """CREATE INDEX IF NOT EXISTS keywords_keyword_index ON keywords(keyword)"""
-        )
-        c.execute(
-            """CREATE INDEX IF NOT EXISTS posts_date_index ON posts(date DESC)"""
-        )
-        c.execute(
-            """CREATE INDEX IF NOT EXISTS posts_pid_index ON posts(pid)""")
+        with Transaction(self) as t:
+            t.execute(
+                """CREATE INDEX IF NOT EXISTS posts_date_index ON posts(date DESC)"""
+            )
+            t.execute(
+                """CREATE INDEX IF NOT EXISTS posts_pid_index ON posts(pid)""")
+            t.execute(
+                """CREATE INDEX IF NOT EXISTS keywords_keyword_index ON keywords(keyword ASC)"""
+            )
+
+    @property
+    def open(self):
+        return self.conn != None
 
     @staticmethod
     def now():
@@ -386,7 +274,12 @@ class Database:
         Returns a Unix timestamp corresponding to noon, today, in UTC.
         """
         from datetime import date, datetime, timezone
+
+        # Fetch today's date
         today = date.today()
+
+        # Create a new UNIX timestamp pointing at the same date as today, but
+        # at noon, UTC.
         return int(
             datetime(
                 today.year,
@@ -406,28 +299,40 @@ class Database:
 
         self.conn.create_function("now", 0, Database.now)
 
+    def purge(self):
+        """
+        Resets the database to its initial state, deleting everything.
+        """
+        with Transaction(self) as t:
+            for table in Database.SQL_TABLES.keys():
+                t.execute("""DELETE FROM {}""".format(table))
+
     ############################################################################
-    # Configuration and cache dictionaries                                     #
+    # Key-value stores                                                         #
     ############################################################################
 
     @property
-    def config(self):
-        return DatabaseKeyValueStore(self, "configuration")
-
-    @property
-    def settings(self):
-        return DatabaseKeyValueStore(self, "settings")
-
-    @property
-    def cache(self):
-        return DatabaseKeyValueStore(self, "cache")
+    def keywords(self):
+        return Database.KeywordsDict(self)
 
     @property
     def challenges(self):
-        return DatabaseKeyValueStore(self, "challenges")
+        return Database.ChallengesDict(self)
+
+    @property
+    def cache(self):
+        return Database.CacheDict(self)
+
+    @property
+    def configuration(self):
+        return Database.ConfigurationDict(self)
+
+    @property
+    def settings(self):
+        return Database.SettingsDict(self)
 
     ############################################################################
-    # Session management                                                       #
+    # Challenges management                                                    #
     ############################################################################
 
     def purge_stale_challenges(self, max_age):
@@ -435,9 +340,13 @@ class Database:
         Deletes challenges older than the specified maximum age.
         """
         with Transaction(self) as t:
-            t.execute("DELETE FROM challenges WHERE now() - value > ?",
+            t.execute("DELETE FROM challenges WHERE now() - ctime > ?",
                       (max_age, ))
             return t.rowcount > 0
+
+    ############################################################################
+    # Session management                                                       #
+    ############################################################################
 
     def purge_stale_sessions(self, max_age):
         """
@@ -487,20 +396,7 @@ class Database:
     # User management                                                          #
     ############################################################################
 
-    @staticmethod
-    def _make_user_from_tuple(t):
-        """
-        Helper-function used to convert a user record to a JSON-like object.
-        """
-        return User(*t) if t else None
-
-    def create_user(self,
-                    name,
-                    display_name,
-                    role,
-                    auth_method,
-                    password="",
-                    reset_password=False):
+    def create_user(self, user):
         """
         Creates a new user with the given properties.
         """
@@ -508,10 +404,8 @@ class Database:
             t.execute(
                 """
                 INSERT INTO users
-                (name, display_name, role, auth_method, password, reset_password)
-                VALUES (?, ?, ?, ?, ?, ?)""",
-                (name.lower(), display_name, role, auth_method, password,
-                 reset_password))
+                (uid, name, display_name, role, auth_method, password, reset_password)
+                VALUES (?, ?, ?, ?, ?, ?, ?)""", astuple(user))
             return t.lastrowid
 
     def delete_user(self, uid):
@@ -530,7 +424,7 @@ class Database:
             t.execute("""SELECT uid, name, display_name, role, auth_method,
                                 password, reset_password
                          FROM users ORDER BY uid""")
-            return list(map(self._make_user_from_tuple, t.fetchall()))
+            return t.fetchall_dataclass(User)
 
     def get_user_by_name(self, user_name):
         """
@@ -540,7 +434,7 @@ class Database:
         with Transaction(self) as t:
             t.execute("""SELECT * FROM users WHERE name=? LIMIT 1""",
                       (user_name, ))
-            return self._make_user_from_tuple(t.fetchone())
+            return t.fetchone_dataclass(User)
 
     def get_user_by_id(self, uid):
         """
@@ -552,36 +446,54 @@ class Database:
         with Transaction(self) as t:
             t.execute("""SELECT * FROM users WHERE uid=? LIMIT 1""",
                       (int(uid), ))
-            return self._make_user_from_tuple(t.fetchone())
+            return t.fetchone_dataclass(User)
 
     ############################################################################
     # Posts                                                                    #
     ############################################################################
 
-    @staticmethod
-    def _make_post_from_tuple(t):
-        """
-        Helper function used to convert a database result to a post.
-        """
-        return Post(*t) if t else None
-
-    def list_posts(self, start=0, limit=-1):
+    def list_posts(self, start=0, limit=-1, history=False):
         """
         Lists the newest revision of each post, ordered by date.
         """
         with Transaction(self) as t:
+            table = "posts_history" if history else "posts"
             t.execute(
-                """SELECT * FROM posts ORDER BY date DESC
-                   LIMIT ? OFFSET ?""", (limit, start))
-            return list(map(lambda x: Post(*(x[0:6])), t.fetchall()))
+                """SELECT * FROM {} ORDER BY date DESC
+                   LIMIT ? OFFSET ?""".format(table), (limit, start))
+            return t.fetchall_dataclass(Post)
+
+    def create_post(self, post, history=False):
+        with Transaction(self) as t:
+            table = "posts_history" if history else "posts"
+            t.execute(
+            """INSERT INTO {}(pid, revision, author, content, keywords,
+                                 date, ctime, cuid)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""".format(table), astuple(post))
+            return t.lastrowid
+
+    def update_post(self, post, history=False):
+        with Transaction(self) as t:
+            # Convert the post to a tuple
+            post = astuple(post)
+
+            # Select the correct target table
+            table = "posts_history" if history else "posts"
+
+            # Execute the update
+            t.execute(
+            """UPDATE {} SET revision=?, author=?, content=?, keywords=?,
+                             date=?, ctime=?, cuid=?
+               WHERE pid=?""".format(table), post[1:] + (post[0],))
+            return t.rowcount > 0
 
     def get_post(self, pid):
         """
         Returns the post with the given pid.
         """
         with Transaction(self) as t:
-            t.execute("""SELECT * FROM posts WHERE pid = ? LIMIT 1""", (pid,))
-            return self._make_post_from_tuple(t.fetchone())
+            t.execute("""SELECT * FROM posts WHERE pid = ? LIMIT 1""", (pid, ))
+            return t.fetchone_dataclass(Post)
 
     def total_post_count(self):
         """
@@ -591,156 +503,10 @@ class Database:
             t.execute("""SELECT COUNT() FROM posts""")
             return t.fetchone()[0]
 
-    ############################################################################
-    # Keywords                                                                 #
-    ############################################################################
 
-    def get_keyword_list(self):
-        with Transaction(self) as t:
-            t.execute("SELECT keyword, COUNT(pid) FROM keywords GROUP BY keyword ORDER BY keyword");
-            return {key: count for key, count in t.fetchall()}
+################################################################################
+# EXPORTS                                                                      #
+################################################################################
 
-    ############################################################################
-    # Export and import                                                        #
-    ############################################################################
-
-    def purge_all(self):
-        # Resets the database to its initial state
-        with Transaction(self) as t:
-            for table in Database.SQL_TABLES.keys():
-                t.execute("""DELETE FROM {}""".format(table))
-
-    def export_to_json(self):
-        # Dumps the database into a JSON serialisable object
-        return None
-
-    def _import_posts_from_json(self, table, obj, import_keywords=True):
-        """
-        Used internally to restore an array of posts from a deserialised JSON
-        object.
-        """
-        keywords = []
-        with Transaction(self) as t:
-            for post in obj:
-                # Convert the post to a Post object
-                p = Post(**post)
-
-                # The post pid is mandatory
-                if p.pid is None:
-                    raise ValueError("Post pid must be set")
-
-                # There must be either an author or a cuid
-                if (p.author is None) and (p.cuid is None):
-                    raise ValueError("Post author or cuid must be set")
-                elif p.author is None:
-                    p.author = p.cuid
-                elif p.cuid is None:
-                    p.cuid = p.author
-
-                # There must be either a ctime or a date
-                if (p.ctime is None) and (p.date is None):
-                    raise ValueError("Post ctime or date must be set")
-                elif p.ctime is None:
-                    p.ctime = p.date
-                elif p.date is None:
-                    p.date = p.ctime
-
-                # Store the keywords
-                for keyword in p.keywords.split(","):
-                    keyword = keyword.strip()
-                    if keyword:
-                        keywords.append((p.pid, keyword))
-
-                # Import the post
-                t.execute(
-                    """INSERT INTO {}(pid, revision, author, content, keywords,
-                                      date, ctime, cuid)
-                             VALUES (?, ?, ?, ?, ?, ?, ?, ?)""".format(table),
-                    astuple(p))
-
-            # Import the keywords
-            if import_keywords:
-                for values in keywords:
-                    t.execute(
-                        """INSERT INTO keywords(pid, keyword) VALUES (?, ?)""",
-                        values)
-
-    def _import_users_from_json(self, obj):
-        """
-        Used internally to restore an array of users from a deserialised JSON
-        object.
-        """
-
-        def _mkusername(name):
-            """
-            Creates a username from a display name
-            """
-            parts = name.trim().split(" ")
-            if (len(parts) == 0):
-                return ""
-            elif (len(parts) == 1):
-                username = parts[0]
-            else:
-                username = name[0].lower() + parts[-1].lower()
-            username = username.replace("ö", "oe")
-            username = username.replace("ä", "ae")
-            username = username.replace("ü", "ue")
-            username = username.replace("ß", "ss")
-            username = str(username.encode("punycode"), "ascii")[0:8]
-            return username
-
-        with Transaction(self) as t:
-            for user in obj:
-                # Convert the user to a User object
-                u = User(**user)
-
-                # The user uid is mandatory
-                if u.uid is None:
-                    raise ValueError("User uid must be set")
-
-                # One of name and display_name is mandatory
-                if (u.name is None) and (u.display_name is None):
-                    raise ValueError("User name or display_name must be set")
-                elif u.name is None:
-                    u.name = _mkusername(u.display_name)
-                elif u.display_name is None:
-                    u.display_name = u.name
-
-                # Make sure the username matches the username regular expression
-                # TODO (Move import/export to API)
-                t.execute(
-                    """INSERT INTO users(uid, name, display_name, role,
-                                         auth_method, password, reset_password)
-                       VALUES(?, ?, ?, ?, ?, ?, ?)""", astuple(u))
-
-    def import_from_json(self, obj):
-        """
-        Restors a database backup formerly created by the export_to_json
-        function. This will delete the current content of the database.
-
-        @param obj is a Python object that has been deserialised from JSON
-        """
-
-        # Make sure that this operation is atomic
-        with Transaction(self):
-            # Delete everything in the database
-            self.purge_all()
-
-            # Go through all restorable tables (i.e., it doesn't make much sense
-            # to backup the challenges, sessions, cache, keywords tables).
-            #            if "configuration" in obj:
-            #                self._import_configuration_from_json(obj["configuration"])
-            if "posts" in obj:
-                self._import_posts_from_json("posts", obj["posts"])
-            if "posts_history" in obj:
-                self._import_posts_from_json(
-                    "posts_history",
-                    obj["posts_history"],
-                    insert_keywords=False)
-            if "users" in obj:
-                self._import_users_from_json(obj["users"])
-
-
-#            if "settings" in obj:
-#                self._import_settings_from_json(obj["settings"])
+__all__ = ["Transaction", "Database", "User", "Post"]
 
