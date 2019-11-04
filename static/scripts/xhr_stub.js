@@ -193,7 +193,7 @@ this.tivua.xhr = (function (window) {
 		post["keywords"] = new_keywords;
 	}
 
-	function create_post(sid, post) {
+	function post_create_post(sid, post) {
 		return new Promise((resolve, reject) => {
 			_check_session(sid);
 			_validate_and_canonicalise_post(post);
@@ -221,8 +221,8 @@ this.tivua.xhr = (function (window) {
 		});
 	}
 
-	function update_post(sid, post) {
-		
+	function post_update_post(sid, pid, post) {
+		// TODO
 	}
 
 	function get_post_list(sid, start, limit) {
@@ -450,8 +450,8 @@ this.tivua.xhr = (function (window) {
 		"get_user_list": get_user_list,
 		"get_keyword_list": get_keyword_list,
 		"get_post": get_post,
-		"create_post": create_post,
-		"update_post": update_post,
+		"post_create_post": post_create_post,
+		"post_update_post": post_update_post,
 		"get_post_list": get_post_list,
 		"get_login_challenge": get_login_challenge,
 		"get_settings": get_settings,

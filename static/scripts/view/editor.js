@@ -196,7 +196,6 @@ this.tivua.view.editor = (function() {
 							res[keyword] = weight;
 						}
 					}
-					console.log(res);
 					response(Object.keys(res).sort((a, b) => res[b] - res[a]));
 				});
 			},
@@ -242,7 +241,7 @@ this.tivua.view.editor = (function() {
 			if (create_post) {
 				api_call = api.create_post(new_post);
 			} else {
-				api_call = api.update_post(post["id"], new_post);
+				api_call = api.update_post(post.pid, new_post);
 			}
 			api_call.then((data) => {
 				// Remove this loading bar, a new one will be added once
@@ -281,15 +280,15 @@ this.tivua.view.editor = (function() {
 		editor.focus();
 	}
 
-	function create_editor_view(api, root, id) {
+	function create_editor_view(api, root, pid) {
 		return new Promise((resolve, reject) => {
 			/* Callbacks for this view */
 			const events = {
 				"on_back": () => { throw "Not implemented"; }
 			};
 
-			/* Canonicalise the "id" parameter */
-			id = (id === undefined) ? undefined : (id | 0);
+			/* Canonicalise the "pid" parameter */
+			pid = (pid === undefined) ? undefined : (pid | 0);
 
 			/* Initialise the spellchecker, load the list of users, and -- if
 			   applicable -- the requested post */
@@ -298,8 +297,8 @@ this.tivua.view.editor = (function() {
 				api.get_user_list(),
 				api.get_session_data(),
 			];
-			if (id >= 0) {
-				promises.push(api.get_post(id));
+			if (pid >= 0) {
+				promises.push(api.get_post(pid));
 			}
 
 			/* Show the editor */

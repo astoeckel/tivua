@@ -94,21 +94,20 @@ this.tivua.xhr = (function () {
 	 **************************************************************************/
 
 	function get_post_list(session, start, limit) {
-		/* Make sure start, limit are integers */
-		start |= 0;
-		limit |= 0;
-
-		/* Fetch the current list of posts */
 		return xhr_fetch_json('GET',
 			`api/posts/list?start=${start}&limit=${limit}`, session);
 	}
 
 	function get_post(session, pid) {
-		/* Make sure the post id is an integer */
-		pid |= 0;
-
-		/* Fetch the post */
 		return xhr_fetch_json('GET', `api/posts?pid=${pid}`, session);
+	}
+
+	function post_create_post(session, post) {
+		return xhr_fetch_json('POST', 'api/posts/create', session, post);
+	}
+
+	function post_update_post(session, pid, post) {
+		return xhr_fetch_json('POST', `api/posts?pid=${pid}`, session, post);
 	}
 
 	/**************************************************************************
@@ -141,8 +140,8 @@ this.tivua.xhr = (function () {
 			"get_user_list": get_user_list,
 			"get_keyword_list": get_keyword_list,
 			"get_post": get_post,
-			"create_post": () => {throw "Not implemented";},
-			"update_post": () => {throw "Not implemented";},
+			"post_create_post": post_create_post,
+			"post_update_post": post_update_post,
 			"get_post_list": get_post_list,
 			"get_login_challenge": get_login_challenge,
 			"get_settings": get_settings,

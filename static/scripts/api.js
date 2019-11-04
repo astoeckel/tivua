@@ -196,7 +196,7 @@ this.tivua.api = (function (window) {
 	function create_post(post) {
 		return _err(get_sid().then(sid => {
 			_update_keyword_cache(sid, post);
-			return xhr.create_post(sid, _canonicalise_post(post));
+			return xhr.post_create_post(sid, _canonicalise_post(post));
 		}));
 	}
 
@@ -215,7 +215,7 @@ this.tivua.api = (function (window) {
 	function update_post(id, post) {
 		return _err(get_sid().then(sid => {
 			_update_keyword_cache(sid, post);
-			return xhr.update_post(sid, id | 0, _canonicalise_post(post));
+			return xhr.post_update_post(sid, id | 0, _canonicalise_post(post));
 		}));
 	}
 
@@ -224,7 +224,7 @@ this.tivua.api = (function (window) {
 	 */
 	function get_post_list(start, limit) {
 		return _err(get_sid().then(sid => {
-			return xhr.get_post_list(sid, start, limit);
+			return xhr.get_post_list(sid, start | 0, limit | 0);
 		}));
 	}
 
