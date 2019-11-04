@@ -97,7 +97,7 @@ class Transaction:
         if exc_type is None:
             self.cursor.execute("RELEASE {}".format(self.savepoint))
         else:
-            logger.warning("Rolling back transaction {}".format(self.savepoint))
+            logger.debug("Rolling back transaction {}".format(self.savepoint))
             self.cursor.execute("ROLLBACK TO {}".format(self.savepoint))
 
         # Reset the level and cursor variables
