@@ -159,6 +159,66 @@
 			</main>
 		</template>
 
+		<!-- PREFERENCES -->
+		<template id="tmpl_preferences">
+			<header>
+				<button id="btn_back" class="subtle" title="Back to the main view"><span class="icon"></span></button>
+				<h1>Preferences</h1>
+				<button name="btn_save" title="%msg_done"><span class="icon"></span><span class="caption">Save changes</span></button>
+			</header>
+
+			<main class="preferences">
+				<section name="sec_force_change_password">
+					<h1>⚠ Please enter a new password</h1>
+					<p><emph>You're currently using a temporary password. Before you can continue using Tivua, you must set a new password for your user account in the section below.</emph></p>
+					<p>Contact your administrator in case you ever forget your password.</p>
+				</section>
+				<section name="sec_user_details">
+					<h1>User details</h1>
+					<p>This section shows your login name and allows you to edit your display name.</p>
+					<label for="inp_user_name"><span>Login name</span>This is the user name you use for signing into Tivua. Please contact your administrator if you would like to change your login name.</label>
+					<div class="row">
+						<input id="inp_user_name" value="astoecke"  disabled />
+					</div>
+					<label for="inp_display_name""><span>Display name<span class="error">Test</span></span>This is how your name will be displayed to yourself and other users.</label>
+					<div class="row">
+						<input id="inp_display_name" value="Andreas Stöckel"/>
+					</div>
+				</section>
+				<section name="sec_password">
+					<h1>Password</h1>
+					<p>This section allows you to change your password. To change your password, type in your current password and confirm your new password twice.</p>
+					<label for="password"><span>Current password<span class="error"></span></span>Type in your current password if you would like to change it.</label>
+					<div class="row password">
+						<input id="password" type="password"/>
+						<button title="Reveal/hide password" class="hidden"><span class="icon"></span></button>
+					</div>
+					<label for="password_new"><span>New password<span class="error"></span></span>Type in your new password. Your password must be at least eight characters long. It may contain arbitrary letters, digits, and symbols, but not whitespace.</label>
+					<div class="row password">
+						<input id="password_new" type="password" autocomplete="off"/>
+						<button title="Reveal/hide password" class="hidden"><span class="icon"></span></button>
+					</div>
+					<div class="row">
+						<progress value="50" max="100"></progress>
+					</div>
+					<div class="row">
+						<span>Password strength:</span>
+						<span class="strength weak">Weak</span>
+					</div>
+					<label for="password_new_repeat"><span>Repeat new password<span class="error"></span></span>Repeat your new password.</label>
+					<div class="row password">
+						<input id="password_new_repeat" type="password" autocomplete="off"/>
+						<button title="Reveal/hide password" class="hidden"><span class="icon"></span></button>
+					</div>
+				</section>
+				<section>
+					<div class="buttons">
+						<button name="btn_save" tabindex="-1"><span class="icon"></span><span class="caption">Save changes</span></button>
+					</div>
+				</section>
+			</main>
+		</template>
+
 		<!-- USER EDITOR -->
 		<template id="tmpl_user_manager_view">
 			<header>
@@ -309,9 +369,10 @@
 		<script src="scripts/api.js"></script>
 		<script src="scripts/view/cards.js"></script>
 		<script src="scripts/view/editor.js"></script>
-		<script src="scripts/view/users.js"></script>
 		<script src="scripts/view/login.js"></script>
 		<script src="scripts/view/menu.js"></script>
+		<script src="scripts/view/preferences.js"></script>
+		<script src="scripts/view/users.js"></script>
 		<script src="scripts/view/utils.js"></script>
 		<script src="scripts/main.js"></script>
 		<script src="l10n/l10n_data.js"></script>

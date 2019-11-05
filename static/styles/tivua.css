@@ -1119,6 +1119,121 @@ main.user_manager table td > span {
 
 
 /******************************************************************************
+ * PREFERENCES VIEW                                                           *
+ ******************************************************************************/
+
+main.preferences {
+	overflow: auto;
+	flex-direction: row;
+	align-items: stretch;
+	justify-content: left;
+	padding: 5rem 2rem 0 2rem;
+	background-color: white;
+	min-height: 100%;
+	line-height: 1.5;
+	box-sizing: border-box;
+}
+
+main.preferences emph {
+	font-weight: bold;
+	background-color: #edd400;
+}
+
+main.preferences section {
+	max-width: 40rem;
+	margin: 0 auto 2rem auto;
+	padding: 0 0 2rem 0;
+}
+
+main.preferences section:not(:last-child) {
+	border-bottom: 2px solid #5c3566;
+}
+
+main.preferences h1 {
+	font-size: 200%;
+	color: #5c3566;
+	margin: 1em 0;
+}
+
+main.preferences p {
+	margin: 1rem 0;
+}
+
+main.preferences label {
+	display: block;
+	padding: 1rem 0;
+}
+
+main.preferences label > span {
+	position: relative;
+	display: block;
+	font-weight: bold;
+}
+
+main.preferences div.row {
+	display: flex;
+}
+
+main.preferences progress {
+	margin: 1rem 0 0.25rem 0;
+	height: 0.5rem;
+}
+
+main.preferences input,
+main.preferences progress {
+	flex: 1 0 auto;
+}
+
+main.preferences input {
+	padding-right: 3rem;
+	background-position: right center;
+	background-repeat: no-repeat;
+}
+
+main.preferences input.ok {
+	background-image: url("data:image/svg+xml;utf8,%3Csvg%20width%3D'10mm'%20height%3D'5mm'%20version%3D'1.1'%20viewBox%3D'0%200%2010%205'%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%3E%3Cg%20transform%3D'translate(-.4%20.08)'%3E%3Cpath%20d%3D'm1%203%202%201%203-4'%20fill%3D'none'%20stroke%3D'%234e9a06'%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E");
+}
+
+main.preferences div.row span.placeholder,
+main.preferences div.row button {
+	display: block;
+	width: 3em;
+}
+
+main.preferences div.row button {
+	background: transparent;
+	border: 2px solid white;
+}
+
+main.preferences div.row button:hover {
+	box-shadow: none;
+}
+
+main.preferences div.row button .icon::before {
+	color: #777;
+}
+
+main.preferences div.row button.revealed .icon::before {
+	content: "\f06e";
+}
+
+main.preferences div.row button.hidden .icon::before {
+	content: "\f070";
+}
+
+
+main.preferences span.strength {
+	flex: 1 0 auto;
+	text-align: right;
+	font-style: italic;
+}
+
+main.preferences div.buttons {
+	display: flex;
+	justify-content: flex-end;
+}
+
+/******************************************************************************
  * DIALOGUE                                                                   *
  ******************************************************************************/
 
