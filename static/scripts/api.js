@@ -220,6 +220,15 @@ this.tivua.api = (function (window) {
 	}
 
 	/**
+	 * Deletes the post with the given pid.
+	 */
+	function delete_post(pid) {
+		return _err(get_sid().then(sid => {
+			return xhr.post_delete_post(sid, pid | 0);
+		}));
+	}
+
+	/**
 	 * Returns a list of posts starting with the given date.
 	 */
 	function get_post_list(start, limit) {
@@ -446,6 +455,7 @@ this.tivua.api = (function (window) {
 		"get_post": get_post,
 		"update_post": update_post,
 		"create_post": create_post,
+		"delete_post": delete_post,
 		"get_post_list": get_post_list,
 		"get_settings": get_settings,
 		"post_settings": post_settings,

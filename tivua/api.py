@@ -758,9 +758,7 @@ class API:
             # Remove keywords associated with the old post
             keywords = self.db.keywords
             for keyword in API._split(old_post.keywords):
-                keywords[keyword] = keywords[keyword] - {
-                    pid,
-                }
+                keywords[keyword] = keywords[keyword] - set((pid,))
 
             # Update the post in the normal posts table
             if self.db.update_post(p) == 0:
@@ -772,6 +770,26 @@ class API:
                 keywords[keyword] = pid
 
             return API._post_to_dict(p)
+
+    def delete_post(self, pid):
+        # Make sure the given post id is and integer and non-negative
+        if not isinstance(pid, int) or pid < 0:
+            raise ValidationError()
+
+        with Transaction(self.db):
+            # Fetch the post that is supposed to be deleted
+            post = self.db.get_post(pid)
+            if post is None:
+                raise NotFoundError()
+
+            # Delete all keywords associated with the post
+            keywords = self.db.keywords
+            for keyword in API._split(post.keywords):
+                keywords[keyword] = keywords[keyword] - set((pid,))
+
+            # Delete the post from the history and main post table
+            self.db.delete_post(pid)
+            self.db.delete_post(pid, history=True)
 
     ############################################################################
     # Keywords                                                                 #

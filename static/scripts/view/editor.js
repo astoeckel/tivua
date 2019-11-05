@@ -33,6 +33,7 @@ this.tivua.view.editor = (function() {
 
 	// Module aliases
 	const utils = tivua.utils;
+	const view = tivua.view;
 
 	/**
 	 * Used internally to disable the "save" button as long as there is at least
@@ -211,6 +212,33 @@ this.tivua.view.editor = (function() {
 		sel_author.addEventListener('change', validate_author);
 		inp_date.addEventListener('change', validate_date);
 		inp_keywords.addEventListener('change', validate_keywords);
+
+		/* Hook up the delete button */
+		btn_delete.addEventListener("click", function () {
+			const dialogue = {"instance": null};
+			dialogue.instance = view.utils.show_dialogue(root, "%header_confirm_delete", "%msg_confim_delete",
+			[
+				{
+					"type": "button",
+					"icon": "delete",
+					"caption": "%msg_confirm_delete_yes",
+					"callback": () => {
+						const div_overlay = view.utils.show_loading_overlay(root);
+						api.delete_post(post['pid']).then(() => {
+							div_overlay.close();
+							window.history.back();
+						});
+					}
+				},
+				{
+					"type": "button",
+					"caption": "%msg_confirm_delete_no",
+					"icon": "cancel",
+					"callback": () => dialogue.instance.close(),
+					"role": "cancel"
+				}
+			]);
+		});
 
 		/* Hook up the creation/updating of a post */
 		btn_save.addEventListener("click", function () {

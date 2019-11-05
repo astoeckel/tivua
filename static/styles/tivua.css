@@ -272,6 +272,7 @@ button {
 	display: flex;
 	justify-content: center;
 	align-items: center;
+	color: #5c3566;
 }
 
 button > span.caption {
@@ -286,6 +287,18 @@ button > span.icon::before {
 
 button.btn_reload .icon::before {
 	content: "\f2f1";
+}
+
+button.btn_confirm .icon::before {
+	content: "\f058";
+}
+
+button.btn_cancel .icon::before {
+	content: "\f057";
+}
+
+button.btn_delete .icon::before {
+	content: "\f2ed";
 }
 
 /******************************************************************************
@@ -414,6 +427,7 @@ header button#btn_delete .icon::before {
 	content: "\f2ed";
 }
 
+button[name="btn_save"] .icon::before,
 header button#btn_save .icon::before {
 	content: "\f058";
 }
@@ -1150,7 +1164,6 @@ div.dialogue > div.buttons > button {
 	flex: 0 0 auto;
 	background-color: transparent;
 	border: 2px solid #5c3566;
-	color: inherit;
 	box-shadow: rgba(100, 120, 140, 0.25) 2px 2px 5px;
 	font-weight: normal;
 	padding: 0 1rem;
@@ -1158,6 +1171,7 @@ div.dialogue > div.buttons > button {
 	min-width: 7rem;
 	text-align: center;
 	height: 3rem;
+	vertical-align: middle;
 }
 
 div.dialogue > div.buttons > button:last-child {
@@ -1184,6 +1198,8 @@ progress {
 	background-color: #eee;
 	border: none;
 	color: #5c3566;
+	-webkit-appearance: none;
+	appearance: none;
 }
 
 progress::-moz-progress-bar {
@@ -1192,6 +1208,10 @@ progress::-moz-progress-bar {
 
 progress::-webkit-progress-value {
 	background: #5c3566;
+}
+
+progress::-webkit-progress-bar {
+	background: #eee;
 }
 
 div.dialogue > div.buttons > progress {

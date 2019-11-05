@@ -50,7 +50,7 @@ this.tivua.l10n = (function () {
 
 			// Confirmation dialogue
 			"%header_confirm":
-				"Go back and lose changes?",
+				"Lose changes?",
 			"%msg_confirm":
 				"You made changes that have not been saved. Are you sure you want to go back?",
 			"%msg_confirm_yes":
@@ -156,6 +156,14 @@ this.tivua.l10n = (function () {
 				"Please select a valid author",
 			"%err_keywords":
 				"Keyword too long or too many keywords",
+			"%header_confirm_delete":
+				"Delete this post?",
+			"%msg_confim_delete":
+				"Are you sure you really want to delete this post? This will irrecoverably delete the post and its history from Tivua.",
+			"%msg_confirm_delete_yes":
+				"Yes, delete",
+			"%msg_confirm_delete_no":
+				"No",
 
 			// Logout dialogue
 			"%logout_title":

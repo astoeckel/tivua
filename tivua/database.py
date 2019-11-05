@@ -472,6 +472,12 @@ class Database:
                VALUES (?, ?, ?, ?, ?, ?, ?, ?)""".format(table), astuple(post))
             return t.lastrowid
 
+    def delete_post(self, pid, history=False):
+        with Transaction(self) as t:
+            table = "posts_history" if history else "posts"
+            t.execute("""DELETE FROM {} WHERE pid=?""".format(table), (pid,))
+            return t.lastrowid
+
     def update_post(self, post, history=False):
         with Transaction(self) as t:
             # Convert the post to a tuple

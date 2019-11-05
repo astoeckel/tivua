@@ -110,6 +110,10 @@ this.tivua.xhr = (function () {
 		return xhr_fetch_json('POST', `api/posts?pid=${pid}`, session, post);
 	}
 
+	function post_delete_post(session, pid, post) {
+		return xhr_fetch_json('POST', `api/posts/delete?pid=${pid}`, session, post);
+	}
+
 	/**************************************************************************
 	 * Keywords                                                               *
 	 **************************************************************************/
@@ -142,6 +146,7 @@ this.tivua.xhr = (function () {
 			"get_post": get_post,
 			"post_create_post": post_create_post,
 			"post_update_post": post_update_post,
+			"post_delete_post": post_delete_post,
 			"get_post_list": get_post_list,
 			"get_login_challenge": get_login_challenge,
 			"get_settings": get_settings,

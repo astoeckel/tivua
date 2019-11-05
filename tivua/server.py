@@ -441,6 +441,16 @@ def _api_post_posts_create(api):
 
     return _internal_wrap_api_handler(_handler, field="post", api=api, perms=Perms.CAN_WRITE)
 
+def _api_post_posts_delete(api):
+    def _handler(req, query, match, session, body):
+        try:
+            pid = int(query["pid"][0]) if "pid" in query else "nan"
+        except:
+            raise ValidationError()
+        return api.delete_post(pid)
+
+    return _internal_wrap_api_handler(_handler, field="post", api=api, perms=Perms.CAN_WRITE)
+
 def _api_post_posts_update(api):
     def _handler(req, query, match, session, body):
         # Make sure there is no pid, cuid, or ctime in the body
@@ -672,6 +682,7 @@ def create_server_class(api, args):
         Route("POST", r"^/api/session/logout$", _api_post_logout(api)),
         Route("GET", r"^/api/posts/list$", _api_get_posts_list(api)),
         Route("POST", r"^/api/posts/create$", _api_post_posts_create(api)),
+        Route("POST", r"^/api/posts/delete$", _api_post_posts_delete(api)),
         Route("GET", r"^/api/posts$", _api_get_post(api)),
         Route("POST", r"^/api/posts$", _api_post_posts_update(api)),
         Route("GET", r"^/api/users/list$", _api_get_users_list(api)),

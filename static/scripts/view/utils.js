@@ -107,7 +107,9 @@ this.tivua.view.utils = (function() {
 					break;
 				case "button":
 					const btn = document.createElement("button");
-					if (action.uri && action.uri == "/") {
+					if (action.icon) {
+						btn.setAttribute("class", "btn_" + action.icon);
+					} else if (action.uri && action.uri == "/") {
 						btn.setAttribute("class", "btn_reload");
 					}
 
@@ -231,12 +233,14 @@ this.tivua.view.utils = (function() {
 					[
 						{
 							"type": "button",
+							"icon": "confirm",
 							"caption": "%msg_confirm_yes",
 							"callback": () => window.history.back(),
 						},
 						{
 							"type": "button",
 							"caption": "%msg_confirm_no",
+							"icon": "cancel",
 							"callback": () => dialogue.instance.close(),
 							"role": "cancel"
 						}
