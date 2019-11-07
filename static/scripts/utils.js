@@ -149,6 +149,14 @@ this.tivua.utils = (function (window) {
 		       + sep + ("00" + ( date.getUTCDate())).slice(-2);
 	}
 
+	function format_local_date(timestamp, sep) {
+		sep = (sep === undefined) ? '/' : sep;
+		const date = (timestamp instanceof Date) ? timestamp : new Date(timestamp * 1000);
+		return ("0000" + date.getFullYear()).slice(-4)
+		       + sep + ("00" + (1 + date.getMonth())).slice(-2)
+		       + sep + ("00" + ( date.getDate())).slice(-2);
+	}
+
 	/**
 	 * Converts the given local timestamp to a UTC timestamp pointing at noon of
 	 * the same day.
@@ -291,6 +299,7 @@ this.tivua.utils = (function (window) {
 		'set_cookie': set_cookie,
 		'to_normalised_ascii_string': to_normalised_ascii_string,
 		'format_date': format_date,
+		'format_local_date': format_local_date,
 		'local_time_as_utc_date': local_time_as_utc_date,
 		'string_to_utc_date': string_to_utc_date,
 		'get_now_as_utc_date': get_now_as_utc_date,

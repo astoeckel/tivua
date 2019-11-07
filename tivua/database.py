@@ -52,6 +52,8 @@ class Post:
     date: int = None
     ctime: int = None
     cuid: int = None
+    mtime: int = None
+    muid: int = None
 
 
 @dataclass(order=True)
@@ -99,7 +101,9 @@ class Database:
             keywords TEXT,
             date INTEGER,
             ctime INTEGER,
-            cuid INTEGER
+            cuid INTEGER,
+            mtime INTEGER,
+            muid INTEGER
         )""",
         "posts_history":
         """CREATE TABLE posts_history(
@@ -111,6 +115,8 @@ class Database:
             date INTEGER,
             ctime INTEGER,
             cuid INTEGER,
+            mtime INTEGER,
+            muid INTEGER,
             CONSTRAINT unique_pid_rev UNIQUE (pid, revision)
         )""",
         "keywords":
@@ -468,8 +474,8 @@ class Database:
             table = "posts_history" if history else "posts"
             t.execute(
             """INSERT INTO {}(pid, revision, author, content, keywords,
-                                 date, ctime, cuid)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""".format(table), astuple(post))
+                              date, ctime, cuid, mtime, muid)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""".format(table), astuple(post))
             return t.lastrowid
 
     def delete_post(self, pid, history=False):
@@ -489,7 +495,7 @@ class Database:
             # Execute the update
             t.execute(
             """UPDATE {} SET revision=?, author=?, content=?, keywords=?,
-                             date=?, ctime=?, cuid=?
+                             date=?, ctime=?, cuid=?, mtime=?, muid=?
                WHERE pid=?""".format(table), post[1:] + (post[0],))
             return t.rowcount > 0
 

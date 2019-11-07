@@ -276,7 +276,8 @@ def _internal_wrap_api_handler(cback,
                     return _api_error(401, "%server_error_unauthorized")(req)
 
                 # Make sure the user has the required permissions
-                if not (Perms.lookup_role_permissions(session["role"]) & perms):
+                if not (Perms.lookup_role_permissions(session["role"]) &
+                        perms):
                     return _api_error(401, "%server_error_unauthorized")(req)
 
             # If this request is a POST, check for the Content-Length header and
@@ -426,20 +427,25 @@ def _api_get_posts_list(api):
 
     return _internal_wrap_api_handler(_handler, api=api)
 
+
 def _api_post_posts_create(api):
     def _handler(req, query, match, session, body):
-        # Make sure there is no pid, cuid, or ctime in the body
-        if ("pid" in body) or ("cuid" in body) or ("ctime" in body):
+        # Make sure there is no pid, cuid, ctime, muid, mtime in the body.
+        # These fields should only be set by the server
+        if (("pid" in body) or ("cuid" in body) or ("ctime" in body) or
+            ("muid" in body) or ("mtime" in body)):
             raise ValidationError()
 
-        # Set the cuid and ctime
-        body["cuid"] = session["uid"]
-        body["ctime"] = api.db.now()
+        # Set the cuid, ctime, muid, mtime to the initial values
+        body["cuid"] = body["muid"] = session["uid"]
+        body["ctime"] = body["mtime"] = api.db.now()
 
         # Try to create the post
         return api.create_post(body)
 
-    return _internal_wrap_api_handler(_handler, field="post", api=api, perms=Perms.CAN_WRITE)
+    return _internal_wrap_api_handler(
+        _handler, field="post", api=api, perms=Perms.CAN_WRITE)
+
 
 def _api_post_posts_delete(api):
     def _handler(req, query, match, session, body):
@@ -449,12 +455,16 @@ def _api_post_posts_delete(api):
             raise ValidationError()
         return api.delete_post(pid)
 
-    return _internal_wrap_api_handler(_handler, field="post", api=api, perms=Perms.CAN_WRITE)
+    return _internal_wrap_api_handler(
+        _handler, field="post", api=api, perms=Perms.CAN_WRITE)
+
 
 def _api_post_posts_update(api):
     def _handler(req, query, match, session, body):
-        # Make sure there is no pid, cuid, or ctime in the body
-        if ("pid" in body) or ("cuid" in body) or ("ctime" in body):
+        # Make sure there is no pid, cuid, ctime, muid, mtime in the body.
+        # These fields should only be set by the server
+        if (("pid" in body) or ("cuid" in body) or ("ctime" in body) or
+            ("muid" in body) or ("mtime" in body)):
             raise ValidationError()
 
         # Set the pid
@@ -463,14 +473,16 @@ def _api_post_posts_update(api):
         except:
             raise ValidationError()
 
-        # Set the cuid and ctime
-        body["cuid"] = session["uid"]
-        body["ctime"] = api.db.now()
+        # Set the muid and mtime
+        body["muid"] = session["uid"]
+        body["mtime"] = api.db.now()
 
         # Try to update an already existing post
         return api.update_post(body)
 
-    return _internal_wrap_api_handler(_handler, field="post", api=api, perms=Perms.CAN_WRITE)
+    return _internal_wrap_api_handler(
+        _handler, field="post", api=api, perms=Perms.CAN_WRITE)
+
 
 def _api_get_post(api):
     def _handler(req, query, match, session, body):
@@ -487,6 +499,7 @@ def _api_get_post(api):
         return post
 
     return _internal_wrap_api_handler(_handler, field="post", api=api)
+
 
 def _api_get_users_list(api):
     def _handler(req, query, match, session, body):

@@ -634,6 +634,12 @@ class API:
         elif p.date is None:
             p.date = p.ctime
 
+        # Set mtime and muid to ctime and cuid, respectively
+        if p.mtime is None:
+            p.mtime = p.ctime
+        if p.muid is None:
+            p.muid = p.cuid
+
         # Coerce the keywords
         p.keywords = API.coerce_keywords(p.keywords)
 
@@ -739,10 +745,9 @@ class API:
                 raise NotFoundError()
 
             # Do nothing if there is no difference between the old and new post
-            if (old_post.author == p.author) and (
-                    old_post.date == p.date) and (
-                        old_post.keywords == p.keywords) and (
-                            old_post.content == p.content):
+            if ((old_post.author == p.author) and (old_post.date == p.date)
+                    and (old_post.keywords == p.keywords)
+                    and (old_post.content == p.content)):
                 return API._post_to_dict(p)
 
             # Make sure that the revision of the given post is equal to the
@@ -752,13 +757,17 @@ class API:
                 raise ConflictError()
             p.revision += 1
 
+            # Copy the original creation uid and time
+            p.cuid = old_post.cuid
+            p.ctime = old_post.ctime
+
             # Insert the old post into the history table
             self.db.create_post(old_post, history=True)
 
             # Remove keywords associated with the old post
             keywords = self.db.keywords
             for keyword in API._split(old_post.keywords):
-                keywords[keyword] = keywords[keyword] - set((pid,))
+                keywords[keyword] = keywords[keyword] - set((pid, ))
 
             # Update the post in the normal posts table
             if self.db.update_post(p) == 0:
@@ -785,7 +794,7 @@ class API:
             # Delete all keywords associated with the post
             keywords = self.db.keywords
             for keyword in API._split(post.keywords):
-                keywords[keyword] = keywords[keyword] - set((pid,))
+                keywords[keyword] = keywords[keyword] - set((pid, ))
 
             # Delete the post from the history and main post table
             self.db.delete_post(pid)

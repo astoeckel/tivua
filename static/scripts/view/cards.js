@@ -183,8 +183,9 @@ this.tivua.view.cards = (function() {
 
 		/* Show extra data if there is any to be shown */
 		const has_keywords = post.keywords.length > 0;
-		const has_history_info = (post.cuid != post.author) ||
-			(utils.local_time_as_utc_date(post.ctime) > post.date);
+		const has_history_info =
+			   (post.cuid != post.author) || (post.muid != post.author)
+			|| ((post.revision > 0) && ((post.mtime - post.ctime) > (24 * 3600)));
 
 		const div_extra = tmpl.querySelector(".extra");
 		const span_tags = tmpl.querySelector(".extra .tags");
@@ -211,8 +212,8 @@ this.tivua.view.cards = (function() {
 			const l10n = tivua.l10n;
 			span_history.innerText =
 				l10n.translate("%msg_post_history")
-					.replace("%date", utils.format_date(post.ctime, "/"))
-					.replace("%author", users[post.cuid].display_name);
+					.replace("%date", utils.format_local_date(post.mtime, "/"))
+					.replace("%author", users[post.muid].display_name);
 		} else {
 			span_history.style.display = 'none';
 		}
