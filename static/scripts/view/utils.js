@@ -253,10 +253,45 @@ this.tivua.view.utils = (function() {
 		return res;
 	}
 
+	/**
+	 * Used internally to disable the "save" button as long as there is at least
+	 * one validation error.
+	 */
+	function update_error_state(btn, field_name, valid) {
+		/* Fetch the fields that are currently marked as invalid */
+		const fields = (btn.getAttribute('data-error-state') || '')
+			.split(' ')
+			.filter(s => s.length > 0);
+
+		/* Either add or remove the given field from the list of fields */
+		const idx = fields.indexOf(field_name);
+		if (valid) {
+			if (idx >= 0) {
+				fields.splice(idx, 1);
+			}
+		} else {
+			if (idx < 0) {
+				fields.push(field_name);
+			}
+		}
+
+		/* Store the list of fields with validation error in the button */
+		btn.setAttribute('data-error-state', fields.join(' '));
+
+		/* Disable the buttons if there is at least one validation error */
+		if (fields.length > 0) {
+			btn.setAttribute('disabled', 'disabled');
+		} else {
+			btn.removeAttribute('disabled');
+		}
+		return fields.length == 0;
+	}
+
 	return {
 		'show_dialogue': show_dialogue,
 		'show_error_dialogue': show_error_dialogue,
 		'show_loading_overlay': show_loading_overlay,
-		'setup_back_button': setup_back_button
+		'setup_back_button': setup_back_button,
+		'update_error_state': update_error_state,
 	};
 })();

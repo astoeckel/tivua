@@ -58,7 +58,7 @@
 								<label for="username">%username<span class="error"></span></label>
 								<input id="username" type="text"/>
 								<label for="password">%password<span class="error"></span></label>
-								<input id="password" type="password"/>
+								<input class="password" id="password" type="password"/>
 								<input id="btn_login" type="submit" value="%login"/>
 								<button id="btn_username_password_back">%back</button>
 							</form>
@@ -170,8 +170,8 @@
 			<main class="preferences">
 				<section name="sec_force_change_password">
 					<h1>⚠ Please enter a new password</h1>
-					<p><emph>You're currently using a temporary password. Before you can continue using Tivua, you must set a new password for your user account in the section below.</emph></p>
-					<p>Contact your administrator in case you ever forget your password.</p>
+					<p><emph>You're currently using a temporary password. Before you can continue to use Tivua, you must set a new password.</emph></p>
+					<p>Please contact your administrator in case you ever forget your password.</p>
 				</section>
 				<section name="sec_user_details">
 					<h1>User details</h1>
@@ -188,26 +188,26 @@
 				<section name="sec_password">
 					<h1>Password</h1>
 					<p>This section allows you to change your password. To change your password, type in your current password and confirm your new password twice.</p>
-					<label for="password"><span>Current password<span class="error"></span></span>Type in your current password if you would like to change it.</label>
+					<label for="password"><span>Current password<span class="error"></span></span>To confirm that you want to change your password, type in your current password.</label>
 					<div class="row password">
-						<input id="password" type="password"/>
+						<input class="password" id="password" type="password"/>
 						<button title="Reveal/hide password" class="hidden"><span class="icon"></span></button>
 					</div>
 					<label for="password_new"><span>New password<span class="error"></span></span>Type in your new password. Your password must be at least eight characters long. It may contain arbitrary letters, digits, and symbols, but not whitespace.</label>
 					<div class="row password">
-						<input id="password_new" type="password" autocomplete="off"/>
+						<input class="password" id="password_new" type="password" autocomplete="off"/>
 						<button title="Reveal/hide password" class="hidden"><span class="icon"></span></button>
 					</div>
 					<div class="row">
-						<progress value="50" max="100"></progress>
+						<progress id="prg_password_strength" value="0" max="100"></progress>
 					</div>
 					<div class="row">
 						<span>Password strength:</span>
-						<span class="strength weak">Weak</span>
+						<span id="lbl_password_strength" class="strength">No password entered</span>
 					</div>
 					<label for="password_new_repeat"><span>Repeat new password<span class="error"></span></span>Repeat your new password.</label>
 					<div class="row password">
-						<input id="password_new_repeat" type="password" autocomplete="off"/>
+						<input class="password" id="password_new_repeat" type="password" autocomplete="off"/>
 						<button title="Reveal/hide password" class="hidden"><span class="icon"></span></button>
 					</div>
 				</section>
@@ -284,7 +284,7 @@
 						<span class="user_name"></span>
 						<span class="user_emblem" title="%lbl_menu_close"><span class="user_initials"></span></span>
 					</h1>
-					<div class="buttons">
+					<div class="view_buttons">
 						<button id="btn_card_view"><span class="icon"></span><span class="caption">%lbl_card_view</span></button>
 						<button id="btn_list_view"><span class="icon"></span><span class="caption">%lbl_list_view</span></button>
 					</div>

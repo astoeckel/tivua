@@ -268,6 +268,10 @@ select {
 	background: url("data:image/svg+xml;utf8,%3Csvg%20width%3D'4mm'%20height%3D'2.6mm'%20version%3D'1.1'%20viewBox%3D'0%200%202.6%202.6'%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%3E%3Cg%20transform%3D'translate(-1.3%20-2)'%3E%3Cpath%20d%3D'm1.3%202%201.3%202.6%201.3-2.6z'%20fill%3D'%23333'%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E") no-repeat right #f0f0f0;
 }
 
+input.password.revealed {
+	font-family: monospace;
+}
+
 button {
 	display: flex;
 	justify-content: center;
@@ -375,7 +379,7 @@ header > button {
 	padding: 0 1.25rem;
 }
 
-header > button:hover:not(:disabled) {
+button:hover:not(:disabled) {
 	opacity: 0.75;
 }
 
@@ -1228,6 +1232,19 @@ main.preferences span.strength {
 	font-style: italic;
 }
 
+span.strength.weak {
+	color: #a40000;
+}
+
+span.strength.good {
+	color: #c4a000;
+}
+
+span.strength.strong {
+	color: #4e9a06;
+	font-weight: bold;
+}
+
 main.preferences div.buttons {
 	display: flex;
 	justify-content: flex-end;
@@ -1260,21 +1277,21 @@ div.dialogue > * {
 	margin: 2rem 0;
 }
 
-div.dialogue > div.buttons {
+div.dialogue > * {
+	box-sizing: border-box;
+}
+
+div.buttons {
 	justify-content: flex-end;
 	display: flex;
 	flex-wrap: wrap;
 }
 
-div.dialogue > * {
-	box-sizing: border-box;
-}
-
-div.dialogue > div.buttons > :last-child {
+div.buttons > :last-child {
 	margin-right: 0;
 }
 
-div.dialogue > div.buttons > button {
+div.buttons > button {
 	transition: 0.1s;
 	flex: 0 0 auto;
 	background-color: transparent;
@@ -1289,7 +1306,7 @@ div.dialogue > div.buttons > button {
 	vertical-align: middle;
 }
 
-div.dialogue > div.buttons > button:last-child {
+div.buttons > button:last-child {
 	background-color: #5c3566;
 	color: white;
 	font-weight: bold;
@@ -1317,6 +1334,10 @@ progress {
 	appearance: none;
 }
 
+progress::-webkit-progress-bar {
+	background: #eee;
+}
+
 progress::-moz-progress-bar {
 	background: #5c3566;
 }
@@ -1325,9 +1346,31 @@ progress::-webkit-progress-value {
 	background: #5c3566;
 }
 
-progress::-webkit-progress-bar {
-	background: #eee;
+progress.strength.weak::-moz-progress-bar {
+	background: #a40000;
 }
+
+progress.strength.weak::-webkit-progress-value {
+	background: #a40000;
+}
+
+progress.strength.good::-moz-progress-bar {
+	background: #c4a000;
+}
+
+progress.strength.good::-webkit-progress-value {
+	background: #c4a000;
+}
+
+progress.strength.strong::-moz-progress-bar {
+	background: #4e9a06;
+}
+
+progress.strength.strong::-webkit-progress-value {
+	background: #4e9a06;
+}
+
+
 
 div.dialogue > div.buttons > progress {
 	flex: 1 0 auto;
@@ -1423,14 +1466,14 @@ body.inactive {
 	min-width: 25rem;
 }
 
-.menu > div.buttons {
+.menu > div.view_buttons {
 	padding: 1rem;
 	display: flex;
 	justify-content: center;
 	border-bottom: 1px solid silver;
 }
 
-.menu > div.buttons > button {
+.menu > div.view_buttons > button {
 	transition: 0.1s;
 	flex: 0 0 auto;
 	flex-direction: column;
@@ -1444,14 +1487,14 @@ body.inactive {
 	background-color: white;
 }
 
-.menu > div.buttons > button.active {
+.menu > div.view_buttons > button.active {
 	font-weight: bold;
 	color: white;
 	background-color: #5c3566;
 }
 
 
-.menu > div.buttons > button > span {
+.menu > div.view_buttons > button > span {
 	margin: 0.25rem;
 }
 

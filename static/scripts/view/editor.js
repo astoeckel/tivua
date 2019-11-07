@@ -35,39 +35,6 @@ this.tivua.view.editor = (function() {
 	const utils = tivua.utils;
 	const view = tivua.view;
 
-	/**
-	 * Used internally to disable the "save" button as long as there is at least
-	 * one validation error.
-	 */
-	function _update_error_state(btn, field_name, valid) {
-		/* Fetch the fields that are currently marked as invalid */
-		const fields = (btn.getAttribute('data-error-state') || '')
-			.split(' ')
-			.filter(s => s.length > 0);
-
-		/* Either add or remove the given field from the list of fields */
-		const idx = fields.indexOf(field_name);
-		if (valid) {
-			if (idx >= 0) {
-				fields.splice(idx, 1);
-			}
-		} else {
-			if (idx < 0) {
-				fields.push(field_name);
-			}
-		}
-
-		/* Store the list of fields with validation error in the button */
-		btn.setAttribute('data-error-state', fields.join(' '));
-
-		/* Disable the buttons if there is at least one validation error */
-		if (fields.length > 0) {
-			btn.setAttribute('disabled', 'disabled');
-		} else {
-			btn.removeAttribute('disabled');
-		}
-	}
-
 	function _validate_author(users, btn_save, sel_author, span_author_error) {
 		const l10n = tivua.l10n;
 		let author_id = -1;
@@ -82,7 +49,7 @@ this.tivua.view.editor = (function() {
 			}
 		}
 
-		_update_error_state(btn_save, 'author', valid);
+		view.utils.update_error_state(btn_save, 'author', valid);
 		sel_author.classList.toggle('error', !valid);
 		l10n.set_node_text(span_author_error, valid ? '' : '%err_author');
 		return valid;
@@ -90,7 +57,7 @@ this.tivua.view.editor = (function() {
 
 	function _validate_date(btn_save, inp_date, span_date_error) {
 		const valid = tivua.utils.string_to_utc_date(inp_date.value) !== null;
-		_update_error_state(btn_save, 'date', valid);
+		view.utils.update_error_state(btn_save, 'date', valid);
 		inp_date.classList.toggle('error', !valid);
 		tivua.l10n.set_node_text(span_date_error, valid ? '' : '%err_date_format');
 		return valid;
@@ -102,7 +69,7 @@ this.tivua.view.editor = (function() {
 		for (let keyword of keywords) {
 			valid = valid && (keyword.length <= 30);
 		}
-		_update_error_state(btn_save, 'keywords', valid);
+		view.utils.update_error_state(btn_save, 'keywords', valid);
 		inp_keywords_wrapper.classList.toggle('error', !valid);
 		tivua.l10n.set_node_text(span_keywords_error, valid ? '': '%err_keywords');
 		return valid;
