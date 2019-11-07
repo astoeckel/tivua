@@ -173,7 +173,7 @@ def main_import(argv):
             file.close()
 
 def main_export(argv):
-    import json
+    import json, sys
 
     # Parse the command line arguments
     args = create_parser_export().parse_args(argv)
