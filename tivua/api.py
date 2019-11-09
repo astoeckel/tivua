@@ -940,6 +940,33 @@ class API:
             res[user.uid] = user_dict
         return res
 
+    def reset_user_password(self, uid=None, user_name=None):
+        # Make sure that exactly either the uid or the user name is given
+        if (uid is None) == (user_name is None):
+            raise ValidationError()
+
+        # Fetch the user by name or user name
+        if not uid is None:
+            user = self.db.get_user_by_id(uid)
+        if not user_name is None:
+            user = self.db.get_user_by_name(user_name)
+        if user is None:
+            raise NotFoundError()
+
+        # Create a random password
+        password = self.create_random_password()
+        password_hash = self._hash_password(password)
+
+        # Set the password and the reset_password flag
+        user.password = password_hash
+        user.reset_password = True
+
+        # Write the user back to the database
+        self.db.update_user(user)
+
+        # Return the generated password for display
+        return password
+
     ############################################################################
     # Export and import                                                        #
     ############################################################################
