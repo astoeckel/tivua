@@ -945,7 +945,7 @@ class API:
             for keyword, pids in keywords.items():
                 self.db.keywords[keyword] = pids
 
-    def export_to_object(self):
+    def export_to_object(self, export_passwords=False):
         """
         Exports the entire database into a JSON serialisable object. Some tables
         with volatile data (such as the "cache", "challenges", and "sessions"
@@ -970,7 +970,12 @@ class API:
             # Export the users
             users_arr = []
             for user in self.db.list_users():
-                users_arr.append(asdict(user))
+                user_obj = asdict(user)
+                if not export_passwords:
+                    user_obj["reset_password"] = True
+                    del user_obj["password"]
+                users_arr.append(user_obj)
+
 
             # Export the user settings
             settings_obj = {}
