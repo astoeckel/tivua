@@ -139,6 +139,13 @@ def _handle_fs(document_root, static_filename=None):
 
         # Send the header
         req.send_response(200)
+
+        # Force caching of non-html files
+        if not filename.endswith(".html"):
+            req.send_header('Cache-control',
+                            'public,max-age=86400')
+
+        # Set the correct content type
         req.send_header('Content-type', mimetype(filename))
         req.end_headers()
         if head:
