@@ -414,6 +414,19 @@ class Database:
                 VALUES (?, ?, ?, ?, ?, ?, ?)""", astuple(user))
             return t.lastrowid
 
+    def update_user(self, user):
+        with Transaction(self) as t:
+            # Convert the user to a tuple
+            user = astuple(user)
+
+            # Update the user row
+            t.execute(
+                """
+                UPDATE users SET name=?, display_name=?, role=?, auth_method=?,
+                                 password=?, reset_password=?
+                             WHERE uid=?""", user[1:] + (user[0],))
+            return t.lastrowid
+
     def delete_user(self, uid):
         """
         Deletes the user with the given id, returns true if the 
