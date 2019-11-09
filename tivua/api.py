@@ -171,25 +171,49 @@ class API:
         """
 
         # Try to find a user with administrative rights or user named "admin"
+        # that has a valid password set
+        admin_user = None
         for user in self.db.list_users():
-            if user.name == "admin" or user.role == "admin":
-                return
+            if (user.name == "admin" or user.role == "admin"):
+                admin_user = user
+                break
 
-        # Create a random password and print it to the log
+        # Abort if the admin user has a valid password
+        empty_password = "0" * 64
+        if admin_user and admin_user.password != empty_password:
+            return
+
+        # Create a random password
         password = self.create_random_password()
-        logger.warning(
-            "No admin user found; created new user \"admin\" with password \"{}\""
-            .format(password))
+        password_hash = self._hash_password(password)
 
-        # Actually create the user
-        self.db.create_user(
-            User(
+        # Print a log message
+        if admin_user:
+            admin_user.password=password_hash
+            admin_user.reset_password = True
+            logger.warning(
+                "Reset password for user account \"{}\"; new password is \"{}\""
+                .format(admin_user.name, password))
+        else:
+            logger.warning(
+                "No admin user found; created new user \"admin\" with password \"{}\""
+                .format(password))
+
+        # Create a new user if no user exists
+        if not admin_user:
+            admin_user = User(
                 name='admin',
                 display_name='Admin',
                 role='admin',
                 auth_method='password',
-                password=self._hash_password(password),
-                reset_password=True))
+                password=password_hash,
+                reset_password=True)
+
+        # Update/create the user
+        if admin_user.uid is None:
+            self.db.create_user(admin_user)
+        else:
+            self.db.update_user(admin_user)
 
     ############################################################################
     # Helper functions                                                         #
