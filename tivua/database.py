@@ -363,6 +363,14 @@ class Database:
                       (max_age, ))
             return t.rowcount > 0
 
+    def purge_sessions_for_user(self, uid):
+        """
+        Deletes all sessions associated with the given user.
+        """
+        with Transaction(self) as t:
+            t.execute("DELETE FROM sessions WHERE uid = ?", (uid, ))
+            return t.rowcount > 0
+
     def create_session(self, sid, uid):
         """
         Creates a session for the given user and returns the session identifier.
@@ -444,6 +452,16 @@ class Database:
                                 password, reset_password
                          FROM users ORDER BY uid""")
             return t.fetchall_dataclass(User)
+
+    def get_user(self, user_name=None, uid=None):
+        # Make sure that exactly either the uid or the user name is given
+        assert (uid is None) != (user_name is None)
+
+        # Fetch the user by name or user name
+        if not user_name is None:
+            return self.get_user_by_name(user_name)
+        if not uid is None:
+            return self.get_user_by_id(uid)
 
     def get_user_by_name(self, user_name):
         """

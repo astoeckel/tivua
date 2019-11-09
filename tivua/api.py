@@ -98,6 +98,10 @@ class Perms:
     }
 
     @staticmethod
+    def is_valid_role(role):
+        return role in list(Perms.USER_ROLES.keys())
+
+    @staticmethod
     def lookup_role_permissions(role):
         """
         Converts a "role" string into a set of permissions.
@@ -899,19 +903,26 @@ class API:
         if u.display_name:
             u.display_name = u.display_name.strip()
 
-            # Capitalise the first letter of the display name
-            if len(u.display_name) > 0:
-                u.display_name = u.display_name[0:1].upper(
-                ) + u.display_name[1:]
-
             # Make sure the display name is not longer than the given display
             # name
             if len(u.display_name) > API.MAX_DISPLAY_NAME_LEN:
                 raise ValidationError("%server_error_invalid_display_name")
 
+        # Set the display name, if it is currently empty
+        if not u.display_name:
+            u.display_name = u.name
+
+        # Capitalise the first letter of the display name
+        if len(u.display_name) > 0:
+            u.display_name = u.display_name[0:1].upper() + u.display_name[1:]
+
         # Make sure the name matches the user name regular expression
         if not API.USER_RE.match(u.name):
             raise ValidationError("%server_error_invalid_name")
+
+        # Make sure the user role is one of the possible roles
+        if not Perms.is_valid_role(u.role):
+            raise ValidationError("%server_error_invalid_role")
 
         # Make sure all types are correct
         API._dataclass_check_types(u)
@@ -940,32 +951,81 @@ class API:
             res[user.uid] = user_dict
         return res
 
+    def create_user(self, user_name, display_name="", role="inactive"):
+        """
+        Creates a new user with the given user name and display name.
+        """
+
+        # Create a valid user object
+        user = API.coerce_user({
+            "name": user_name,
+            "display_name": display_name,
+            "role": role
+        })
+
+        with Transaction(self.db):
+            # Create a random password for the user and set it
+            password = API.create_random_password()
+            password_hash = self._hash_password(password)
+            user.password = password_hash
+
+            # Create the user object in the database, errors are (most likely)
+            # only caused by there being a duplicate user name
+            try:
+                user.uid = self.db.create_user(user)
+            except:
+                raise ConflictError()
+
+        # Return the newly created user object
+        return password, user
+
+    def set_user_role(self, role, uid=None, user_name=None):
+        # Make sure the role is valid
+        if not Perms.is_valid_role(role):
+            raise ValidationError("%server_error_invalid_role")
+
+        with Transaction(self.db):
+            # Read the user date
+            user = self.db.get_user(uid=uid, user_name=user_name)
+            if user is None:
+                raise NotFoundError()
+
+            # Update the role
+            if role != user.role:
+                # Delete any active session, if the user has fewer permissions
+                # now (otherwise the user has to log in again)
+                perms_old = Perms.lookup_role_permissions(user.role)
+                perms_new = Perms.lookup_role_permissions(role)
+                if perms_old & (perms_new ^ perms_old):
+                    # Note: (perms_new ^ perms_old) contains the changed
+                    # permission bits, perms_old & (perms_new ^ perms_old)
+                    # is not equal to zero if a bit that changed was active in
+                    # perms_old.
+                    self.db.purge_sessions_for_user(user.uid)
+
+                # Write the user back with the updated role
+                user.role = role
+                self.db.update_user(user)
+
     def reset_user_password(self, uid=None, user_name=None):
-        # Make sure that exactly either the uid or the user name is given
-        if (uid is None) == (user_name is None):
-            raise ValidationError()
+        with Transaction(self.db):
+            user = self.db.get_user(uid=uid, user_name=user_name)
+            if user is None:
+                raise NotFoundError()
 
-        # Fetch the user by name or user name
-        if not uid is None:
-            user = self.db.get_user_by_id(uid)
-        if not user_name is None:
-            user = self.db.get_user_by_name(user_name)
-        if user is None:
-            raise NotFoundError()
+            # Create a random password
+            password = self.create_random_password()
+            password_hash = self._hash_password(password)
 
-        # Create a random password
-        password = self.create_random_password()
-        password_hash = self._hash_password(password)
+            # Set the password and the reset_password flag
+            user.password = password_hash
+            user.reset_password = True
 
-        # Set the password and the reset_password flag
-        user.password = password_hash
-        user.reset_password = True
+            # Write the user back to the database
+            self.db.update_user(user)
 
-        # Write the user back to the database
-        self.db.update_user(user)
-
-        # Return the generated password for display
-        return password
+            # Return the generated password for display
+            return password
 
     ############################################################################
     # Export and import                                                        #

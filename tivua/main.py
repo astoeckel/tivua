@@ -286,10 +286,13 @@ def main_user(args):
     with api:
         try:
             if cmd == "add":
-                password = api.add_user(user_name=name, role=args.role, display_name=args.display_name)
-                print(("Successfully created user \"{}\" with role \"{}\". " +
+                password, user = api.create_user(
+                    name=name,
+                    role=args.role,
+                    display_name=args.display_name)
+                print(("Successfully created user #{} \"{}\" with role \"{}\". " +
                        "The initial password is \"{}\".").format(
-                            name, role, password))
+                            user.uid, name, args.role, password))
             elif cmd == "delete":
                 if not api.delete_user(user_name=name, force=args.force):
                     print("WARNING: all content created by the user will " +
@@ -302,21 +305,21 @@ def main_user(args):
                     print("Successfully deleted user \"{}\"")
             elif cmd == "reset-password":
                 password = api.reset_user_password(user_name=name)
-                print("Successfully created a new password for user \"{}\". "
-                      "The new initial password is \"{}\".".format(
+                print(("Successfully created a new password for user \"{}\". " +
+                       "The new initial password is \"{}\".").format(
                         name, password))
             elif cmd == "set-role":
                 api.set_user_role(user_name=name, role=args.role)
-                print("Successfully update the user role to \"{}\".".format(
-                    args.role))
+                print(("Successfully updated the role of user \"{}\" to \"{}\".").format(
+                    name, args.role))
         except tivua.api.ConflictError:
-            print("Error: A user with the specified user name '{}' already "+
-                  "exists.".format(args.name))
+            print(("Error: A user with the specified user name '{}' already "+
+                   "exists.").format(args.name))
         except tivua.api.NotFoundError:
-            print("Error: The specified user '{}' does not exist.".format(
+            print(("Error: The specified user '{}' does not exist.").format(
                     args.name))
         except tivua.api.ValidationError:
-            print("Error: The specified user name '{}' is invalid.".format(
+            print(("Error: The specified user name '{}' is invalid.").format(
                     args.name))
 
 
