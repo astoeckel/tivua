@@ -63,7 +63,7 @@ class User:
     display_name: str = None
     role: str = "inactive"
     auth_method: str = "password"
-    password: str = "0000000000000000000000000000000000000000000000000000000000000000"
+    password: str = ("0" * 64)
     reset_password: bool = True
 
 
@@ -119,6 +119,9 @@ class Database:
             muid INTEGER,
             CONSTRAINT unique_pid_rev UNIQUE (pid, revision)
         )""",
+        "fulltext":
+        """CREATE VIRTUAL TABLE fulltext
+           USING fts5(content, tokenize=porter)""",
         "keywords":
         """CREATE TABLE keywords(
             keyword TEXT,
@@ -489,15 +492,36 @@ class Database:
     # Posts                                                                    #
     ############################################################################
 
-    def list_posts(self, start=0, limit=-1, history=False):
+    def list_posts(self, start=0, limit=-1, history=False, filter=None):
         """
         Lists the newest revision of each post, ordered by date.
         """
         with Transaction(self) as t:
+            # Assemble the SQL and corresponding parameter, depending on whether
+            # a filter was given or not
             table = "posts_history" if history else "posts"
-            t.execute(
-                """SELECT * FROM {} ORDER BY date DESC
-                   LIMIT ? OFFSET ?""".format(table), (limit, start))
+            if filter is None:
+                sql = """SELECT * FROM {} ORDER BY date DESC
+                         LIMIT ? OFFSET ?""".format(table)
+                params = (limit, start)
+            else:
+                # TODO: Filtering the history table is not implemented yet
+                if history:
+                    raise NotImplementedError()
+
+                # Fetch the keys we would like to read
+                keys = list(Post.__dataclass_fields__.keys())
+
+                # Compile the filter and extract the SQL and parameters
+                flt_sql, flt_params, flt_alias = filter.compile().emit(keys)
+
+                # Construct the complete SQL and parameters
+                sql = """{} ORDER BY {}.date DESC LIMIT ? OFFSET ?""".format(
+                    flt_sql, flt_alias)
+                params = flt_params + (limit, start)
+
+            # Actually execute the SQL
+            t.execute(sql, params)
             return t.fetchall_dataclass(Post)
 
     def create_post(self, post, history=False):
@@ -545,6 +569,50 @@ class Database:
         with Transaction(self) as t:
             t.execute("""SELECT COUNT() FROM posts""")
             return t.fetchone()[0]
+
+    ############################################################################
+    # Posts full text search                                                   #
+    ############################################################################
+
+    def update_fulltext(self, pid, content):
+        """
+        Updates or creates the post fulltext search index for the post with the
+        given pid.
+        """
+        with Transaction(self) as t:
+            # Check whether there already is some fulltext stored for the given
+            # row id
+            t.execute("SELECT TRUE FROM fulltext WHERE rowid = ?", (pid,))
+            if t.fetchone()[0]:
+                # If yes, just update the fulltext
+                t.execute("""UPDATE fulltext
+                                    SET content=? WHERE rowid = ?""",
+                                    (content, pid,))
+            else:
+                # Otherwise insert a new entry
+                t.execute("""INSERT INTO fulltext(rowid, content)
+                                    VALUES (?, ?)""",
+                                    (pid, content,))
+
+    def delete_fulltext(self, pid):
+        """
+        Deletes the fulltext for the post with the given pid.
+        """
+        with Transaction(self) as t:
+            t.execute("""DELETE FROM fulltext WHERE rowid = ?""", (pid,))
+            return t.rowcount > 0
+
+    def match_fulltext(self, query):
+        """
+        Returns the ids of the posts matching the given fulltext query.
+
+        Note: This function is mostly used for testing, the API usually uses
+              filters for filtering for posts.
+        """
+        with Transaction(self) as t:
+            t.execute("""SELECT rowid FROM fulltext
+                                      WHERE content MATCH ?""", (query,))
+            return list(map(lambda x: x[0], t.fetchall()))
 
 
 ################################################################################

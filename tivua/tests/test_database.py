@@ -17,11 +17,12 @@
 import pytest
 
 from tivua.database import *
+from tivua.database_filters import *
 
 import time
 
 import logging
-logging.basicConfig(format='[%(levelname)s] %(message)s', level=logging.DEBUG)
+#logging.basicConfig(format='[%(levelname)s] %(message)s', level=logging.DEBUG)
 
 
 def test_transactions():
@@ -267,3 +268,86 @@ def test_user_management():
         assert db.get_user_by_id(user_2.uid) is None
         assert db.list_users() == [user_1,]
 
+
+def test_posts():
+    with Database(":memory:") as db:
+        post1 = Post(
+            revision=1,
+            author=1,
+            content="test1",
+            date=1,
+            cuid=2,
+            ctime=1,
+            muid=1,
+            mtime=2,
+        )
+        post2 = Post(
+            revision=3,
+            author=2,
+            content="test2",
+            date=5,
+            cuid=3,
+            ctime=5,
+            muid=2,
+            mtime=6,
+        )
+
+        # Creating and listing should work
+        post1.pid = db.create_post(post1)
+        post2.pid = db.create_post(post2)
+        assert post1.pid == 1
+        assert post2.pid == 2
+        assert db.list_posts() == [post2, post1]
+
+        # Filtering posts by UID
+        assert db.list_posts(filter=FilterUID(3)) == [post2]
+        assert db.list_posts(filter=FilterUID(2)) == [post2, post1]
+        assert db.list_posts(filter=FilterAuthor(1)) == [post1]
+        assert db.list_posts(filter=(FilterAuthor(1) | FilterUID(3))) == [post2, post1]
+
+        # Throw some keywords into the mix and try to filter by keyword
+        db.keywords["foo"] = 1
+        db.keywords["bar"] = 2
+        db.keywords["foobar"] = 1
+        db.keywords["foobar"] = 2
+        assert db.list_posts(filter=FilterKeyword("foo")) == [post1]
+        assert db.list_posts(filter=FilterKeyword("bar")) == [post2]
+        assert db.list_posts(filter=FilterKeyword("foobar")) == [post2, post1]
+        assert db.list_posts(filter=(FilterKeyword("foo") | FilterKeyword("bar"))) == [post2, post1]
+        assert db.list_posts(filter=(FilterKeyword("foo") & FilterKeyword("bar"))) == []
+        assert db.list_posts(filter=(FilterKeyword("foo") & FilterKeyword("foobar"))) == [post1]
+
+        # Now store some fulltext summary of the posts and query by that
+        db.update_fulltext(1, "early sunset triumph rhythm")
+        db.update_fulltext(2, "early riser winner beats")
+
+        assert db.list_posts(filter=(FilterFullText("early"))) == [post2, post1]
+        assert db.list_posts(filter=(FilterFullText("sunset"))) == [post1]
+        assert db.list_posts(filter=(FilterFullText("early") & FilterFullText("riser"))) == [post2]
+        assert db.list_posts(filter=(FilterFullText("riser") | FilterFullText("blarg"))) == [post2]
+        assert db.list_posts(filter=(FilterFullText("early") & FilterKeyword("foo"))) == [post1]
+        assert db.list_posts(filter=(FilterFullText("early") & FilterKeyword("foo") & FilterAuthor(1))) == [post1]
+        assert db.list_posts(filter=(FilterFullText("early") & FilterKeyword("foo") & FilterAuthor(2))) == []
+
+
+def test_fulltext():
+    with Database(":memory:") as db:
+        assert db.delete_fulltext(1) == False
+        assert db.match_fulltext("test") == []
+        db.update_fulltext(1, "this is only a test")
+        assert db.match_fulltext("test") == [1]
+        db.update_fulltext(3, "this is another test")
+        assert db.match_fulltext("test") == [1, 3]
+        assert db.match_fulltext("another") == [3]
+        db.update_fulltext(3, "some other content, completely updated")
+        db.update_fulltext(2, "foo bar foo")
+        assert db.match_fulltext("test") == [1]
+        assert db.match_fulltext("content") == [3]
+        assert db.match_fulltext("foo") == [2]
+        assert db.delete_fulltext(3) == True
+        assert db.match_fulltext("content") == []
+        assert db.delete_fulltext(3) == False
+        assert db.delete_fulltext(1) == True
+        assert db.match_fulltext("test") == []
+        assert db.delete_fulltext(1) == False
+        assert db.match_fulltext("foo") == [2]

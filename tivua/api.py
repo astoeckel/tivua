@@ -755,6 +755,9 @@ class API:
             # Create the post in the database
             p.pid = self.db.create_post(p)
 
+            # Update the fulltext search
+            self.db.update_fulltext(p.pid, p.content)
+
             # Insert keywords
             keywords = self.db.keywords
             for keyword in API._split(p.keywords):
@@ -809,6 +812,9 @@ class API:
             if self.db.update_post(p) == 0:
                 raise NotFoundError()
 
+            # Update the fulltext search
+            self.db.update_fulltext(pid, p.content)
+
             # Insert the new keywords
             keywords = self.db.keywords
             for keyword in API._split(p.keywords):
@@ -832,9 +838,11 @@ class API:
             for keyword in API._split(post.keywords):
                 keywords[keyword] = keywords[keyword] - set((pid, ))
 
-            # Delete the post from the history and main post table
+            # Delete the post from the history, the main post table, and the
+            # fulltext search index
             self.db.delete_post(pid)
             self.db.delete_post(pid, history=True)
+            self.db.delete_fulltext(pid)
 
     ############################################################################
     # Keywords                                                                 #
