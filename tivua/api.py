@@ -44,19 +44,27 @@ class ValidationError(ValueError):
     """
     Exception raised whenever a user-provided value could not be validated.
     """
-    pass
 
 
 class AuthentificationError(RuntimeError):
-    pass
+    """
+    Exception raised whenever a user does not have sufficient authorisation to
+    perform an action.
+    """
 
 
 class NotFoundError(RuntimeError):
-    pass
+    """
+    Exception raised if all parameters given to an action validated correctly,
+    but something is referring to a non-existing object.
+    """
 
 
 class ConflictError(RuntimeError):
-    pass
+    """
+    Exception raised if an update/create operation results in a conflict, such
+    as a duplicate id or an update of an already updated entry.
+    """
 
 
 class Perms:
@@ -158,7 +166,7 @@ class API:
         if not ("salt" in config):
             salt = os.urandom(32).hex()
             config["salt"] = salt
-            logger.warning("Initialized password salt to \"{}\"".format(salt))
+            logger.warning("Initialized password salt to \"%s\"", salt)
 
         # Setup the login methods
         if not ("login_method_username_password" in config):
@@ -196,12 +204,12 @@ class API:
             admin_user.password=password_hash
             admin_user.reset_password = True
             logger.warning(
-                "Reset password for user account \"{}\"; new password is \"{}\""
-                .format(admin_user.name, password))
+                "Reset password for user account \"%s\"; new password is \"%s\"",
+                admin_user.name, password)
         else:
             logger.warning(
-                "No admin user found; created new user \"admin\" with password \"{}\""
-                .format(password))
+                "No admin user found; created new user \"admin\" with password \"%s\"",
+                password)
 
         # Create a new user if no user exists
         if not admin_user:
@@ -985,7 +993,7 @@ class API:
             raise ValidationError("%server_error_invalid_role")
 
         with Transaction(self.db):
-            # Read the user date
+            # Read the user data
             user = self.db.get_user(uid=uid, user_name=user_name)
             if user is None:
                 raise NotFoundError()
@@ -993,7 +1001,6 @@ class API:
             # Update the role
             if role != user.role:
                 # Delete any active session, if the user has fewer permissions
-                # now (otherwise the user has to log in again)
                 perms_old = Perms.lookup_role_permissions(user.role)
                 perms_new = Perms.lookup_role_permissions(role)
                 if perms_old & (perms_new ^ perms_old):
@@ -1062,7 +1069,7 @@ class API:
         with volatile data (such as the "cache", "challenges", and "sessions"
         tables) will not be exported.
         """
-        with Transaction(self.db) as t:
+        with Transaction(self.db):
             # Export the configuration options
             config_obj = {}
             for key, value in self.db.configuration.items():
@@ -1086,7 +1093,6 @@ class API:
                     user_obj["reset_password"] = True
                     del user_obj["password"]
                 users_arr.append(user_obj)
-
 
             # Export the user settings
             settings_obj = {}
