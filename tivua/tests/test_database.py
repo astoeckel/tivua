@@ -311,11 +311,18 @@ def test_posts():
         db.keywords["foobar"] = 1
         db.keywords["foobar"] = 2
         assert db.list_posts(filter=FilterKeyword("foo")) == [post1]
+        assert db.list_posts(filter=~FilterKeyword("foo")) == [post2]
         assert db.list_posts(filter=FilterKeyword("bar")) == [post2]
+        assert db.list_posts(filter=~FilterKeyword("bar")) == [post1]
         assert db.list_posts(filter=FilterKeyword("foobar")) == [post2, post1]
+        assert db.list_posts(filter=~FilterKeyword("foobar")) == []
         assert db.list_posts(filter=(FilterKeyword("foo") | FilterKeyword("bar"))) == [post2, post1]
         assert db.list_posts(filter=(FilterKeyword("foo") & FilterKeyword("bar"))) == []
         assert db.list_posts(filter=(FilterKeyword("foo") & FilterKeyword("foobar"))) == [post1]
+        assert db.list_posts(filter=(FilterKeyword("foo") & FilterUID(2))) == [post1]
+        assert db.list_posts(filter=(FilterKeyword("foo") | FilterAuthor(1))) == [post1]
+        assert db.list_posts(filter=(FilterKeyword("foo") | FilterAuthor(2))) == [post2, post1]
+
 
         # Now store some fulltext summary of the posts and query by that
         db.update_fulltext(1, "early sunset triumph rhythm")
@@ -328,6 +335,13 @@ def test_posts():
         assert db.list_posts(filter=(FilterFullText("early") & FilterKeyword("foo"))) == [post1]
         assert db.list_posts(filter=(FilterFullText("early") & FilterKeyword("foo") & FilterAuthor(1))) == [post1]
         assert db.list_posts(filter=(FilterFullText("early") & FilterKeyword("foo") & FilterAuthor(2))) == []
+        assert db.list_posts(filter=(FilterFullText("riser") | FilterKeyword("foo"))) == [post2, post1]
+        assert db.list_posts(filter=(FilterFullText("riser") | FilterKeyword("bar"))) == [post2]
+        assert db.list_posts(filter=(FilterFullText("early") | FilterKeyword("bar"))) == [post2, post1]
+        assert db.list_posts(filter=(~FilterFullText("riser"))) == [post1]
+        assert db.list_posts(filter=(~FilterFullText("riser") & ~FilterKeyword("bar"))) == [post1]
+        assert db.list_posts(filter=(~FilterFullText("riser") & ~FilterKeyword("foo"))) == []
+        assert db.list_posts(filter=(~FilterFullText("riser") | ~FilterKeyword("foo"))) == [post2, post1]
 
 
 def test_fulltext():
