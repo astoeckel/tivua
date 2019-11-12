@@ -45,7 +45,7 @@ this.tivua.render = (function (window) {
 					return attr;
 				}
 				return null;
-			}
+			};
 
 			const math_sanitizer = (attr) => {
 				return (attr == "math") ? attr : null;
@@ -217,7 +217,7 @@ this.tivua.render = (function (window) {
 	function _math_block(state, start, end, silent){
 		var firstLine, lastLine, next, lastPos, found = false, token,
 		    pos = state.bMarks[start] + state.tShift[start],
-		    max = state.eMarks[start]
+		    max = state.eMarks[start];
 
 		if(pos + 2 > max){ return false; }
 		if(state.src.slice(pos,pos+2)!=='$$'){ return false; }
@@ -258,9 +258,9 @@ this.tivua.render = (function (window) {
 
 		token = state.push('math_block', 'math', 0);
 		token.block = true;
-		token.content = (firstLine && firstLine.trim() ? firstLine + '\n' : '')
-		+ state.getLines(start + 1, next, state.tShift[start], true)
-		+ (lastLine && lastLine.trim() ? lastLine : '');
+		token.content = ((firstLine && firstLine.trim() ? firstLine + '\n' : '')
+		    + state.getLines(start + 1, next, state.tShift[start], true)
+		    + (lastLine && lastLine.trim() ? lastLine : ''));
 		token.map = [ start, state.line ];
 		token.markup = '$$';
 		return true;
