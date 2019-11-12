@@ -220,6 +220,11 @@ def _handle_error(code, msg=None):
 # API handlers                                                                 #
 ################################################################################
 
+# Maximum length of a HTTP POST request
+DEFAULT_MAX_BODY_LENGTH = 8 * 1024
+
+# Maximum length of HTTP POST requests updating or creating Tivua posts
+POST_MAX_BODY_LENGTH = 128 * 1024
 
 def _internal_api_get_session(api, req):
     """
@@ -240,12 +245,13 @@ def _internal_api_get_session(api, req):
     # Fetch the session data from the API
     return api.get_session_data(authorization[1].strip().lower())
 
-
 def _internal_wrap_api_handler(cback,
                                field=None,
                                code=200,
                                status="success",
                                perms=Perms.CAN_READ,
+                               max_post_body_length=DEFAULT_MAX_BODY_LENGTH,
+                               ignore_body=False,
                                api=None):
     """
     Common code used to parse API requests. Checks for authentification
@@ -263,6 +269,8 @@ def _internal_wrap_api_handler(cback,
     @param status is the status code that should be written to the response.
     @param perms indicates the required user permissions. If set to Perms.NONE,
            no user authentification is required.
+    @param max_post_body_length is the maximum body length in bytes. Capping the
+           maximum upload size prevents users from exhausting memory.
     @param api is a reference at the api instance.
     """
 
@@ -290,11 +298,12 @@ def _internal_wrap_api_handler(cback,
             # If this request is a POST, check for the Content-Length header and
             # read the provided data into a JSON object
             body = None
-            if ((req.command.upper() == "POST")
+            if ((not ignore_body) and (req.command.upper() == "POST")
                     and (req.headers["Content-Length"])):
                 length = int(req.headers.get("Content-Length"))
-                if length > 0:
-                    body = json.loads(req.rfile.read(length))
+                if (length < 0) or (length > max_post_body_length):
+                    return _api_error(400)(req, "%server_error_too_large")
+                body = json.loads(req.rfile.read(length))
 
             # Call the actual callback and obtain the object that should be
             # serialised and sent back to the client
@@ -353,7 +362,8 @@ def _api_error(code, msg=None):
         return msg
 
     return _internal_wrap_api_handler(
-        _handler, field="what", status="error", code=code, perms=Perms.NONE)
+        _handler, field="what", status="error", code=code,
+        perms=Perms.NONE, ignore_body=True)
 
 
 def _api_get_configuration(api):
@@ -451,19 +461,8 @@ def _api_post_posts_create(api):
         return api.create_post(body)
 
     return _internal_wrap_api_handler(
-        _handler, field="post", api=api, perms=Perms.CAN_WRITE)
-
-
-def _api_post_posts_delete(api):
-    def _handler(req, query, match, session, body):
-        try:
-            pid = int(query["pid"][0]) if "pid" in query else "nan"
-        except:
-            raise ValidationError()
-        return api.delete_post(pid)
-
-    return _internal_wrap_api_handler(
-        _handler, field="post", api=api, perms=Perms.CAN_WRITE)
+        _handler, field="post", api=api, perms=Perms.CAN_WRITE,
+        max_post_body_length=POST_MAX_BODY_LENGTH)
 
 
 def _api_post_posts_update(api):
@@ -486,6 +485,19 @@ def _api_post_posts_update(api):
 
         # Try to update an already existing post
         return api.update_post(body)
+
+    return _internal_wrap_api_handler(
+        _handler, field="post", api=api, perms=Perms.CAN_WRITE,
+        max_post_body_length=POST_MAX_BODY_LENGTH)
+
+
+def _api_post_posts_delete(api):
+    def _handler(req, query, match, session, body):
+        try:
+            pid = int(query["pid"][0]) if "pid" in query else "nan"
+        except:
+            raise ValidationError()
+        return api.delete_post(pid)
 
     return _internal_wrap_api_handler(
         _handler, field="post", api=api, perms=Perms.CAN_WRITE)
