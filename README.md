@@ -1,6 +1,6 @@
 # Tivua ‒ Shared Research Blog
 
-**This project is still under heavy development.**
+### 🚧 This project is still under heavy development 🚧
 
 ## Running Tivua
 
