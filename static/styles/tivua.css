@@ -692,6 +692,7 @@ label span.error {
 
 main.login img {
 	width: 100%;
+	max-height: 12.5rem;
 }
 
 main.login h1 {
