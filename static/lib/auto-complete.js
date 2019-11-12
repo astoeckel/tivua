@@ -66,6 +66,8 @@ var autoComplete = (function(){
             that.setAttribute('autocomplete', 'off');
             that.cache = {};
             that.last_val = '';
+            that.timer = null;
+            that.revision = 0;
 
             that.updateSC = function(resize, next){
                 var rect = o.anchor ? o.anchor.getBoundingClientRect() : that.getBoundingClientRect();
@@ -171,16 +173,23 @@ var autoComplete = (function(){
                     if (val.length >= o.minChars) {
                         if (val != that.last_val) {
                             that.last_val = val;
-                            clearTimeout(that.timer);
+                            if (that.timer) {
+                                clearTimeout(that.timer);
+                            }
                             if (o.cache) {
                                 if (val in that.cache) { suggest(that.cache[val]); return; }
-                                // no requests if previous suggestions were empty
-                                for (var i=1; i<val.length-o.minChars; i++) {
-                                    var part = val.slice(0, val.length-i);
-                                    if (part in that.cache && !that.cache[part].length) { suggest([]); return; }
-                                }
                             }
-                            that.timer = setTimeout(function(){ o.source(val, suggest) }, o.delay);
+                            that.revision++;
+                            let revision = that.revision;
+                            that.timer = setTimeout(function(){
+                                that.timer = null;
+                                that.last_val = val;
+                                o.source(that.value, (data) => {
+                                    if (that.revision == revision) {
+                                        suggest(data);
+                                    }
+                                }, that.selectionStart);
+                            }, o.delay);
                         }
                     } else {
                         that.last_val = val;

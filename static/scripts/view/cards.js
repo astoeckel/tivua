@@ -241,23 +241,85 @@ this.tivua.view.cards = (function() {
 		return tmpl;
 	}
 
+	function _autocomplete_source(api, term, response, cursor) {
+		term = term.toLowerCase().trim();
+		const matches = (x) => (x.toLowerCase().includes(term));
+
+		// Fetch all keywords and all users
+		const promises = [
+			api.get_user_list(),
+			api.get_keyword_list(),
+		];
+		Promise.all(promises).then((data) => {
+			// Fetch the keywords and users arrays
+			const users = data[0].users;
+			const keywords = data[1].keywords;
+			const res = [];
+
+			console.log(cursor, term.length);
+
+			// Filter for users
+			for (let uid in users) {
+				const user = users[uid];
+				let weight = 0.0;
+				if (matches(user.display_name)) {
+					weight = term.length / user.display_name.length;
+				}
+				if (matches(user.name)) {
+					weight = Math.max(term.length / user.name.length);
+				}
+				if (weight > 0.0) {
+					res.push(["user", user, 100.0 * weight]);
+				}
+			}
+
+			// Filter for tags
+			// TODO: merge with editor code somehow
+			for (let keyword in keywords) {
+				const count = keywords[keyword];
+				if (matches(keyword)) {
+					const weight = count * Math.sqrt(term.length / keyword.length);
+					res.push(["keyword", keyword, weight]);
+				}
+			}
+
+			// Respond with the strings
+			response(res.sort((a, b) => b[2] - a[2]));
+		});
+	}
+
+	function _autocomplete_render_item(item, search) {
+		// escape special characters
+		let text = "", value = "";
+		switch (item[0]) {
+			case "user":
+				const user = item[1];
+				text = (user.display_name + " (" + user.name + ")").trim();
+				value = "user:" + user.name;
+				break;
+			case "keyword":
+				text = item[1];
+				if (text.includes(" ")) {
+					value = "tag:\\\"" + text + "\\\"";
+				} else {
+					value = "tag:" + text;
+				}
+				break;
+		}
+
+		search = search.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+		var re = new RegExp("(" + search.split(' ').join('|') + ")", "gi");
+		return '<div class="autocomplete-suggestion" data-val="' + value + '">' + text.replace(re, "<b>$1</b>") + '</div>';
+	}
+
 	function _init_autocomplete(api, root, input) {
 		const autocomplete = new autoComplete({
+			"minChars": 2,
+			"delay": 50,
 			"selector": input,
 			"menuClass": "search",
-			"source": (term, response) => {
-				const matches = (x) => (x.toLowerCase().includes(term.toLowerCase()));
-				api.get_user_list().then((data) => {
-					const res = [];
-					for (let uid in data.users) {
-						const author = data.users[uid];
-						if (matches(author["display_name"]) || matches(author["name"])) {
-							res.push(author["display_name"] + " (" + author["name"] + ")");
-						}
-					}
-					response(res);
-				});
-			},
+			"source": _autocomplete_source.bind(null, api),
+			"renderItem": _autocomplete_render_item,
 			"offsetTop": -7,
 			"root": root
 		});

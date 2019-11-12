@@ -156,7 +156,7 @@ this.tivua.view.editor = (function() {
 				api.get_keyword_list().then((keywords) => {
 					/* Filter for the keywords containing the current term,
 					   sort by occurance count and overlap. */
-					let res = {};
+					const res = {};
 					for (let keyword in keywords.keywords) {
 						const count = keywords.keywords[keyword];
 						if (keyword.includes(term)) {
@@ -303,7 +303,7 @@ this.tivua.view.editor = (function() {
 				const post = (promises.length > 3) ? data[3].post : null;
 				show_editor_view(api, root, events, users, session, post);
 				resolve(events);
-			}).catch((err) => reject(err))
+			}).catch((err) => reject(err));
 		});
 	}
 
