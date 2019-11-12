@@ -1,5 +1,6 @@
 __pycache__/
 *.sqlite*
 .tivua_backup*.json
+.pytest_cache
 .vscode
 
