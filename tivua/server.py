@@ -302,8 +302,12 @@ def _internal_wrap_api_handler(cback,
                     and (req.headers["Content-Length"])):
                 length = int(req.headers.get("Content-Length"))
                 if (length < 0) or (length > max_post_body_length):
-                    return _api_error(400)(req, "%server_error_too_large")
-                body = json.loads(req.rfile.read(length))
+                    return _api_error(400, "%server_error_too_large")(req)
+                if length > 0:
+                    try:
+                        body = json.loads(req.rfile.read(length))
+                    except json.decoder.JSONDecodeError:
+                        return _api_error(400, "%server_error_validation")(req)
 
             # Call the actual callback and obtain the object that should be
             # serialised and sent back to the client
