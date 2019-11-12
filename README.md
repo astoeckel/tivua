@@ -70,7 +70,7 @@ You can deactivate the development mode by passing `--no-dev` as a parameter to 
 python3 tivua.py serve --bind 0.0.0.0
 ```
 
-Long answer: Don't run the above command. For security reasony, you should *always* run *Tivua* behind a reverse proxy such as [nginx](https://nginx.org/) when making it available over the network. (*TODO*: Add some example Nginx configuration files.)
+Long answer: Don't run the above command. For security reasons, you should *always* run *Tivua* behind a reverse proxy such as [nginx](https://nginx.org/) when making it available over the network. (*TODO*: Add some example Nginx configuration files.)
 
 **Q: How do I serve *Tivua* via HTTPs? How do I enable gzip or HTTP request caching?**
 
