@@ -683,7 +683,7 @@ def create_server_class(api, args):
 
         # If development is disabled, answer with a 404 when any non-minified
         # sources are requested
-        Route("GET", r"^/(lib|scripts|styles)/(?!(.*(\.min\.js|\.min\.css)|dict/|fonts/)).*$", _handle_error(404)) \
+        Route("GET", r"^/(extern|scripts|styles)/(?!(.*(\.min\.js|\.min\.css)|dict/|fonts/)).*$", _handle_error(404)) \
             if no_dev else None,
 
         # Re-route the request for the favicon to the images subfolder

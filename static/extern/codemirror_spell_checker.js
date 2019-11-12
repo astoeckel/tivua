@@ -24,7 +24,7 @@ this.tivua = this.tivua || {};
 this.tivua.spellcheck = (function() {
 	"use strict";
 
-	const spellcheck_dir = "lib/dict/";
+	const spellcheck_dir = "extern/dict/";
 	const spellcheck_lang = "en_CA";
 	const spellcheck_data = {
 		"aff": null,
