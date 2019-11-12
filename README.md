@@ -1,4 +1,4 @@
-# Tivua -- Shared Research Blog
+# Tivua ‒ Shared Research Blog
 
 **This project is still under heavy development.**
 
