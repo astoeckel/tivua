@@ -3,4 +3,5 @@ __pycache__/
 .tivua_backup*.json
 .pytest_cache
 .vscode
-
+node_modules
+package-lock.json

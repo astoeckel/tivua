@@ -1,0 +1,30 @@
+{
+  "name": "tivua",
+  "version": "1.0.0",
+  "description": "Shared research blog",
+  "main": "scripts/main.js",
+  "directories": {
+    "doc": "doc"
+  },
+  "scripts": {
+    "test": "./node_modules/mocha/bin/mocha static/scripts/test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/astoeckel/tivua.git"
+  },
+  "author": "Andreas Stöckel",
+  "license": "AGPL-3.0-or-later",
+  "bugs": {
+    "url": "https://github.com/astoeckel/tivua/issues"
+  },
+  "homepage": "https://github.com/astoeckel/tivua#readme",
+  "dependencies": {
+    "html-minifier": "^4.0.0",
+    "csso-cli": "^3.0.0",
+    "babel-minify": "^0.5.1"
+  },
+  "devDependencies": {
+    "mocha": "^6.2.2"
+  }
+}
