@@ -83,7 +83,6 @@ class Transaction:
         self.savepoint = "sp_{:x}_{}".format(Transaction.UID, self.level)
 
         # Start a new sqlite transaction
-        logger.debug("Creating transaction {}".format(self.savepoint))
         self.cursor = self.db.conn.cursor()
         self.cursor.execute("SAVEPOINT {}".format(self.savepoint))
 
@@ -99,9 +98,7 @@ class Transaction:
         # Either rollback or commit the transaction, depending on whether
         # there was an exception
         if not exc_type is None:
-            logger.debug("Rolling back transaction {}".format(self.savepoint))
             self.cursor.execute("ROLLBACK TO {}".format(self.savepoint))
-        logger.debug("Releasing transaction {}".format(self.savepoint))
         self.cursor.execute("RELEASE {}".format(self.savepoint))
 
         # Reset the level and cursor variables
