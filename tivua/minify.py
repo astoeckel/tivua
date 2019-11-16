@@ -51,8 +51,8 @@ class Minify:
     _JS_TEST_OUT = b'(function(){console.log("foo")})();'
 
     @staticmethod
-    def _minify_stub(s):
-        return s
+    def _minify_stub(s_in):
+        return s_in
 
     @staticmethod
     def _search_npm_executable(exe):
@@ -126,14 +126,17 @@ class Minify:
 
     @staticmethod
     def has_html_minifier():
+        # pylint: disable=locally-disabled, comparison-with-callable
         return Minify._get_minifiers()["html"] != Minify._minify_stub
 
     @staticmethod
     def has_css_minifier():
+        # pylint: disable=locally-disabled, comparison-with-callable
         return Minify._get_minifiers()["css"] != Minify._minify_stub
 
     @staticmethod
     def has_js_minifier():
+        # pylint: disable=locally-disabled, comparison-with-callable
         return Minify._get_minifiers()["js"] != Minify._minify_stub
 
     @staticmethod
@@ -141,6 +144,7 @@ class Minify:
         """
         Minifies HTML files using css_html_js_minify.
         """
+        # pylint: disable=locally-disabled, not-callable
         return Minify._get_minifiers()["html"](s)
 
     @staticmethod
@@ -148,6 +152,7 @@ class Minify:
         """
         Minifies CSS files using css_html_js_minify.
         """
+        # pylint: disable=locally-disabled, not-callable
         return Minify._get_minifiers()["css"](s)
 
     @staticmethod
@@ -155,24 +160,25 @@ class Minify:
         """
         Minifies JavaScript code using babel-minify.
         """
+        # pylint: disable=locally-disabled, not-callable
         return Minify._get_minifiers()["js"](s)
 
 
 if __name__ == "__main__":
-    """
-    Provide a simple command line tool for minifying css, js, and html files.
-    """
+    # Provide a simple command line tool for minifying css, js, and html files.
 
-    import sys
-    if (len(sys.argv) != 2):
-        sys.stderr.write("Usage: {} <FILE TO MINIFY>\n".format(sys.argv[0]))
-        sys.exit(1)
+    def main():
+        import sys
+        if (len(sys.argv) != 2):
+            sys.stderr.write("Usage: {} <FILE TO MINIFY>\n".format(sys.argv[0]))
+            sys.exit(1)
 
-    fn, ext = sys.argv[1], sys.argv[1].split(".")[-1].lower()
-    with open(sys.argv[1], "rb") as f:
-        data = f.read()
-        if ext in ["html", "css", "js"]:
-            sys.stdout.write(str(getattr(Minify, ext)(data), "utf-8"))
-        else:
-            sys.stderr.write("Unknown file extension \"{}\"".format(ext))
+        filename, ext = sys.argv[1], sys.argv[1].split(".")[-1].lower()
+        with open(filename, "rb") as f:
+            data = f.read()
+            if ext in ["html", "css", "js"]:
+                sys.stdout.write(str(getattr(Minify, ext)(data), "utf-8"))
+            else:
+                sys.stderr.write("Unknown file extension \"{}\"".format(ext))
 
+    main()
