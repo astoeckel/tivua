@@ -55,20 +55,37 @@ class Minify:
         return s
 
     @staticmethod
+    def _search_npm_executable(exe):
+        # First try to search the executable within the "./node_modules/"
+        # subdirectory
+        import os
+        local_npm_exe = os.path.abspath(os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "../node_modules/.bin/{}".format(exe)
+        ))
+        if os.path.isfile(local_npm_exe):
+            logger.debug(
+                "Found locally installed NPM executable \"%s\"", exe)
+            return local_npm_exe
+
+        # Otherwise purely rely on the system PATH
+        return exe
+
+    @staticmethod
     def _get_minifiers():
         """
         Used internally to globally initialise the minifier instances.
         """
 
-        def exec(data, args):
+        def exec_(data, args):
             import subprocess
             try:
                 with subprocess.Popen(
-                        args,
+                        [Minify._search_npm_executable(args[0])] + args[1:],
                         stdout=subprocess.PIPE,
                         stderr=subprocess.PIPE,
                         stdin=subprocess.PIPE) as p:
-                    out, err = p.communicate(data)
+                    out, _ = p.communicate(data)
             except:
                 return ''
             return out
@@ -79,24 +96,24 @@ class Minify:
                     Minify._MINIFIERS[name] = minifier
                 else:
                     logger.warning(
-                        "Install the npm package \"{}\" to minify {}".format(
-                            package, name))
+                        "Install the npm package \"%s\" to minify %s",
+                        package, name)
                     Minify._MINIFIERS[name] = Minify._minify_stub
             return
 
         def html_minify(data):
-            return exec(data, [
-                "html-minifier", "--case-sensitive",
-                "--collapse-boolean-attributes", "--collapse-whitespace",
-                "--remove-comments", "--remove-script-type-attributes",
-                "--sort-attributes", "--sort-class-name", "--use-short-doctype"
+            return exec_(data,
+                ["html-minifier", "--case-sensitive",
+                 "--collapse-boolean-attributes", "--collapse-whitespace",
+                 "--remove-comments", "--remove-script-type-attributes",
+                 "--sort-attributes", "--sort-class-name", "--use-short-doctype"
             ])
 
         def css_minify(data):
-            return exec(data, ["csso", "-i", "/dev/stdin"])
+            return exec_(data, args=["csso", "-i", "/dev/stdin"])
 
         def js_minify(data):
-            return exec(data, ["minify"])
+            return exec_(data, ["minify"])
 
         init("html", html_minify, Minify._HTML_TEST_IN, Minify._HTML_TEST_OUT,
              "html-minifier")
