@@ -59,9 +59,9 @@ this.tivua.filter = (function () {
 
 	/* Lookup table for translating operators to token types */
 	const TOKEN_OP_DICT = {
-		"and": TOKEN_AND,
-		"or": TOKEN_OR,
-		"not": TOKEN_NOT,
+		"AND": TOKEN_AND,
+		"OR": TOKEN_OR,
+		"NOT": TOKEN_NOT,
 	};
 
 	/**
@@ -115,9 +115,8 @@ this.tivua.filter = (function () {
 			if (t) {
 				/* Convert logic operators into the corresponding token */
 				if (t.type == TOKEN_STRING) {
-					let text = t.text.toLowerCase();
-					if (text in TOKEN_OP_DICT) {
-						t.type = TOKEN_OP_DICT[text];
+					if (t.text in TOKEN_OP_DICT) {
+						t.type = TOKEN_OP_DICT[t.text];
 					}
 				}
 				tokens.push(t);
@@ -169,6 +168,17 @@ this.tivua.filter = (function () {
 							}
 							continue;
 						default:
+							if (c == "&" && s.charAt(i + 1) == "&") {
+								emit(i, TOKEN_AND, "&&");
+								state = STATE_INIT;
+								i++;
+								continue;
+							} else if (c == "|" && s.charAt(i + 1) == "|") {
+								emit(i, TOKEN_OR, "||");
+								state = STATE_INIT;
+								i++;
+								continue;
+							}
 							if (state != STATE_TEXT) {
 								if (c == "#") {
 									emit(i, TOKEN_HASH, c);
@@ -218,39 +228,89 @@ this.tivua.filter = (function () {
 	 * PARSER                                                                 *
 	 ********************************++++**************************************/
 
+	const LITERAL_REQUIRED_RE = /(["']|^[#!]|\s|&&|\|\|)/;
+
 	const NODE_WORD = 1;
 	const NODE_FILTER = 2;
 	const NODE_AND = 3;
 	const NODE_OR = 4;
 	const NODE_NOT = 5;
-	const NODE_ERR = 255;
+	const NODE_NOP = 6;
+	const NODE_ERR = 7;
 
-	class ParserNode {
+	/**
+	 * The ASTNode class represents a node in the abstract syntax tree (AST).
+	 *
+	 * This class shouldn't be used directly outside of this module, but instead
+	 * passed to exported functions that transform the AST into something more
+	 * useful.
+	 *
+	 * Each node has a type and a list of children. Certain nodes posess
+	 * specialies members, in particular "NODE_WORD" nodes have a "value"
+	 * member, "NODE_FILTER" nodes have a both a "value" and "key" member.
+	 * These members refer to a token in the parse tree. Furthermore, the
+	 * special "NODE_ERR" node has a localisable string "msg" as member, as well
+	 * as a the token "member". Some nodes may have a "token" member refering to
+	 * the token that generated the node in the first place.
+	 */
+	class ASTNode {
+		/**
+		 * Creates a new instance of the ASTNode class.
+		 *
+		 * @param {int} type is one of the type constants defined above.
+		 * @param  {...any} children is a list of child nodes.
+		 */
 		constructor(type, ...children) {
 			this.type = type;
 			this.children = children;
+			this.explicit_parens = false;
+			this.token = null; /* Set if there is an explicit token */
+			this.value = null;
+			this.key = null;
 		}
 
-		toString() {
-			if (this.type == NODE_AND) {
-				return "(" + this.children.map(x => x.toString()).join(" AND ") + ")";
-			} else if (this.type == NODE_OR) {
-				return "(" + this.children.map(x => x.toString()).join(" OR ") + ")";
-			} else if (this.type == NODE_NOT) {
-				return "(NOT " + this.children[0].toString() + ")";
-			} else if (this.type == NODE_WORD) {
-				return this.value.text;
-			} else if (this.type == NODE_FILTER) {
-				if (this.name.type == TOKEN_HASH) {
-					return "tag:" + this.value.text;
+		/**
+		 * Simplifies the AST (modifying it), where NOPs and one-element
+		 * logic nodes are removed.
+		 *
+		 * Note: This function is not intended to perform many semantic
+		 * simplifications. Instead, this is supposed to remove some artifacts
+		 * that arise from the particular grammar that is used to parse the
+		 * strings, such as AND and OR nodes with only one child or NOP nodes
+		 * arising from incomplete expressions.
+		 */
+		simplify() {
+			/* Actual implementation of simplify */
+			const _simplify = () => {
+				/* Simplify all child nodes, then, discard NOP nodes */
+				this.children = this.children
+					.map(x => x.simplify())
+					.filter(x => x.type != NODE_NOP);
+				const n_children = this.children.length;
+
+				/* Reduce logic nodes to NOPs in case there are no child nodes */
+				if ((n_children == 0) && ((this.type == NODE_AND) ||
+										(this.type == NODE_OR) ||
+										(this.type == NODE_NOT))) {
+					return new ASTNode(NODE_NOP);
 				}
-				return this.name.text + ":" + this.value.text;
-			} else if (this.type == NODE_ERR) {
-				return "ERROR(" + this.msg + ")";
-			}
-			return "";
+
+				/* If there is only one child, and this is an AND or OR, just return
+				the child. */
+				if ((n_children == 1) && ((this.type == NODE_AND) ||
+										(this.type == NODE_OR))) {
+					return this.children[0];
+				}
+
+				return this;
+			};
+
+			/* Preserve the "explicit parentheses" flag */
+			const res = _simplify();
+			res.explicit_parens = this.explicit_parens || res.explicit_parens;
+			return res;
 		}
-	};
+	}
 
 	/**
 	 * Internal class implementing the actual parsing.
@@ -293,22 +353,23 @@ this.tivua.filter = (function () {
 		/**
 		 * Creates an AST node representing an error.
 		 */
-		_error_node(msg, ...children) {
-			let node = new ParserNode(NODE_ERR, ...children);
+		_error_node(msg, token, ...children) {
+			let node = new ASTNode(NODE_ERR, ...children);
 			node.msg = msg;
-			node.token = this.consume();
+			node.token = token;
 			return node;
 		}
 
 		/**
-		 * Parses a single word.
+		 * Parses a single word and returns the corresponding token (not an
+		 * ASTNode) or NULL if there is no string or literal token following.
 		 */
 		_parse_word() {
 			if ((this.peek().type == TOKEN_STRING) ||
 			    (this.peek().type == TOKEN_LITERAL)) {
 				return this.consume();
 			}
-			return this._error_node("%err_expected_value");
+			return null;
 		}
 
 		/**
@@ -316,27 +377,34 @@ this.tivua.filter = (function () {
 		 * of the form "name:value".
 		 */
 		_parse_filter() {
-			let v1 = null, v2 = null, res = null;
+			let v1 = null, v2 = null, v2_required = false;
 			if (this.peek().type == TOKEN_HASH) {
 				v1 = this.consume();
-				v2 = this._parse_word();
+				v2_required = true;
 			} else {
 				v1 = this._parse_word();
 				if (this.peek().type == TOKEN_COLON) {
 					this.consume();
-					v2 = this._parse_word();
+					v2_required = true;
+				}
+			}
+			if (v2_required) {
+				v2 = this._parse_word();
+				if (!v2) {
+					return this._error_node("%err_expected_string", v1);
 				}
 			}
 			if (v1 && v2) {
-				res = new ParserNode(NODE_FILTER);
-				res.name = v1;
+				const res = new ASTNode(NODE_FILTER);
+				res.key = v1;
 				res.value = v2;
-			} else {
-				res = new ParserNode(NODE_WORD);
+				return res;
+			} else if (v1) {
+				const res = new ASTNode(NODE_WORD);
 				res.value = v1;
+				return res;
 			}
-			console.log(this.peek());
-			return res;
+			return new ASTNode(NODE_NOP);
 		}
 
 		/**
@@ -344,8 +412,10 @@ this.tivua.filter = (function () {
 		 */
 		_parse_not_expr() {
 			if ((this.peek().type == TOKEN_NOT)) {
-				this.consume();
-				return new ParserNode(NODE_NOT, this._parse_parens_expr());
+				const token = this.consume();
+				const node = new ASTNode(NODE_NOT, this._parse_parens_expr());
+				node.token = token;
+				return node;
 			}
 			return this._parse_filter();
 		}
@@ -357,11 +427,15 @@ this.tivua.filter = (function () {
 			if (this.peek().type == TOKEN_PAREN_OPEN) {
 				this.consume();
 				const node = this._parse_expr();
+				node.explicit_parens = true;
 				if (this.peek().type != TOKEN_PAREN_CLOSE) {
-					return this._error_node("%err_expected_paren_close");
+					node.children.push(this._error_node("%err_expected_paren_close", this.peek()));
+				} else {
+					this.consume();
 				}
-				this.consume();
 				return node;
+			} else if (this.peek().type == TOKEN_COLON) {
+				return this._error_node("%err_unexpected_colon", this.consume());
 			}
 			return this._parse_not_expr();
 		}
@@ -371,21 +445,17 @@ this.tivua.filter = (function () {
 		 * Parses expressions connected by "AND".
 		 */
 		_parse_and_expr() {
-			const node = new ParserNode(NODE_AND, this._parse_parens_expr());
-			while (true) {
-				console.log("!->", this.peek().type);
-				if (this.peek().type == TOKEN_AND) {
-					this.consume();
-					node.children.push(this._parse_parens_expr());
-				} else if ((this.peek().type == TOKEN_STRING) ||
-						   (this.peek().type == TOKEN_LITERAL) ||
-						   (this.peek().type == TOKEN_HASH) ||
-						   (this.peek().type == TOKEN_NOT)) {
-					console.log("-->");
-					node.children.push(this._parse_parens_expr());
-				} else {
-					break;
-				}
+			const node = new ASTNode(NODE_AND, this._parse_parens_expr());
+			if (this.peek().type == TOKEN_AND) {
+				node.token = this.consume();
+				node.children.push(this._parse_and_expr());
+			} else if ((this.peek().type == TOKEN_STRING) ||
+						(this.peek().type == TOKEN_LITERAL) ||
+						(this.peek().type == TOKEN_HASH) ||
+						(this.peek().type == TOKEN_NOT) ||
+						(this.peek().type == TOKEN_COLON) ||
+						(this.peek().type == TOKEN_PAREN_OPEN)) {
+				node.children.push(this._parse_and_expr());
 			}
 			return node;
 		}
@@ -394,14 +464,10 @@ this.tivua.filter = (function () {
 		 * Parses expressions connected by "OR".
 		 */
 		_parse_or_expr() {
-			const node = new ParserNode(NODE_OR, this._parse_and_expr());
-			while (true) {
-				if (this.peek().type == TOKEN_OR) {
-					this.consume();
-					node.children.push(this._parse_and_expr());
-				} else {
-					break;
-				}
+			const node = new ASTNode(NODE_OR, this._parse_and_expr());
+			if (this.peek().type == TOKEN_OR) {
+				node.token = this.consume();
+				node.children.push(this._parse_or_expr());
 			}
 			return node;
 		}
@@ -415,7 +481,8 @@ this.tivua.filter = (function () {
 		}
 
 		/**
-		 * Parses the given string.
+		 * Parses the given string and returns the abstract syntax tree composed
+		 * of ASTNode instances.
 		 */
 		parse(str) {
 			/* Reset all local variables */
@@ -431,14 +498,117 @@ this.tivua.filter = (function () {
 	}
 
 	/**
-	 * Parses the given string into an abstract syntax tree. This abstract
-	 * syntax can be serialised into a compact JSON representation that can be
-	 * sent to the server.
+	 * Parses the given string into an abstract syntax tree. The resulting
+	 * syntax tree can either be converted to a filter tree, converted to a
+	 * canonical version of the string, or used for autocompletion.
+	 *
+	 * @param s is the string that should be parsed.
+	 * @param simplify if true (default, if not given) calls the simplify()
+	 *        method on the ast before returning it. This should be left at
+	 *        "true" and setting it to "false" is only used in the unit tests.
 	 */
-	function parse(s) {
-		/* Turn the given string into an array of tokens and pass it into the
-		   ParserState class that does the actual parsing. */
-		return (new Parser()).parse(s);
+	function parse(s, simplify) {
+		const ast = (new Parser()).parse(s);
+		return (simplify === undefined || simplify) ? ast.simplify() : ast;
+	}
+
+	/**
+	 * The canonicalize() function normalizes whitespace and parentheses in the
+	 * filter expression. Parentheses are added in a way that clarifies the
+	 * precedence of the operators.
+	 *
+	 * @param ast is the abstract syntax tree returned by parse().
+	 * @param s is the original string passed to parse(). This is required to
+	 *          select the original version of the string that was typed
+	 */
+	function canonicalize(ast, s, transform, join) {
+		/**
+		 * Escapes a string to a literal in case it contains a forbidden
+		 * sequence.
+		 */
+		function _escape(s) {
+			if (s.match(LITERAL_REQUIRED_RE)) {
+				return '"' + s.replace("\\", "\\\\").replace('"', '\\"') + '"';
+			}
+			return s;
+		}
+
+		/**
+		 * Either returns the original text that generated the given token,
+		 * or, if no such information is vailable, returns the text stored
+		 * in the "text" property of the token. Also, if the token has been
+		 * substituted by a string (which is used when autocompleting a
+		 * string in the UI), just return the (potentially escaped) string.
+		 */
+		function _get_text(t) {
+			if (!s || typeof t == "string") {
+				return _escape(t);
+			}
+			return s.substring(t.start, t.end);
+		}
+
+		/* Note: this code works, but was removed because "(a) : b" is an
+			error condition, but would have been converted to "a : b",
+			which is equal to "a:b", which is NOT an error condition.
+			This this would have changed the semantics. */
+		/* Returns true if there is at least one operator in the group with
+			at least two children. */
+		/*const _is_nontrival_group = nd => nd.children.reduce(
+			(b, x) => b || x.children.length >= 2 || _is_nontrival_group(x),
+			nd.children.length >= 2);*/
+
+		function _canonicalize(nd) {
+			/* Canoncialises a child and decides whether to place parentheses
+			   around it or not. Parentheses are placed if they were explicitly
+			   placed by the user, or around dissimilar operators. */
+			function _canonicalize_child(child) {
+				if ((child.explicit_parens /*&& _is_nontrival_group(child)*/) ||
+					((child.type != nd.type) &&
+					 ((child.type == NODE_NOT && child.token.text != "!") ||
+					  (child.type == NODE_OR) ||
+					  (child.type == NODE_AND)))) {
+					return "(" + _canonicalize(child) + ")";
+				}
+				return _canonicalize(child);
+			}
+
+			switch (nd.type) {
+				case NODE_WORD:
+					return _get_text(nd.value);
+				case NODE_FILTER: {
+					const right = _get_text(nd.value);
+					if (_get_text(nd.key) == "#") {
+						return "#" + right;
+					}
+					const left = _get_text(nd.key);
+					return left + ":" + right;
+				}
+				case NODE_AND:
+				case NODE_OR: {
+						const left = _canonicalize_child(nd.children[0]);
+					const right = _canonicalize_child(nd.children[1]);
+					const mid = nd.token ? _get_text(nd.token) : null;
+					return [left, mid, right].filter(x => x).join(" ");
+				}
+				case NODE_NOT: {
+					const t = _get_text(nd.token);
+					return t + (t == "!" ? "" : " ") +
+						_canonicalize_child(nd.children[0]);
+				}
+				case NODE_NOP:
+					return "";
+				case NODE_ERR:
+					if (nd.token) {
+						return _get_text(nd.token);
+					}
+					return "";
+			}
+		}
+
+		/* Call the internal version of _canonicalize on the AST. We assume that
+		   the AST is a proper binary tree, which is ensured by simplify, which
+		   removes invalid zero-ary and unary AND and OR operators. */
+		return _canonicalize(ast.simplify());
 	}
 
 	/**************************************************************************
@@ -477,18 +647,8 @@ this.tivua.filter = (function () {
 
 
 	return {
-		"parse": parse,
 		"tokenize": tokenize,
-		"Token": Token,
-		"TOKEN_STRING": TOKEN_STRING,
-		"TOKEN_LITERAL": TOKEN_LITERAL,
-		"TOKEN_PAREN_OPEN": TOKEN_PAREN_OPEN,
-		"TOKEN_PAREN_CLOSE": TOKEN_PAREN_CLOSE,
-		"TOKEN_COLON": TOKEN_COLON,
-		"TOKEN_HASH": TOKEN_HASH,
-		"TOKEN_AND": TOKEN_AND,
-		"TOKEN_OR": TOKEN_OR,
-		"TOKEN_NOT": TOKEN_NOT,
-		"TOKEN_END": TOKEN_END,
+		"parse": parse,
+		"canonicalize": canonicalize,
 	};
 })();
