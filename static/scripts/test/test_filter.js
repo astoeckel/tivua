@@ -203,6 +203,9 @@ describe('Filter', () => {
 		it("tag", () => {
 			assert.equal(parse("#b"), "((tag:b))");
 		});
+		it("automatically closing parentheses", () => {
+			assert.equal(parse("(a"), "((((a))))");
+		});
 		it("invalid filter expression 1", () => {
 			assert.equal(parse("#(b)"), "((ERROR(%err_expected_string) AND (((b)))))");
 		});
@@ -211,9 +214,6 @@ describe('Filter', () => {
 		});
 		it("invalid filter expression 3", () => {
 			assert.equal(parse("(a) OR :foo b"), "((((a))) OR ((ERROR(%err_unexpected_colon) AND (foo AND (b)))))");
-		});
-		it("invalid filter expression 4", () => {
-			assert.equal(parse("(a"), "((((a) OR ERROR(%err_expected_paren_close))))");
 		});
 	});
 
@@ -269,6 +269,9 @@ describe('Filter', () => {
 		it("tag", () => {
 			assert.equal(parse("#b"), "tag:b");
 		});
+		it("automatically closing parentheses", () => {
+			assert.equal(parse("(a"), "a");
+		});
 		it("invalid filter expression 1", () => {
 			assert.equal(parse("#(b)"), "(ERROR(%err_expected_string) AND b)");
 		});
@@ -279,7 +282,7 @@ describe('Filter', () => {
 			assert.equal(parse("(a) OR :foo b"), "(a OR (ERROR(%err_unexpected_colon) AND (foo AND b)))");
 		});
 		it("invalid filter expression 4", () => {
-			assert.equal(parse("(a"), "(a OR ERROR(%err_expected_paren_close))");
+			assert.equal(parse("&& || !"), "NOP");
 		});
 	});
 
@@ -299,17 +302,20 @@ describe('Filter', () => {
 		it("remove whitespace", () => {
 			assert.equal(canonicalize(" a        b     c  d "), "a b c d");
 		});
-		it("preserve non-grouping parentheses 1", () => {
-			//assert.equal(canonicalize("(a) b c"), "a b c");
-			assert.equal(canonicalize("(a) b c"), "(a) b c");
+		it("remove non-grouping outer parentheses", () => {
+			assert.equal(canonicalize("(a)"), "a");
 		});
-		it("preserve non-grouping parentheses 2", () => {
-			//assert.equal(canonicalize("(!a) b c"), "!a b c");
-			assert.equal(canonicalize("(!a) b c"), "(!a) b c");
+		it("remove non-grouping parentheses 1", () => {
+			assert.equal(canonicalize("(a) b c"), "a b c");
 		});
-		it("preserve non-grouping parentheses 3", () => {
-			//assert.equal(canonicalize("!(!!a) b c"), "!!!a b c");
-			assert.equal(canonicalize("!(!!a) b c"), "!(!!a) b c");
+		it("remove non-grouping parentheses 2", () => {
+			assert.equal(canonicalize("(!a) b c"), "!a b c");
+		});
+		it("remove non-grouping parentheses 3", () => {
+			assert.equal(canonicalize("!(!!a) b c"), "!!!a b c");
+		});
+		it("perserve explicit outer parentheses", () => {
+			assert.equal(canonicalize("(a b c)"), "(a b c)");
 		});
 		it("preserve grouping parentheses 1", () => {
 			assert.equal(canonicalize("(a b) c"), "(a b) c");
@@ -321,7 +327,7 @@ describe('Filter', () => {
 			assert.equal(canonicalize("(a b) && c"), "(a b) && c");
 		});
 		it("preserve grouping parentheses 4", () => {
-			assert.equal(canonicalize("((a) && b) c (d || c)"), "((a) && b) c (d || c)");
+			assert.equal(canonicalize("((a) && b) c (d || c)"), "(a && b) c (d || c)");
 		});
 		it("add parentheses", () => {
 			assert.equal(canonicalize("a || b && c"), "a || (b && c)");
@@ -331,6 +337,12 @@ describe('Filter', () => {
 		});
 		it("parentheses and !", () => {
 			assert.equal(canonicalize("! a || b && c"), "!a || (b && c)");
+		});
+		it("automatically closing parentheses 1", () => {
+			assert.equal(canonicalize("(a"), "a");
+		});
+		it("automatically closing parentheses 2", () => {
+			assert.equal(canonicalize("(((a || b"), "(a || b)");
 		});
 		it("invalid filter expression 1", () => {
 			assert.equal(canonicalize("#(b)"), "# (b)");
@@ -342,7 +354,7 @@ describe('Filter', () => {
 			assert.equal(canonicalize("(a) OR :foo b"), "(a) OR (: foo b)");
 		});
 		it("invalid filter expression 4", () => {
-			assert.equal(canonicalize("(a"), "a");
+			assert.equal(canonicalize("&& || !"), "");
 		});
 	});
 });

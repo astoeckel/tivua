@@ -310,6 +310,39 @@ this.tivua.filter = (function () {
 			res.explicit_parens = this.explicit_parens || res.explicit_parens;
 			return res;
 		}
+
+		/**
+		 * Returns a string representation of the type.
+		 */
+		describe() {
+			switch (this.type) {
+				case NODE_WORD:
+					return "word";
+				case NODE_FILTER:
+					return "filter";
+				case NODE_ERR:
+					return "error";
+				case NODE_AND:
+				case NODE_OR:
+					return "binary_op";
+				case NODE_NOT:
+					return "unary_op";
+				default:
+					return null;
+			}
+		}
+
+		/**
+		 * Returns the first error node in the tree or null if there is none.
+		 */
+		get_first_error() {
+			return this.children.reduce(
+				(msg, x) =>
+					msg ||
+					(x.type == NODE_ERR ? x : null) ||
+					x.get_first_error(),
+				this.type == NODE_ERR ? this : null);
+		}
 	}
 
 	/**
@@ -377,20 +410,21 @@ this.tivua.filter = (function () {
 		 * of the form "name:value".
 		 */
 		_parse_filter() {
-			let v1 = null, v2 = null, v2_required = false;
+			let v1 = null, v2 = null, v2_required = false, err_token = null;
 			if (this.peek().type == TOKEN_HASH) {
-				v1 = this.consume();
+				v1 = err_token = this.consume();
 				v2_required = true;
 			} else {
 				v1 = this._parse_word();
 				if (this.peek().type == TOKEN_COLON) {
-					this.consume();
+					err_token = this.consume();
 					v2_required = true;
 				}
 			}
 			if (v2_required) {
 				v2 = this._parse_word();
 				if (!v2) {
+					v1.end = err_token.end;
 					return this._error_node("%err_expected_string", v1);
 				}
 			}
@@ -428,10 +462,11 @@ this.tivua.filter = (function () {
 				this.consume();
 				const node = this._parse_expr();
 				node.explicit_parens = true;
-				if (this.peek().type != TOKEN_PAREN_CLOSE) {
-					node.children.push(this._error_node("%err_expected_paren_close", this.peek()));
-				} else {
+				if ((this.peek().type == TOKEN_PAREN_CLOSE) ||
+				    (this.peek().type == TOKEN_END)) {
 					this.consume();
+				} else {
+					node.children.push(this._error_node("%err_expected_paren_close", this.peek()));
 				}
 				return node;
 			} else if (this.peek().type == TOKEN_COLON) {
@@ -517,11 +552,26 @@ this.tivua.filter = (function () {
 	 * filter expression. Parentheses are added in a way that clarifies the
 	 * precedence of the operators.
 	 *
+	 * The optional parameters "transform" and "join" can be used to transduce
+	 * the canonicalised AST into another tree, such as a DOM tree.
+	 *
 	 * @param ast is the abstract syntax tree returned by parse().
 	 * @param s is the original string passed to parse(). This is required to
-	 *          select the original version of the string that was typed
+	 *        select the original version of the string that was typed
+	 * @param transform is a function that takes a string s and an optional node
+	 *        reference nd, and returns some object.
+	 * @param join is a function that takes a set of objects previously created
+	 *        by join and/or transform and creates a new object.
 	 */
 	function canonicalize(ast, s, transform, join) {
+		/* Default parameters */
+		transform = (transform === undefined) ? ((s, _) => s) : transform;
+		join = (join === undefined) ? ((sep, arr) => arr.join(sep)) : join;
+
+		/* Some shorthands for transform and join */
+		const fT = (s, nd) => transform(s, (nd === undefined) ? null : nd);
+		const fJ = (sep, ...arr) => join(sep, arr.filter(x => x));
+
 		/**
 		 * Escapes a string to a literal in case it contains a forbidden
 		 * sequence.
@@ -535,10 +585,9 @@ this.tivua.filter = (function () {
 
 		/**
 		 * Either returns the original text that generated the given token,
-		 * or, if no such information is vailable, returns the text stored
-		 * in the "text" property of the token. Also, if the token has been
-		 * substituted by a string (which is used when autocompleting a
-		 * string in the UI), just return the (potentially escaped) string.
+		 * or, if the token has been substituted by a string (which is used when
+		 * autocompleting a string in the UI), just return the (potentially
+		 * escaped) string.
 		 */
 		function _get_text(t) {
 			if (!s || typeof t == "string") {
@@ -547,68 +596,76 @@ this.tivua.filter = (function () {
 			return s.substring(t.start, t.end);
 		}
 
-		/* Note: this code works, but was removed because "(a) : b" is an
-			error condition, but would have been converted to "a : b",
-			which is equal to "a:b", which is NOT an error condition.
-			This this would have changed the semantics. */
-		/* Returns true if there is at least one operator in the group with
-			at least two children. */
-		/*const _is_nontrival_group = nd => nd.children.reduce(
+		/* Returns true if there is at least one operator in the group with at
+			least two children. */
+		const _is_nontrival_group = nd => nd.children.reduce(
 			(b, x) => b || x.children.length >= 2 || _is_nontrival_group(x),
-			nd.children.length >= 2);*/
+			nd.children.length >= 2);
 
-		function _canonicalize(nd) {
-			/* Canoncialises a child and decides whether to place parentheses
-			   around it or not. Parentheses are placed if they were explicitly
-			   placed by the user, or around dissimilar operators. */
-			function _canonicalize_child(child) {
-				if ((child.explicit_parens /*&& _is_nontrival_group(child)*/) ||
-					((child.type != nd.type) &&
-					 ((child.type == NODE_NOT && child.token.text != "!") ||
-					  (child.type == NODE_OR) ||
-					  (child.type == NODE_AND)))) {
-					return "(" + _canonicalize(child) + ")";
-				}
-				return _canonicalize(child);
+		/* Function which is used to check whether the tree has an error. If
+		   yes, some transformations need to be disabled, to ensure that the
+		   code still maintains semantics. In particlar, "(a) : b", which is an
+			error condition, would be converted to "a : b", which is equal to
+			"a:b", which is NOT an error condition. This this would have changed
+			the semantics. */
+		const has_error = !!ast.get_first_error();
+
+		/* Canoncialises a child and decides whether to place parentheses
+			around it or not. Parentheses are placed if they were explicitly
+			placed by the user, or around dissimilar operators. */
+		function _canonicalize_child(child, parent_type) {
+			if ((child.explicit_parens && (_is_nontrival_group(child) ||
+											has_error)) ||
+				((child.type != parent_type) &&
+					((child.type == NODE_NOT && child.token.text != "!") ||
+					(child.type == NODE_OR) ||
+					(child.type == NODE_AND)))) {
+				return fJ("", fT("("), _canonicalize(child), fT(")"));
 			}
+			return _canonicalize(child);
+		}
 
+		/* Internal implementation of canonicalize. */
+		function _canonicalize(nd) {
 			switch (nd.type) {
 				case NODE_WORD:
-					return _get_text(nd.value);
+					return fT(_get_text(nd.value), nd);
 				case NODE_FILTER: {
 					const right = _get_text(nd.value);
 					if (_get_text(nd.key) == "#") {
-						return "#" + right;
+						return fJ("", fT("#" + right, nd));
 					}
 					const left = _get_text(nd.key);
-					return left + ":" + right;
+					return fT(left + ":" + right, nd);
 				}
 				case NODE_AND:
 				case NODE_OR: {
-						const left = _canonicalize_child(nd.children[0]);
-					const right = _canonicalize_child(nd.children[1]);
-					const mid = nd.token ? _get_text(nd.token) : null;
-					return [left, mid, right].filter(x => x).join(" ");
+					const left = _canonicalize_child(nd.children[0], nd.type);
+					const right = _canonicalize_child(nd.children[1], nd.type);
+					const mid = nd.token ? fT(_get_text(nd.token), nd) : null;
+					return fJ(" ", left, mid, right);
 				}
 				case NODE_NOT: {
 					const t = _get_text(nd.token);
-					return t + (t == "!" ? "" : " ") +
-						_canonicalize_child(nd.children[0]);
+					return fJ(t == "!" ? "" : " ",
+							  fT(t, nd),
+							  _canonicalize_child(nd.children[0], nd.type));
 				}
 				case NODE_NOP:
-					return "";
+					return fT("", nd);
 				case NODE_ERR:
 					if (nd.token) {
-						return _get_text(nd.token);
+						return fT(_get_text(nd.token), nd);
 					}
-					return "";
+					return fT("", nd);
 			}
 		}
 
 		/* Call the internal version of _canonicalize on the AST. We assume that
 		   the AST is a proper binary tree, which is ensured by simplify, which
 		   removes invalid zero-ary and unary AND and OR operators. */
-		return _canonicalize(ast.simplify());
+		ast = ast.simplify();
+		return _canonicalize_child(ast, ast.type);
 	}
 
 	/**************************************************************************
