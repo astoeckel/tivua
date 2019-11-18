@@ -43,7 +43,7 @@ this.tivua.view.editor = (function() {
 		}
 		let valid = false;
 		for (let author of users) {
-			if (author_id == author.uid) {
+			if (author_id > 0 && author_id == author.uid) {
 				valid = true;
 				break;
 			}
@@ -112,10 +112,12 @@ this.tivua.view.editor = (function() {
 		/* Add all possible users to the dropdown list */
 		users = Object.values(users).sort((a, b) => a.display_name.localeCompare(b.display_name));
 		for (let author of users) {
-			const option = document.createElement("option");
-			option.setAttribute("value", author.uid);
-			option.innerText = author.display_name;
-			sel_author.appendChild(option);
+			if (author.uid != 0) {
+				const option = document.createElement("option");
+				option.setAttribute("value", author.uid);
+				option.innerText = author.display_name;
+				sel_author.appendChild(option);
+			}
 		}
 
 		/* If "post" is not null/undefined, this means that we're editing an
