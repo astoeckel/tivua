@@ -1681,6 +1681,7 @@ a[href="#logout"] .icon::before {
 .autocomplete-suggestions {
 	text-align: left;
 	cursor: default;
+	box-sizing: border-box;
 	border: #5c3566 2px solid;
 	border-top: 0;
 	background: #fff;
@@ -1709,6 +1710,7 @@ a[href="#logout"] .icon::before {
 }
 
 .autocomplete-suggestions.search {
+	position: fixed;
 	padding: 0.25rem 0.5rem;
 }
 
