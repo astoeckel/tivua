@@ -445,26 +445,105 @@ header button#btn_back .icon::before {
  ******************************************************************************/
 
 header div.search {
-	position: relative;
 	flex: 1 0 10rem;
 }
 
-header div.search input#inp_search {
+/******************************************************************************
+ * SEARCHBOX                                                                  *
+ ******************************************************************************/
+
+div.searchbox {
+	position: relative;
 	width: 100%;
 	height: 100%;
 	transition: 0.1s;
-	padding: 0 3rem 0 2.5rem;
-	box-sizing: border-box;
+	border: #f0f0f0 2px solid;
+	border-radius: 3px;
+	background-color: #f0f0f0;
 }
 
-header div.search input#inp_search:focus {
-	background-color:  white;
-	border: #5c3566 2px solid;
+div.searchbox.error {
+	border: 2px dashed #a40000 !important;
+}
+
+div.searchbox:hover {
+	border: 2px solid #75507b;
 	box-shadow: rgba(100, 120, 140, 0.25) 2px 2px 5px;
 }
 
-header div.search > span.icon,
-header div.search > button#btn_clear {
+div.searchbox:focus-within {
+	border: #5c3566 2px solid;
+	background-color: white;
+	box-shadow: rgba(100, 120, 140, 0.25) 2px 2px 5px;
+}
+
+div.searchbox > div { /* Individual layers */
+	position: absolute;
+	left: 0;
+	right: 0;
+	top: 0;
+	bottom: 0;
+}
+
+div.searchbox div.annotations {
+	padding: 0 3rem 0 2.5rem;
+	overflow: hidden;
+	display: flex;
+	align-items: center;
+	color: #666;
+}
+
+div.searchbox div.annotations span {
+	white-space: pre;
+	display: inline-block;
+}
+
+div.searchbox div.annotations span.leaf {
+	color: #333;
+	padding: 0.5rem 0;
+}
+
+div.searchbox div.annotations span.error {
+	font-style: normal;
+	color: #a40000;
+	text-decoration: underline;
+	text-decoration-style: wavy;
+	text-decoration-color: #a40000;
+}
+
+div.searchbox div.annotations span.binary_op,
+div.searchbox div.annotations span.unary_op {
+	color: #666;
+	text-decoration: underline;
+	text-decoration-style: dotted;
+}
+
+div.searchbox div.annotations span.filter {
+	color: white;
+	background-color: hsl(31,100%,35%);
+	font-weight: bold;
+	letter-spacing: -0.0085em;
+	border-radius: 0.25em;
+}
+
+div.searchbox input {
+	width: 100%;
+	height: 100%;
+	padding: 0 3rem 0 2.5rem;
+	font: inherit;
+	box-sizing: border-box;
+	border: none !important;
+	background: transparent !important;
+	outline: none !important;
+	box-shadow: none !important;
+}
+
+div.searchbox input.hidden {
+	color: rgba(0,0,0,0);
+}
+
+div.searchbox span.icon,
+div.searchbox button {
 	display: block;
 	position: absolute;
 	top: calc(50% - 1rem);
@@ -473,17 +552,17 @@ header div.search > button#btn_clear {
 	line-height: 2rem;
 }
 
-header div.search > span.icon {
+div.searchbox span.icon {
 	left: 1rem;
 	width: 1rem;
 }
 
-header div.search > span.icon::before {
+div.searchbox span.icon::before {
 	color: #666;
 	content: "\F002";
 }
 
-header div.search button#btn_clear {
+div.searchbox button {
 	right: 0.5rem;
 	width: 2rem;
 
@@ -491,8 +570,9 @@ header div.search button#btn_clear {
 	border: none;
 }
 
-header div.search button#btn_clear::before {
+div.searchbox button::before {
 	content: "\F00D";
+	color: #666;
 }
 
 /******************************************************************************

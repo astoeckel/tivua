@@ -36,6 +36,7 @@ this.tivua.view.cards = (function() {
 	const colors = tivua.colors;
 	const time = tivua.time;
 	const utils = tivua.utils;
+	const components = tivua.view.components;
 
 	// Number of additional posts queried at the beginning and the end of the
 	// current page to ensure that full weeks are displayed.
@@ -241,94 +242,11 @@ this.tivua.view.cards = (function() {
 		return tmpl;
 	}
 
-	function _autocomplete_source(api, term, response, cursor) {
-		term = term.toLowerCase().trim();
-		const matches = (x) => (x.toLowerCase().includes(term));
-
-		// Fetch all keywords and all users
-		const promises = [
-			api.get_user_list(),
-			api.get_keyword_list(),
-		];
-		Promise.all(promises).then((data) => {
-			// Fetch the keywords and users arrays
-			const users = data[0].users;
-			const keywords = data[1].keywords;
-			const res = [];
-
-			console.log(cursor, term.length);
-
-			// Filter for users
-			for (let uid in users) {
-				const user = users[uid];
-				let weight = 0.0;
-				if (matches(user.display_name)) {
-					weight = term.length / user.display_name.length;
-				}
-				if (matches(user.name)) {
-					weight = Math.max(term.length / user.name.length);
-				}
-				if (weight > 0.0) {
-					res.push(["user", user, 100.0 * weight]);
-				}
-			}
-
-			// Filter for tags
-			// TODO: merge with editor code somehow
-			for (let keyword in keywords) {
-				const count = keywords[keyword];
-				if (matches(keyword)) {
-					const weight = count * Math.sqrt(term.length / keyword.length);
-					res.push(["keyword", keyword, weight]);
-				}
-			}
-
-			// Respond with the strings
-			response(res.sort((a, b) => b[2] - a[2]));
-		});
-	}
-
-	function _autocomplete_render_item(item, search) {
-		// escape special characters
-		let text = "", value = "";
-		switch (item[0]) {
-			case "user":
-				const user = item[1];
-				text = (user.display_name + " (" + user.name + ")").trim();
-				value = "user:" + user.name;
-				break;
-			case "keyword":
-				text = item[1];
-				if (text.includes(" ")) {
-					value = "tag:\\\"" + text + "\\\"";
-				} else {
-					value = "tag:" + text;
-				}
-				break;
-		}
-
-		search = search.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-		var re = new RegExp("(" + search.split(' ').join('|') + ")", "gi");
-		return '<div class="autocomplete-suggestion" data-val="' + value + '">' + text.replace(re, "<b>$1</b>") + '</div>';
-	}
-
-	function _init_autocomplete(api, root, input) {
-		const autocomplete = new autoComplete({
-			"minChars": 2,
-			"delay": 50,
-			"selector": input,
-			"menuClass": "search",
-			"source": _autocomplete_source.bind(null, api),
-			"renderItem": _autocomplete_render_item,
-			"offsetTop": -7,
-			"root": root
-		});
-	}
-
 	function show_card_view(api, root, events, settings, users, start) {
 		// Update the navigation part of the card view
 		const view = utils.import_template('tmpl_card_view');
 		const main = view.querySelector("main");
+		const div_search = view.querySelector(".search");
 
 		// Either open the view in "list" or "card" view
 		main.classList.toggle("continuous", settings["view"] == "list");
@@ -337,9 +255,6 @@ this.tivua.view.cards = (function() {
 		const btn_add = view.getElementById("btn_add");
 		btn_add.addEventListener(
 			'click', utils.exec("#add"));
-
-		// Attach the autocomplete to the search bar
-		_init_autocomplete(api, main, view.getElementById('inp_search'))
 
 		// Compute the query range
 		const card_view_posts_per_page = settings["posts_per_page"];
@@ -351,8 +266,16 @@ this.tivua.view.cards = (function() {
 			s1ext = s1 + CARD_VIEW_OVERLAP;
 		}
 
-		// Query the posts in the range
-		return api.get_post_list(s0ext, s1ext - s0ext).then((response) => {
+		// Create the search box and query the posts in the range
+		const promises = [
+			api.get_post_list(s0ext, s1ext - s0ext),
+			components.searchbox.create(api, div_search, main, ""),
+		];
+		return Promise.all(promises).then((data) => {
+			/* Split the promise results into the server response and the
+			   search event handlers. */
+			const [response, search_events] = data;
+
 			// Fetch the response parts
 			const total = response["total"];
 			const posts = response["posts"];
@@ -465,7 +388,7 @@ this.tivua.view.cards = (function() {
 	function create_card_view(api, root, start) {
 		const events = {
 			"on_go_to_page": () => { throw "Not implemented"; }
-		}
+		};
 
 		// Fetch the user settings and the list of users and build the card
 		// view

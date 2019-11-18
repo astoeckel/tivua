@@ -70,15 +70,23 @@
 			</div>
 		</template>
 
+		<!-- SEARCH BOX -->
+		<template id="tmpl_searchbox">
+			<div class="searchbox">
+				<div class="annotations"></div>
+				<div class="input">
+					<span class="icon"></span>
+					<input name="inp_search" spellcheck="false" placeholder="Filter by author, date, or content">
+					<button name="btn_clear" class="icon" title="Clear the currently active filter"></button>
+				</div>
+			</div>
+		</template>
+
 		<!-- CARD VIEW -->
 		<template id="tmpl_card_view">
 			<header>
 				<button id="btn_add" title="Add a new diary entry"><span class="icon"></span><span class="caption">Add entry</span></button>
-				<div class="search">
-					<span class="icon"></span>
-					<input id="inp_search" type="search" placeholder="Filter by author, date, or content">
-					<button id="btn_clear" class="icon" title="Clear the currently active filter"></button>
-				</div>
+				<div class="search"></div>
 				<button id="btn_menu" class="subtle" title="%tooltip_menu"><span class="icon"></span></button>
 			</header>
 			<main class="cards"></main>
@@ -362,11 +370,13 @@
 		<script src="extern/markdown-it.js"></script>
 		<script src="extern/katex.js"></script>
 		<script src="scripts/render.js"></script>
+		<script src="scripts/filter.js"></script>
 		<script src="scripts/colors.js"></script>
 		<script src="scripts/time.js"></script>
 		<script src="scripts/utils.js"></script>
 		<script src="scripts/xhr.js"></script>
 		<script src="scripts/api.js"></script>
+		<script src="scripts/view/components/searchbox.js"></script>
 		<script src="scripts/view/cards.js"></script>
 		<script src="scripts/view/editor.js"></script>
 		<script src="scripts/view/login.js"></script>

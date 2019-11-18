@@ -702,6 +702,19 @@ this.tivua.filter = (function () {
 		}
 	}
 
+	/**
+	 * The create_filter_tree() function takes a parsed AST and converts it into
+	 * a filter tree. This filter tree can then be simplified and converted into
+	 * a compact JSON string that can be sent to the server.
+	 *
+	 * @param {ASTNode} ast is an AST as returned by the parse() function.
+	 * @param {any} users is a map from user ids to user names. This is used to
+	 * convert "user" tags
+	 */
+	function create_filter_tree(ast, users) {
+
+	}
+
 
 	return {
 		"tokenize": tokenize,
