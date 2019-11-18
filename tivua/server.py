@@ -141,7 +141,10 @@ def _handle_fs(document_root, static_filename=None):
         req.send_response(200)
 
         # Force caching of non-html files
-        if not filename.endswith(".html"):
+        if filename.endswith(".woff2"):
+            req.send_header('Cache-control',
+                            'public,max-age=31536000')
+        elif not filename.endswith(".html"):
             req.send_header('Cache-control',
                             'public,max-age=86400')
 
