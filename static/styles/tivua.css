@@ -83,7 +83,7 @@ button, input[type="submit"] {
 	font-family: 'Font Awesome 5 Free';
 	font-style: normal;
 	font-weight: 900;
-	src: url('../fonts/fa-solid-900.woff2') format('woff2');
+	src: url('fonts/fa-solid-900.woff2') format('woff2');
 }
 
 /******************************************************************************
@@ -176,7 +176,7 @@ html, body {
 	background-color: #f0f0f0;
 	background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQAAAAEACAAAAAB5Gfe6AAAACXBIWXMAAC4jAAAuIwF4pT92AAAAB3RJTUUH4gwWFyIiTGFHWgAAAW5JREFUeNrt2LENACEMBEEM/ffrBInYtHBD9oSj10ls9co+1Wde3LDvHf4DAAAAAAAAAAAAAAAAAEDqc1gP0ANsAAAAAAAAAAAAAAAAAADoAXqAHmADAAAAAAAAAAAAAAAAAEAP0AP0ABsAAAAAAAAAAAAAAAAAAHqAHqAH2AAAAAAAAAAAAAAAAAAA0AP0AD3ABgAAAAAAAAAAAAAAAACAHqAH6AE2AAAAAAAAAAAAAAAAAAD0AD1AD7ABAAAAAAAAAAAAAAAAAKAH6AF6gA0AAAAAAAAAAAAAAAAAAD1AD9ADbAAAAAAAAAAAAAAAAAAA6AF6gB5gAwAAAAAAAAAAAAAAAABAD9AD9AAbAAAAAAAAAAAAAAAAAAB6gB6gB9gAAAAAAAAAAAAAAAAAANAD9AA9wAYAAAAAAAAAAAAAAAAAgB6gB+gBNgAAAAAAAAAAAAAAAAAA9AA9QA+wAQAAAAAAAAAAAAAAAADwnwdCrhEg0vFPZgAAAABJRU5ErkJggg==');
 	color: #333;
-	font-family: system-ui, sans-serif;
+	font-family: 'Roboto', sans-serif;
 	font-size: 12pt;
 }
 
