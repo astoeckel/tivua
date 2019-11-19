@@ -500,7 +500,7 @@ div.searchbox div.annotations span {
 
 div.searchbox div.annotations span.leaf {
 	color: #333;
-	padding: 0.5rem 0;
+	padding: 0.5em 0;
 }
 
 div.searchbox div.annotations span.error {
@@ -518,12 +518,25 @@ div.searchbox div.annotations span.unary_op {
 	text-decoration-style: dotted;
 }
 
-div.searchbox div.annotations span.filter {
-	color: white;
-	background-color: hsl(31,100%,35%);
+div.searchbox div.annotations span.filter.user,
+div.searchbox div.annotations span.filter.tag {
 	font-weight: bold;
 	letter-spacing: -0.0085em;
+}
+
+div.searchbox div.annotations span.filter.user {
 	border-radius: 0.25em;
+	color: white;
+	background-color: #666;
+}
+
+div.searchbox div.annotations span.filter.tag {
+	background-color: #edd400;
+}
+
+div.searchbox div.annotations span.filter.date {
+	border: 1px dashed #666;
+	margin: -1px;
 }
 
 div.searchbox input {

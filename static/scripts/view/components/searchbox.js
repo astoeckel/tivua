@@ -123,13 +123,21 @@ this.tivua.view.components.searchbox = (function() {
 	/* Creates the annotation layer, highlighting the individual parts of the
 	   expression. This uses the "canonicalize" function, that transduces the
 	   syntax tree into a canaonicalized, user-defined tree. */
-	function _create_annotations(ast, s) {
+	function _create_annotations(ast, s, users) {
 		const transform = (expr, nd) => {
 			const type = nd ? nd.describe() : null;
 			if (type) {
 				const span = document.createElement("span");
 				span.setAttribute("class", `leaf ${type}`);
 				if (type == "filter") {
+					if (expr.indexOf("user:") == 0 || expr.indexOf("author:") == 0) {
+						span.style.backgroundColor = colors.author_id_to_color(nd.uid, true);
+						span.classList.add("user");
+					} else if (expr.indexOf("#") == 0 || expr.indexOf("tag:") == 0) {
+						span.classList.add("tag");
+					} else if (expr.indexOf("date:") == 0) {
+						span.classList.add("date");
+					}
 					span.textContent = " " + expr + " ";
 				} else {
 					span.textContent = expr;
@@ -148,13 +156,13 @@ this.tivua.view.components.searchbox = (function() {
 				span.appendChild(elems[i]);
 			}
 			return span;
-		}
+		};
 
-		return tivua.filter.canonicalize(ast, s, transform, join);
+		return ast.validate(s, users).canonicalize(s, transform, join);
 	}
 
 
-	function _show_searchbox(api, root, autocomplete_root, events, value) {
+	function _show_searchbox(api, root, autocomplete_root, events, value, users) {
 		const l10n = tivua.l10n;
 
 		/* Instantiate the template and fetch the individual components */
@@ -182,7 +190,7 @@ this.tivua.view.components.searchbox = (function() {
 			const ast = tivua.filter.parse(s);
 
 			/* Update the annotation layer and the input text */
-			const annotations = _create_annotations(ast, s);
+			const annotations = _create_annotations(ast, s, users);
 			inp_search.value = annotations.innerText || "";
 
 			/* If there is an error, mark the error box as possessing an error
@@ -221,9 +229,13 @@ this.tivua.view.components.searchbox = (function() {
 			"on_search": () => { throw "Not implemented"; },
 			"on_clear": () => { throw "Not implemented"; },
 		};
-		return new Promise((resolve, _) => {
-			_show_searchbox(api, root, autocomplete_root, events, value);
-			resolve(events);
+		const promises = [
+			api.get_user_list(),
+		];
+		return Promise.all(promises).then((data) => {
+			const users = data[0].users;
+			_show_searchbox(api, root, autocomplete_root, events, value, users);
+			return events;
 		});
 	}
 

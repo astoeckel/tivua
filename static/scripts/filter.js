@@ -31,7 +31,7 @@
  */
 
 this.tivua = this.tivua || {};
-this.tivua.filter = (function () {
+this.tivua.filter = (function (global) {
 	"use strict";
 
 	/**************************************************************************
@@ -342,6 +342,14 @@ this.tivua.filter = (function () {
 					(x.type == NODE_ERR ? x : null) ||
 					x.get_first_error(),
 				this.type == NODE_ERR ? this : null);
+		}
+
+		canonicalize(s, transform, join) {
+			return global.tivua.filter.canonicalize(this, s, transform, join);
+		}
+
+		validate(s, user_list) {
+			return global.tivua.filter.validate(this, s, user_list);
 		}
 	}
 
@@ -669,6 +677,128 @@ this.tivua.filter = (function () {
 	}
 
 	/**************************************************************************
+	 * VALIDATOR                                                              *
+	 **************************************************************************/
+
+	/**
+	 * The validate function recursively checks whether the expression
+	 * represented by an AST is valid. In particular, this limits permissible
+	 * filter expressions ("user:", "author:", "tag:", "date:"), and makes sure
+	 * that the values of filter expressions correspond to their limitations
+	 * (i.e., valid user names, valid tags, valid dates).
+	 *
+	 * Furthermore, enriches the tree semantically by attaching the date range
+	 * to date filter expressions and the user id to user filter expressions
+	 * if the "user_list" object is given.
+	 *
+	 * Invalid expressions are replaced with a corresponding error node that
+	 * maps onto the text represented by the underlying node.
+	 *
+	 * @param {ASTNode} ast the AST that should be validated.
+	 * @param {String} s the original text used to generate the correct error
+	 *                 nodes. Optional.
+	 * @param {Object} user_list the list of users that should be associated
+	 *                 with the corresponding filter expressions. Optional.
+	 */
+	function validate(ast, s, user_list) {
+		/**
+		 * Used to get the underlying text of a token; handles tokens replaced
+		 * by strings.
+		 */
+		function _get_text(t) {
+			return typeof t == "string" ? t : t.text;
+		}
+
+		/**
+		 * Creates a new error node that spans the already existing node "nd".
+		 */
+		function _error_node(nd, msg) {
+			const err =  new ASTNode(NODE_ERR);
+			err.token = canonicalize(nd, s);
+			err.msg = msg;
+			return err;
+		}
+		/**
+		 * Validates the "user" filter expression.
+		 */
+		function _validate_user(nd) {
+			/* Do nothing if no user_list was specified */
+			if (!user_list) {
+				return nd;
+			}
+
+			/* Try to match the value to a value in the user list */
+			const value = _get_text(nd.value).toLowerCase();
+			let match_uid = 0;
+			let match_quality = 0.0;
+			function _match(s) {
+				if (s.toLowerCase().indexOf(value) == -1) {
+					return 0.0;
+				}
+				return value.length / Math.max(1, s.length);
+			}
+			for (let uid in user_list) {
+				/* Make sure that uid is an integer */
+				uid = parseInt(uid);
+
+				/* If the uid is given (for some weird reason), we're done */
+				if ((parseInt(value) == uid)) {
+					match_uid = uid;
+					break;
+				}
+				const user = user_list[uid];
+				const q = Math.max(_match(user.name), _match(user.display_name));
+				if (q > match_quality) {
+					match_uid = uid;
+					match_quality = q;
+				}
+			}
+
+			/* Error out with the corresponding error messages if the user
+			   could not be resolved. */
+			if (!match_uid) {
+				return _error_node(nd, "%err_user_not_found");
+			}
+
+			/* Otherwise store the uid in the node and replace the text with the
+			   canonical user name. */
+			nd.value = user_list[match_uid].name;
+			nd.uid = match_uid;
+			return nd;
+		}
+
+		/**
+		 * Internal, recursive implementation of validate.
+		 */
+		function _validate(nd) {
+			/* Validate all child nodes first */
+			nd.children = nd.children.map(_validate);
+
+			/* Nothing to do if this isn't a filter epxression */
+			if (nd.type != NODE_FILTER) {
+				return nd;
+			}
+
+			/* Fetch the key, this must be one of "user", "author", "tag"
+			   "date"" */
+			const key = _get_text(nd.key).toLowerCase();
+			if (["#", "user", "author", "tag", "date"].indexOf(key) == -1) {
+				return _error_node(nd, "%err_invalid_filter_expression");
+			}
+
+			/* If the user list is given, associate each user keyword with a
+			   uid. If no matching user is found, create an error node. */
+			switch (key) {
+				case "user":
+				case "author":
+					return _validate_user(nd);
+			}
+			return nd;
+		}
+		return _validate(ast);
+	}
+
+	/**************************************************************************
 	 * FILTER                                                                 *
 	 **************************************************************************/
 
@@ -719,6 +849,7 @@ this.tivua.filter = (function () {
 	return {
 		"tokenize": tokenize,
 		"parse": parse,
+		"validate": validate,
 		"canonicalize": canonicalize,
 	};
-})();
+})(this);

@@ -64,7 +64,8 @@ const LITERAL_REQUIRED_RE = /(["']|^[#!]|\s)/;
  * way.
  */
 function ast_to_string(node) {
-	function escape(s) {
+	function escape(t) {
+		const s = (typeof t == "string") ? t : t.text;
 		if (s.match(LITERAL_REQUIRED_RE)) {
 			return "'" + s.replace("\\", "\\\\").replace("'", "\\'") + "'";
 		}
@@ -77,12 +78,12 @@ function ast_to_string(node) {
 	} else if (node.type == NODE_NOT) {
 		return "(NOT " + ast_to_string(node.children[0]) + ")";
 	} else if (node.type == NODE_WORD) {
-		return escape(node.value.text);
+		return escape(node.value);
 	} else if (node.type == NODE_FILTER) {
 		if (node.key.type == TOKEN_HASH) {
-			return "tag:" + escape(node.value.text);
+			return "tag:" + escape(node.value);
 		}
-		return escape(node.key.text) + ":" + escape(node.value.text);
+		return escape(node.key) + ":" + escape(node.value);
 	} else if (node.type == NODE_NOP) {
 		return "NOP";
 	} else if (node.type == NODE_ERR) {
@@ -355,6 +356,40 @@ describe('Filter', () => {
 		});
 		it("invalid filter expression 4", () => {
 			assert.equal(canonicalize("&& || !"), "");
+		});
+	});
+
+	describe('#validate()', () => {
+		function validate(s) {
+			const user_list = {
+				1: {
+					"name": "jdoe",
+					"display_name": "Joane Doe",
+				}
+			};
+			const ast = filter.parse(s).validate(s, user_list);
+			return [ast_to_string(ast), ast.canonicalize(s)];
+		}
+		it("invalid filter expression", () => {
+			assert.deepEqual(validate("foo:bar"),
+				["ERROR(%err_invalid_filter_expression)",
+				 "foo:bar"]);
+		});
+		it("resolve user", () => {
+			assert.deepEqual(validate("user:jdoe"),
+				["user:jdoe", "user:jdoe"]);
+			assert.deepEqual(validate("user:0"),
+				["ERROR(%err_user_not_found)", "user:0"]);
+			assert.deepEqual(validate("user:1"),
+				["user:jdoe", "user:jdoe"]);
+			assert.deepEqual(validate("user:jd"),
+				["user:jdoe", "user:jdoe"]);
+			assert.deepEqual(validate("user:Joane"),
+				["user:jdoe", "user:jdoe"]);
+			assert.deepEqual(validate("user:jdoe"),
+				["user:jdoe", "user:jdoe"]);
+			assert.deepEqual(validate("author:jdoe"),
+				["author:jdoe", "author:jdoe"]);
 		});
 	});
 });
