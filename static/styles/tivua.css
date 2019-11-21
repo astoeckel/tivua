@@ -177,7 +177,7 @@ html, body {
 	background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQAAAAEACAAAAAB5Gfe6AAAACXBIWXMAAC4jAAAuIwF4pT92AAAAB3RJTUUH4gwWFyIiTGFHWgAAAW5JREFUeNrt2LENACEMBEEM/ffrBInYtHBD9oSj10ls9co+1Wde3LDvHf4DAAAAAAAAAAAAAAAAAEDqc1gP0ANsAAAAAAAAAAAAAAAAAADoAXqAHmADAAAAAAAAAAAAAAAAAEAP0AP0ABsAAAAAAAAAAAAAAAAAAHqAHqAH2AAAAAAAAAAAAAAAAAAA0AP0AD3ABgAAAAAAAAAAAAAAAACAHqAH6AE2AAAAAAAAAAAAAAAAAAD0AD1AD7ABAAAAAAAAAAAAAAAAAKAH6AF6gA0AAAAAAAAAAAAAAAAAAD1AD9ADbAAAAAAAAAAAAAAAAAAA6AF6gB5gAwAAAAAAAAAAAAAAAABAD9AD9AAbAAAAAAAAAAAAAAAAAAB6gB6gB9gAAAAAAAAAAAAAAAAAANAD9AA9wAYAAAAAAAAAAAAAAAAAgB6gB+gBNgAAAAAAAAAAAAAAAAAA9AA9QA+wAQAAAAAAAAAAAAAAAADwnwdCrhEg0vFPZgAAAABJRU5ErkJggg==');
 	color: #333;
 	font-family: 'Roboto', sans-serif;
-	font-size: 12pt;
+	font-size: 11pt;
 }
 
 button {
@@ -522,6 +522,8 @@ div.searchbox div.annotations span.filter.user,
 div.searchbox div.annotations span.filter.tag {
 	font-weight: bold;
 	letter-spacing: -0.0085em;
+	/*margin: -2px;
+	border: 2px solid transparent;*/
 }
 
 div.searchbox div.annotations span.filter.user {
@@ -532,6 +534,7 @@ div.searchbox div.annotations span.filter.user {
 
 div.searchbox div.annotations span.filter.tag {
 	background-color: #edd400;
+	/*border-color: #edd400;*/
 }
 
 div.searchbox div.annotations span.filter.date {
@@ -1719,7 +1722,23 @@ a[href="#logout"] .icon::before {
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
-	font-size: 1.02em;
+}
+
+.autocomplete-suggestion span.icon {
+	position: absolute;
+	left: 0.5rem;
+}
+
+.autocomplete-suggestion span.icon.user {
+	display: block;
+	top: 0.6em;
+	width: 0.75em;
+	height: 0.75em;
+	border-radius: 100%;
+}
+
+.autocomplete-suggestion span.icon.tag::before {
+	content: "#";
 }
 
 .autocomplete-suggestions.search {

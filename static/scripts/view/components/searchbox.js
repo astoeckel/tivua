@@ -37,78 +37,193 @@ this.tivua.view.components.searchbox = (function() {
 	const time = tivua.time;
 	const utils = tivua.utils;
 
-	function _autocomplete_source(api, term, response, cursor) {
-		term = term.toLowerCase().trim();
-		const matches = (x) => (x.toLowerCase().includes(term));
+	/**
+	 * The _autocomplete_source function is called whenever the underlying
+	 * autocomplete component requests autocompletion data.
+	 */
+	function _autocomplete_source(api, text, response, cursor) {
+		const filter = tivua.filter;
 
-		// Fetch all keywords and all users
+		/* Fetch all keywords and users */
 		const promises = [
 			api.get_user_list(),
 			api.get_keyword_list(),
 		];
+
+		/* Parse the term into an AST and query the autocomplete context */
+		const ast = filter.parse(text).simplify();
+		const [lhs, rhs] = filter.autocomplete_context(ast, cursor);
+		const anchor = Math.max(Math.min(rhs.length + lhs.length - 1, lhs.length - 1));
+		const nodes = lhs.concat(rhs);
+
+		function _autocompletions_for_context(users, tags, res, i0, i1) {
+			/* Restrict the search to either users or tags if we're currently in
+			   a corresponding filter expression */
+			let search_tags = true, search_users = true;
+			if (nodes[i0] && nodes[i0].key) {
+				const key = nodes[i0].key.text.toLowerCase();
+				search_tags = key == "tag" || key == "#";
+				search_users = key == "user" || key == "author";
+			}
+
+			/* Create a list of search strings and join those into a single
+			   string. */
+			function _get_text(nd) {
+				if (nd.value && nd.value.text) {
+					return nd.value.text.toLowerCase();
+				}
+				return "";
+			}
+			const slice = nodes.slice(i0, i1 + 1);
+			const term = slice.map(_get_text).join(" ").trim();
+			const matches = (x) => (x.toLowerCase().includes(term));
+			if (!term) {
+				return;
+			}
+
+			/* Filter for users; skip the "[deleted]" user */
+			if (search_users) {
+				for (let uid in users) {
+					if (parseInt(uid) <= 0) {
+							continue;
+					}
+					const user = users[uid];
+					let weight = 0.0;
+					if (matches(user.display_name)) {
+						weight = 100.0 * term.length / user.display_name.length;
+					}
+					if (matches(user.name)) {
+						weight = 100.0 * Math.max(term.length / user.name.length);
+					}
+					if (weight > 0.0) {
+						const key = "user:" + uid;
+						if (!(key in res) || res[key].weight < weight) {
+							const node = filter
+								.parse("user:" + user.name)
+								.detach_from_string();
+							const replacement = ast
+								.replace(slice, node)
+								.canonicalize(text);
+							res[key] = {
+								"type": "user",
+								"user": user,
+								"weight": weight,
+								"term": term,
+								"replacement": replacement,
+							};
+						}
+					}
+				}
+			}
+
+			/* Filter for tags */
+			if (search_tags) {
+				for (let tag in tags) {
+					const count = tags[tag];
+					if (matches(tag)) {
+						const weight = count * Math.sqrt(term.length / tag.length);
+						const key = "tag:" + tag;
+						if (!(key in res) || res[key].weight < weight) {
+							const node = filter
+								.parse("#'" + tag.replace("'", "\\'") + "'")
+								.detach_from_string();
+							const replacement = ast
+								.replace(slice, node)
+								.canonicalize(text);
+							res[key] = {
+								"type": "tag",
+								"tag": tag,
+								"weight": weight,
+								"term": term,
+								"replacement": replacement,
+							};
+						}
+					}
+				}
+			}
+		}
+
+		/* Fetch the user and keyword lists */
 		Promise.all(promises).then((data) => {
-			// Fetch the keywords and users arrays
 			const users = data[0].users;
 			const keywords = data[1].keywords;
-			const res = [];
 
-			// Filter for users; skip the "[deleted]" user
-			for (let uid in users) {
-				if (parseInt(uid) <= 0) {
-					continue;
-				}
-				const user = users[uid];
-				let weight = 0.0;
-				if (matches(user.display_name)) {
-					weight = term.length / user.display_name.length;
-				}
-				if (matches(user.name)) {
-					weight = Math.max(term.length / user.name.length);
-				}
-				if (weight > 0.0) {
-					res.push(["user", user, 100.0 * weight]);
+			/* Go over all ranges that include the anchor node in the
+			   autocomplete context and request autocompletions for this range */
+			let res = {};
+			for (let i0 = 0; i0 <= anchor; i0++) {
+				for (let i1 = anchor; i1 < nodes.length; i1++) {
+					if (i1 - i0 <= 3 ) {
+						_autocompletions_for_context(users, keywords, res, i0, i1);
+					}
 				}
 			}
 
-			// Filter for tags
-			// TODO: merge with editor code somehow
-			for (let keyword in keywords) {
-				const count = keywords[keyword];
-				if (matches(keyword)) {
-					const weight = count * Math.sqrt(term.length / keyword.length);
-					res.push(["keyword", keyword, weight]);
-				}
-			}
-
-			// Respond with the strings
-			response(res.sort((a, b) => b[2] - a[2]));
+			/* Turn the entries into a sorted list of recommendations */
+			response(Object.values(res).sort((a, b) => b.weight - a.weight));
 		});
 	}
 
+	/**
+	 * Renders a single autocomplete item.
+	 */
 	function _autocomplete_render_item(item, search) {
-		// escape special characters
-		let text = "", value = "";
-		switch (item[0]) {
+		/* Create the result div */
+		let div_suggestion = document.createElement("div");
+		div_suggestion.setAttribute("class", "autocomplete-suggestion");
+		div_suggestion.setAttribute("data-val", item.replacement);
+
+		/* Add a small emblem characterising the substitution that is being
+		   performed when applying the filter */
+		let span_icon = document.createElement("span");
+		span_icon.classList.add("icon");
+		span_icon.classList.add(item.type);
+		div_suggestion.appendChild(span_icon);
+
+		/* Prepare the text that should be displayed, depending on the type */
+		let text = "";
+		switch (item.type) {
 			case "user":
-				const user = item[1];
+				const user = item.user;
+				const color = colors.author_id_to_color(user.uid, true);
+				span_icon.style.backgroundColor = color;
 				text = (user.display_name + " (" + user.name + ")").trim();
-				value = "user:" + user.name;
 				break;
-			case "keyword":
-				text = item[1];
-				if (text.includes(" ")) {
-					value = "tag:\\\"" + text + "\\\"";
-				} else {
-					value = "tag:" + text;
-				}
+			case "tag":
+				text = item.tag;
 				break;
 		}
 
-		search = search.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-		var re = new RegExp("(" + search.split(' ').join('|') + ")", "gi");
-		return '<div class="autocomplete-suggestion" data-val="' + value + '">' + text.replace(re, "<b>$1</b>") + '</div>';
+		/* Create a regular expression for highlighting the matches */
+		search = item.term.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+		let re = new RegExp("(" + search.split(' ').join('|') + ")", "i");
+
+		/* Highlight the matching strings */
+		while (text) {
+			let match = text.match(re);
+			if (!match) {
+				div_suggestion.appendChild(document.createTextNode(text));
+				break;
+			} else {
+				let overlap = match[1];
+				let prefix = text.substring(0, text.indexOf(overlap));
+				let suffix = text.substring(text.indexOf(overlap) + overlap.length);
+
+				let b_highlight = document.createElement("b");
+				b_highlight.innerText = overlap;
+				div_suggestion.appendChild(document.createTextNode(prefix));
+				div_suggestion.appendChild(b_highlight);
+				text = suffix;
+			}
+		}
+
+		return div_suggestion;
 	}
 
+	/**
+	 * Helper function used to create the "autoComplete" instance performing
+	 * the actual autocompletion.
+	 */
 	function _init_autocomplete(api, root, input, anchor) {
 		const autocomplete = new autoComplete({
 			"minChars": 2,
@@ -119,13 +234,16 @@ this.tivua.view.components.searchbox = (function() {
 			"source": _autocomplete_source.bind(null, api),
 			"renderItem": _autocomplete_render_item,
 			"offsetTop": -7,
-			"root": root
+			"root": root,
+			"fixedPos": true,
 		});
 	}
 
-	/* Creates the annotation layer, highlighting the individual parts of the
-	   expression. This uses the "canonicalize" function, that transduces the
-	   syntax tree into a canaonicalized, user-defined tree. */
+	/**
+	 * Creates the annotation layer, highlighting the individual parts of the
+	 * expression. This uses the "canonicalize" function, that transduces the
+	 * syntax tree into a canonicalised, user-defined tree.
+	 */
 	function _create_annotations(ast, s) {
 		const transform = (expr, nd) => {
 			const type = nd ? nd.describe() : null;
@@ -134,7 +252,9 @@ this.tivua.view.components.searchbox = (function() {
 				span.setAttribute("class", `leaf ${type}`);
 				if (type == "filter") {
 					if (nd.filter_type == 'user') {
-						span.style.backgroundColor = colors.author_id_to_color(nd.uid, true);
+						const color = colors.author_id_to_color(nd.uid, true);
+						span.style.backgroundColor = color;
+					/*	span.style.borderColor = color;*/
 					}
 					span.classList.add(nd.filter_type);
 					span.textContent = " " + expr + " ";
@@ -160,7 +280,9 @@ this.tivua.view.components.searchbox = (function() {
 		return ast.canonicalize(s, transform, join);
 	}
 
-
+	/**
+	 * Creates a new searchbox within the given root element.
+	 */
 	function _show_searchbox(api, root, autocomplete_root, events, value, users) {
 		const l10n = tivua.l10n;
 

@@ -42,6 +42,7 @@ var autoComplete = (function(){
             cache: 1,
             menuClass: '',
             anchor: null,
+            fixedPos: false,
             renderItem: function (item, search){
                 // escape special characters
                 search = search.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
@@ -71,8 +72,8 @@ var autoComplete = (function(){
 
             that.updateSC = function(resize, next){
                 var rect = o.anchor ? o.anchor.getBoundingClientRect() : that.getBoundingClientRect();
-                that.sc.style.left = (rect.left + (window.pageXOffset || document.documentElement.scrollLeft) + o.offsetLeft) + 'px';
-                that.sc.style.top = (rect.bottom + (window.pageYOffset || document.documentElement.scrollTop) + o.offsetTop) + 'px';
+                that.sc.style.left = (rect.left + (o.fixedPos ? 0.0 : (window.pageXOffset || document.documentElement.scrollLeft)) + o.offsetLeft) + 'px';
+                that.sc.style.top = (rect.bottom + (o.fixedPos ? 0.0 : (window.pageYOffset || document.documentElement.scrollTop)) + o.offsetTop) + 'px';
                 that.sc.style.width = (rect.right - rect.left) + 'px'; // outerWidth
                 if (!resize) {
                     that.sc.style.display = 'block';
@@ -127,8 +128,20 @@ var autoComplete = (function(){
                 that.cache[val] = data;
                 if (data.length && val.length >= o.minChars) {
                     var s = '';
-                    for (var i=0;i<data.length;i++) s += o.renderItem(data[i], val);
-                    that.sc.innerHTML = s;
+                    while (that.sc.lastChild) {
+                        that.sc.removeChild(that.sc.lastChild);
+                    }
+                    for (var i=0;i<data.length;i++) {
+                        let res = o.renderItem(data[i], val);
+                        if (typeof res == 'string') {
+                            s += res;
+                        } else {
+                            that.sc.appendChild(res);
+                        }
+                    }
+                    if (s) {
+                        that.sc.innerHTML = s;
+                    }
                     that.updateSC(0);
                 }
                 else

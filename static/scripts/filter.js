@@ -264,6 +264,8 @@ this.tivua.filter = (function (global) {
 			this.type = type;
 			this.children = children;
 			this.explicit_parens = false;
+			this.token_paren_open = null;
+			this.token_paren_close = null;
 			this.token = null; /* Set if there is an explicit token */
 			this.value = null;
 			this.key = null;
@@ -322,6 +324,82 @@ this.tivua.filter = (function (global) {
 		}
 
 		/**
+		 * Creates a deep or shallow copy of the tree.
+		 */
+		clone(deep) {
+			/* Per default, create a deep copy */
+			deep = deep === undefined ? true : !!deep;
+
+			/* Helper function used to clone an individual token */
+			function _clone_token(t) {
+				if (!t) {
+					return null;
+				}
+				let res = new Token();
+				res.start = t.start;
+				res.end = t.end;
+				res.type = t.type;
+				res.text = t.text;
+				return res;
+			}
+
+			/* Create a new AST node and copy the properties over */
+			const res = new ASTNode(this.type);
+			res.children = deep ? this.children.map(x => x.clone()) : this.children;
+			res.explicit_parens = this.explicit_parens;
+			res.token_paren_open = _clone_token(this.token_paren_open);
+			res.token_paren_close = _clone_token(this.token_paren_close);
+			res.token = _clone_token(this.token);
+			res.value = _clone_token(this.value);
+			res.key = _clone_token(this.key);
+			return res;
+		}
+
+		/**
+		 * Returns a copy of this tree where the first node in the list is
+		 * replaced with the given replacement and all other nodes in the list
+		 * are replaced with NOPs.
+		 */
+		replace(nodes, replacement) {
+			function _replace(nd) {
+				/* First check whether this is one of the nodes that should be
+				   replaced */
+				if (nd == nodes[0]) {
+					return replacement;
+				}
+				for (let i = 1; i < nodes.length; i++) {
+					if (nd == nodes[i]) {
+						return new ASTNode(NODE_NOP);
+					}
+				}
+
+				/* Otherwise just perform a shallow copy of this node and
+				   run this function on all children */
+				let res = nd.clone(false);
+				res.children = nd.children.map(_replace);
+				return res;
+			}
+			return _replace(this).simplify();
+		}
+
+		/**
+		 * Detaches the AST from the underlying string by replacing tokens with
+		 * plain strings.
+		 */
+		detach_from_string() {
+			function _detach_token(t) {
+				return t ? (typeof t == "string" ? t : t.text) : null;
+			}
+			this.token_paren_open = _detach_token(this.token_paren_open);
+			this.token_paren_close = _detach_token(this.token_paren_close);
+			this.token = _detach_token(this.token);
+			this.value = _detach_token(this.value);
+			this.key = _detach_token(this.key);
+			this.children = this.children.map(x => x.detach_from_string());
+			return this;
+		}
+
+		/**
 		 * Returns a string representation of the type.
 		 */
 		describe() {
@@ -354,12 +432,26 @@ this.tivua.filter = (function (global) {
 				this.type == NODE_ERR ? this : null);
 		}
 
+		/**
+		 * Calls the global "tivua.filter.canonicalize" function on this node.
+		 */
 		canonicalize(s, transform, join) {
 			return global.tivua.filter.canonicalize(this, s, transform, join);
 		}
 
+		/**
+		 * Calls the global "tivua.filter.validate" function on this node.
+		 */
 		validate(s, user_list) {
 			return global.tivua.filter.validate(this, s, user_list);
+		}
+
+		/**
+		 * Calls the globel "tivua.filter.autocomplete_context" function on this
+		 * node.
+		 */
+		autocomplete_context(i) {
+			return global.tivua.autocomplete_context(this, i);
 		}
 	}
 
@@ -653,7 +745,7 @@ this.tivua.filter = (function (global) {
 					return fT(_get_text(nd.value), nd);
 				case NODE_FILTER: {
 					const right = _get_text(nd.value);
-					if (_get_text(nd.key) == "#") {
+					if (_get_text(nd.key, false) == "#") {
 						return fJ("", fT("#" + right, nd));
 					}
 					const left = _get_text(nd.key);
@@ -1000,6 +1092,7 @@ this.tivua.filter = (function (global) {
 					break;
 				case NODE_ERR:
 					res.range = _get_token_range(nd.token);
+					res.traversible = false;
 					break;
 				case NODE_AND:
 				case NODE_OR:
