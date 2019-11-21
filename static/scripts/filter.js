@@ -305,9 +305,19 @@ this.tivua.filter = (function (global) {
 				return this;
 			};
 
-			/* Preserve the "explicit parentheses" flag */
+			/* Preserve the "explicit parentheses" flag, as well as the tokens
+			   that indicated the opening and closing parentheses. */
 			const res = _simplify();
-			res.explicit_parens = this.explicit_parens || res.explicit_parens;
+			if (res.explicit_parens) {
+				res.explicit_parens = true;
+				res.token_paren_open = res.token_paren_open;
+				res.token_paren_close = res.token_paren_close;
+			}
+			if (this.explicit_parens) {
+				res.explicit_parens = true;
+				res.token_paren_open = this.token_paren_open || res.token_paren_open;
+				res.token_paren_close = this.token_paren_close || res.token_paren_close;
+			}
 			return res;
 		}
 
@@ -467,12 +477,14 @@ this.tivua.filter = (function (global) {
 		 */
 		_parse_parens_expr() {
 			if (this.peek().type == TOKEN_PAREN_OPEN) {
-				this.consume();
+				let token_paren_open = this.consume();
 				const node = this._parse_expr();
 				node.explicit_parens = true;
+				node.token_paren_open = token_paren_open;
+				node.token_paren_close = null;
 				if ((this.peek().type == TOKEN_PAREN_CLOSE) ||
 				    (this.peek().type == TOKEN_END)) {
-					this.consume();
+					node.token_paren_close = this.consume();
 				} else {
 					node.children.push(this._error_node("%err_expected_paren_close", this.peek()));
 				}
@@ -938,6 +950,216 @@ this.tivua.filter = (function (global) {
 	}
 
 	/**************************************************************************
+	 * AUTOCOMPLETION                                                         *
+	 **************************************************************************/
+
+	/**
+	 * For the given AST and cursor location within the originally parsed
+	 * string, returns a list of leaf nodes that should be taken into account
+	 * for autocompletion.
+	 *
+	 * @param {ASTNode} ast is the AST for which the autocomplete context should
+	 * be computed.
+	 * @param {*} cursor is the location of the cursor within the string the AST
+	 * was parsed from.
+	 * @returns a tuple containing a list of nodes as well as the index of the
+	 * node within that list corresponding to the current cursor location.
+	 */
+	function autocomplete_context(ast, cursor) {
+		/* Make sure the cursor location is an integer */
+		cursor = parseInt(cursor);
+
+		/* Returns the start, end range of the token with special handling in
+		   case the token is a string and thus has an unkown location. */
+		function _get_token_range(t) {
+			return ((t === undefined) || (typeof t == "string")) ?
+				null : [t.start, t.end];
+		}
+
+		/* Returns true if the given token range is valid. */
+		function _is_valid_token_range(r) {
+			return (r !== null) && (r[1] > r[0]);
+		}
+
+		/* Returns the token range covering the two given token ranges. */
+		function _merge_token_ranges(r0, r1) {
+			return (!_is_valid_token_range(r0)) ? r1 :
+				((!_is_valid_token_range(r1)) ? r0 : [Math.min(r0[0], r1[0]),
+				                                      Math.max(r0[1], r1[1])]);
+		}
+
+		/* Checks whether the cursor location is inside the token range */
+		function _is_in_range(r) {
+			return _is_valid_token_range(r) && (r[0] <= cursor) && (r[1] >= cursor);
+		}
+
+		/* Checks whether the cursor location is inside the token range */
+		function _is_strictly_in_range(r) {
+			return _is_valid_token_range(r) && (r[0] < cursor) && (r[1] > cursor);
+		}
+
+		/* Checks whether the range is to the left of the cursor location. */
+		function _is_left(r) {
+			return _is_valid_token_range(r) && (r[1] <= cursor);
+		}
+
+		function _is_strictly_left(r) {
+			return _is_valid_token_range(r) && (r[1] < cursor);
+		}
+
+		/* Build a temporary copy of the AST with ranges attached to each
+		   node. */
+		function _build_range_tree(nd) {
+			let res = {
+				"range": null,
+				"node": nd,
+				"children": [],
+				"traversible": !nd.explicit_parens,
+			};
+			switch (nd.type) {
+				case NODE_WORD:
+					res.range =  _get_token_range(nd.value);
+					break;
+				case NODE_FILTER:
+					res.range = _merge_token_ranges(
+						_get_token_range(nd.key), _get_token_range(nd.value));
+					res.traversible = false;
+					break;
+				case NODE_ERR:
+					res.range = _get_token_range(nd.token);
+					break;
+				case NODE_AND:
+				case NODE_OR:
+					res.children.push(_build_range_tree(nd.children[0]));
+					if (nd.token) {
+						res.children.push({
+							"range": _get_token_range(nd.token),
+							"node": null,
+							"children": [],
+							"traversible": false,
+						});
+					}
+					res.children.push(_build_range_tree(nd.children[1]));
+					res.range = _merge_token_ranges(
+						res.children[0].range,
+						res.children[res.children.length - 1].range);
+					break;
+				case NODE_NOT:
+					res.children.push({
+						"range": _get_token_range(nd.token),
+						"node": null,
+						"children": [],
+						"traversible": false,
+					});
+					res.children.push(_build_range_tree(nd.children[0]));
+					res.range = res.children[1].range;
+					break;
+			}
+
+			/* Extend the range if this is an expression with explicit
+			   parentheses */
+			if (nd.explicit_parens) {
+				if (nd.token_paren_open && "start" in nd.token_paren_open) {
+					res.range[0] = Math.min(res.range[0],
+					                        nd.token_paren_open.start);
+				}
+				if (nd.token_paren_close && "end" in nd.token_paren_close) {
+					res.range[1] = Math.max(res.range[1],
+					                        nd.token_paren_close.end);
+				}
+			}
+			return res;
+		}
+
+		/* Collapses the range tree into two flat lists containing the nodes
+		   to the left and right of the cursor, respectively. */
+		function _flatten_range_tree(rnd) {
+			/* Leaf nodes, decide whether to sort them into the rhs or lhs
+			   list. */
+			if (rnd.children.length == 0) {
+				return _is_left(rnd.range) ? [[rnd.node], []] : [[], [rnd.node]];
+			}
+
+			/* If there are several children, search for the node corresponding
+			   to the cursor location */
+			let i_cur = 0;
+			for (let i = 0; i < rnd.children.length; i++) {
+				if (_is_left(rnd.children[i].range)) {
+					i_cur++;
+				}
+			}
+
+			/* Go over the nodes to the left of the cursor location, stop once
+			   we reach a non-traversible node */
+			let lhs = [];
+			for (let i = i_cur; i >= 0; i--) {
+				const c = rnd.children[i];
+				if (i >= rnd.children.length) {
+					continue;
+				} else if (i == i_cur) {
+					if (!_is_strictly_in_range(c.range)) {
+						continue;
+					}
+				} else {
+					/* Always descend into the node if the node is traversible */
+					let descend = c.traversible;
+
+					/* Otherwise, we have to handle some special cases for which
+					   we need access to the AST node. */
+					if (!descend && c.node) {
+						/* We descend into the node if it is a filter or word
+						   expression */
+						if ((c.node.type == NODE_FILTER) || (c.node.type == NODE_WORD)) {
+							descend = true;
+							/* Unless we are strictly to the left of the node
+							   and the node is surrounded by explicit
+							   parentheses */
+							if (_is_left(c.range) && c.node.explicit_parens) {
+								descend = false;
+							}
+						}
+					}
+
+					/* Descend into the node, after all the above evluations
+					   are done. */
+					if (descend) {
+						const [lhs_new, _] = _flatten_range_tree(c);
+						lhs = lhs_new.concat(lhs);
+					}
+				}
+				if (!c.traversible) {
+					break;
+				}
+			}
+
+			/* Go over the nodes to the right of the cursor location, stop once
+			   we reach a non-traversible node */
+			let rhs = [];
+			for (let i = i_cur; i < rnd.children.length; i++) {
+				const c = rnd.children[i];
+				if (c.traversible || _is_strictly_in_range(c.range)) {
+					const [lhs_new, rhs_new] = _flatten_range_tree(c);
+					lhs = lhs.concat(lhs_new);
+					rhs = rhs.concat(rhs_new);
+				}
+				if (!c.traversible) {
+					break;
+				}
+			}
+
+			return [lhs.filter(x => x), rhs.filter(x => x)];
+		}
+
+		/* Simplify to ensure that there are only binary/unary operations */
+		ast = ast.simplify();
+
+		/* Build the range_tree, which is a version of the AST annotated with
+		   range and traversibility information. */
+		const range_tree = _build_range_tree(ast);
+		return _flatten_range_tree(range_tree);
+	}
+
+	/**************************************************************************
 	 * FILTER                                                                 *
 	 **************************************************************************/
 
@@ -990,5 +1212,6 @@ this.tivua.filter = (function (global) {
 		"parse": parse,
 		"validate": validate,
 		"canonicalize": canonicalize,
+		"autocomplete_context": autocomplete_context,
 	};
 })(this);

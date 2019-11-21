@@ -392,4 +392,67 @@ describe('Filter', () => {
 				["author:jdoe", "author:jdoe"]);
 		});
 	});
+
+	describe("#autocomplete_context()", () => {
+		function context(s, i) {
+			const [lhs, rhs] = filter.autocomplete_context(filter.parse(s), i);
+			return [lhs.map(x => x.canonicalize(s)),
+			        rhs.map(x => x.canonicalize(s))];
+		}
+		it("simple", () => {
+			assert.deepEqual(context("foo bar", 0), [[], ["foo", "bar"]]);
+			assert.deepEqual(context("foo bar", 1), [[], ["foo", "bar"]]);
+			assert.deepEqual(context("foo bar", 2), [[], ["foo", "bar"]]);
+			assert.deepEqual(context("foo bar", 3), [["foo"], ["bar"]]);
+			assert.deepEqual(context("foo bar", 4), [["foo"], ["bar"]]);
+			assert.deepEqual(context("foo bar", 5), [["foo"], ["bar"]]);
+			assert.deepEqual(context("foo bar", 6), [["foo"], ["bar"]]);
+			assert.deepEqual(context("foo bar", 7), [["foo", "bar"], []]);
+		});
+
+		it("parantheses", () => {
+			assert.deepEqual(context("foo (bar)", 0), [[], ["foo"]]);
+			assert.deepEqual(context("foo (bar)", 1), [[], ["foo"]]);
+			assert.deepEqual(context("foo (bar)", 2), [[], ["foo"]]);
+			assert.deepEqual(context("foo (bar)", 3), [["foo"], []]);
+			assert.deepEqual(context("foo (bar)", 4), [["foo"], []]);
+			assert.deepEqual(context("foo (bar)", 5), [[], ["bar"]]);
+			assert.deepEqual(context("foo (bar)", 6), [[], ["bar"]]);
+			assert.deepEqual(context("foo (bar)", 7), [[], ["bar"]]);
+			assert.deepEqual(context("foo (bar)", 8), [[], ["bar"]]);
+			assert.deepEqual(context("foo (bar)", 9), [[], []]);
+		});
+
+		it("parantheses multiple words", () => {
+			assert.deepEqual(context("foo (bar boo)", 0), [[], ["foo"]]);
+			assert.deepEqual(context("foo (bar boo)", 1), [[], ["foo"]]);
+			assert.deepEqual(context("foo (bar boo)", 2), [[], ["foo"]]);
+			assert.deepEqual(context("foo (bar boo)", 3), [["foo"], []]);
+			assert.deepEqual(context("foo (bar boo)", 4), [["foo"], []]);
+			assert.deepEqual(context("foo (bar boo)", 5), [[], ["bar", "boo"]]);
+			assert.deepEqual(context("foo (bar boo)", 6), [[], ["bar", "boo"]]);
+			assert.deepEqual(context("foo (bar boo)", 7), [[], ["bar", "boo"]]);
+			assert.deepEqual(context("foo (bar boo)", 8), [["bar"], ["boo"]]);
+			assert.deepEqual(context("foo (bar boo)", 9), [["bar"], ["boo"]]);
+			assert.deepEqual(context("foo (bar boo)", 10), [["bar"], ["boo"]]);
+			assert.deepEqual(context("foo (bar boo)", 11), [["bar"], ["boo"]]);
+			assert.deepEqual(context("foo (bar boo)", 12), [["bar", "boo"], []]);
+			assert.deepEqual(context("foo (bar boo)", 13), [[], []]);
+		});
+
+		it("explicit operator", () => {
+			assert.deepEqual(context("foo && bar", 0), [[], ["foo"]]);
+			assert.deepEqual(context("foo && bar", 1), [[], ["foo"]]);
+			assert.deepEqual(context("foo && bar", 2), [[], ["foo"]]);
+			assert.deepEqual(context("foo && bar", 3), [["foo"], []]);
+			assert.deepEqual(context("foo && bar", 4), [["foo"], []]);
+			assert.deepEqual(context("foo && bar", 5), [[], []]);
+			assert.deepEqual(context("foo && bar", 6), [[], ["bar"]]);
+			assert.deepEqual(context("foo && bar", 7), [[], ["bar"]]);
+			assert.deepEqual(context("foo && bar", 8), [[], ["bar"]]);
+			assert.deepEqual(context("foo && bar", 9), [[], ["bar"]]);
+			assert.deepEqual(context("foo && bar", 10), [["bar"], []]);
+			assert.deepEqual(context("foo && bar", 11), [["bar"], []]);
+		});
+	});
 });
