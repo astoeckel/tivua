@@ -989,11 +989,6 @@ this.tivua.filter = (function (global) {
 		}
 
 		/* Checks whether the cursor location is inside the token range */
-		function _is_in_range(r) {
-			return _is_valid_token_range(r) && (r[0] <= cursor) && (r[1] >= cursor);
-		}
-
-		/* Checks whether the cursor location is inside the token range */
 		function _is_strictly_in_range(r) {
 			return _is_valid_token_range(r) && (r[0] < cursor) && (r[1] > cursor);
 		}
@@ -1001,10 +996,6 @@ this.tivua.filter = (function (global) {
 		/* Checks whether the range is to the left of the cursor location. */
 		function _is_left(r) {
 			return _is_valid_token_range(r) && (r[1] <= cursor);
-		}
-
-		function _is_strictly_left(r) {
-			return _is_valid_token_range(r) && (r[1] < cursor);
 		}
 
 		/* Build a temporary copy of the AST with ranges attached to each
@@ -1054,6 +1045,13 @@ this.tivua.filter = (function (global) {
 					res.children.push(_build_range_tree(nd.children[0]));
 					res.range = res.children[1].range;
 					break;
+				case NODE_NOP:
+					res.children.push({
+						"range": null,
+						"node": null,
+						"children": [],
+						"traversible": true,
+					});
 			}
 
 			/* Extend the range if this is an expression with explicit
@@ -1071,92 +1069,73 @@ this.tivua.filter = (function (global) {
 			return res;
 		}
 
-		/* Collapses the range tree into two flat lists containing the nodes
-		   to the left and right of the cursor, respectively. */
+		/* Flattens the range tree into a list with separators */
 		function _flatten_range_tree(rnd) {
-			/* Leaf nodes, decide whether to sort them into the rhs or lhs
-			   list. */
 			if (rnd.children.length == 0) {
-				return _is_left(rnd.range) ? [[rnd.node], []] : [[], [rnd.node]];
+				return [rnd];
 			}
-
-			/* If there are several children, search for the node corresponding
-			   to the cursor location */
-			let i_cur = 0;
+			let res = [];
 			for (let i = 0; i < rnd.children.length; i++) {
-				if (_is_left(rnd.children[i].range)) {
-					i_cur++;
-				}
-			}
-
-			/* Go over the nodes to the left of the cursor location, stop once
-			   we reach a non-traversible node */
-			let lhs = [];
-			for (let i = i_cur; i >= 0; i--) {
 				const c = rnd.children[i];
-				if (i >= rnd.children.length) {
-					continue;
-				} else if (i == i_cur) {
-					if (!_is_strictly_in_range(c.range)) {
-						continue;
-					}
-				} else {
-					/* Always descend into the node if the node is traversible */
-					let descend = c.traversible;
-
-					/* Otherwise, we have to handle some special cases for which
-					   we need access to the AST node. */
-					if (!descend && c.node) {
-						/* We descend into the node if it is a filter or word
-						   expression */
-						if ((c.node.type == NODE_FILTER) || (c.node.type == NODE_WORD)) {
-							descend = true;
-							/* Unless we are strictly to the left of the node
-							   and the node is surrounded by explicit
-							   parentheses */
-							if (_is_left(c.range) && c.node.explicit_parens) {
-								descend = false;
-							}
-						}
-					}
-
-					/* Descend into the node, after all the above evluations
-					   are done. */
-					if (descend) {
-						const [lhs_new, _] = _flatten_range_tree(c);
-						lhs = lhs_new.concat(lhs);
-					}
+				if (c.node && !c.traversible) {
+					res.push({
+						"range": c.range ? [c.range[0], c.range[0] + 1] : null,
+						"node": null,
+						"children": [],
+						"traversible": false,
+					});
 				}
-				if (!c.traversible) {
-					break;
+				res = res.concat(_flatten_range_tree(c));
+				if (c.node && c.node.explicit_parens) {
+					res.push({
+						"range": c.range ? [c.range[1] - 1, c.range[1]] : null,
+						"node": null,
+						"children": [],
+						"traversible": false,
+					});
 				}
 			}
-
-			/* Go over the nodes to the right of the cursor location, stop once
-			   we reach a non-traversible node */
-			let rhs = [];
-			for (let i = i_cur; i < rnd.children.length; i++) {
-				const c = rnd.children[i];
-				if (c.traversible || _is_strictly_in_range(c.range)) {
-					const [lhs_new, rhs_new] = _flatten_range_tree(c);
-					lhs = lhs.concat(lhs_new);
-					rhs = rhs.concat(rhs_new);
-				}
-				if (!c.traversible) {
-					break;
-				}
-			}
-
-			return [lhs.filter(x => x), rhs.filter(x => x)];
+			return res;
 		}
 
 		/* Simplify to ensure that there are only binary/unary operations */
 		ast = ast.simplify();
 
 		/* Build the range_tree, which is a version of the AST annotated with
-		   range and traversibility information. */
-		const range_tree = _build_range_tree(ast);
-		return _flatten_range_tree(range_tree);
+		   range and traversibility information, the flatten it into a list
+		   of ranges with separators */
+		const ranges = _flatten_range_tree(_build_range_tree(ast));
+
+		/* In the range list, search for the index where we're either exactly
+		   in a range or where we're transitioning from an element that's not
+		   to the left of the cursor. */
+		let i_cur = 0;
+		for (let i = 0; i < ranges.length; i++) {
+			if (_is_left(ranges[i].range)) {
+				i_cur++;
+			}
+		}
+
+		/* If the cursor is strictly left to a separator, then go one element
+		   back */
+		if (i_cur > 0 && i_cur < ranges.length && !ranges[i_cur].node &&
+				!_is_strictly_in_range(ranges[i_cur].range)) {
+			i_cur--;
+		}
+
+		/* Now collect the elements that are to the left and the right of the
+		   cursor, respectively. */
+		const lhs = [], rhs = [];
+		for (let i = i_cur; (i >= 0) && (i == ranges.length || ranges[i].node); i--) {
+			if (i < i_cur) {
+				lhs.unshift(ranges[i].node);
+			}
+		}
+		for (let i = i_cur; (i < ranges.length) && ranges[i].node; i++) {
+			rhs.push(ranges[i].node);
+		}
+
+		return [lhs, rhs];
 	}
 
 	/**************************************************************************

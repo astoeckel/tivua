@@ -397,8 +397,13 @@ describe('Filter', () => {
 		function context(s, i) {
 			const [lhs, rhs] = filter.autocomplete_context(filter.parse(s), i);
 			return [lhs.map(x => x.canonicalize(s)),
-			        rhs.map(x => x.canonicalize(s))];
+					rhs.map(x => x.canonicalize(s))];
 		}
+
+		it("empty", () => {
+			assert.deepEqual(context("", 0), [[], []]);
+		});
+
 		it("simple", () => {
 			assert.deepEqual(context("foo bar", 0), [[], ["foo", "bar"]]);
 			assert.deepEqual(context("foo bar", 1), [[], ["foo", "bar"]]);
@@ -414,8 +419,8 @@ describe('Filter', () => {
 			assert.deepEqual(context("foo (bar)", 0), [[], ["foo"]]);
 			assert.deepEqual(context("foo (bar)", 1), [[], ["foo"]]);
 			assert.deepEqual(context("foo (bar)", 2), [[], ["foo"]]);
-			assert.deepEqual(context("foo (bar)", 3), [["foo"], []]);
-			assert.deepEqual(context("foo (bar)", 4), [["foo"], []]);
+			assert.deepEqual(context("foo (bar)", 3), [[], ["foo"]]);
+			assert.deepEqual(context("foo (bar)", 4), [[], ["foo"]]);
 			assert.deepEqual(context("foo (bar)", 5), [[], ["bar"]]);
 			assert.deepEqual(context("foo (bar)", 6), [[], ["bar"]]);
 			assert.deepEqual(context("foo (bar)", 7), [[], ["bar"]]);
@@ -427,8 +432,8 @@ describe('Filter', () => {
 			assert.deepEqual(context("foo (bar boo)", 0), [[], ["foo"]]);
 			assert.deepEqual(context("foo (bar boo)", 1), [[], ["foo"]]);
 			assert.deepEqual(context("foo (bar boo)", 2), [[], ["foo"]]);
-			assert.deepEqual(context("foo (bar boo)", 3), [["foo"], []]);
-			assert.deepEqual(context("foo (bar boo)", 4), [["foo"], []]);
+			assert.deepEqual(context("foo (bar boo)", 3), [[], ["foo"]]);
+			assert.deepEqual(context("foo (bar boo)", 4), [[], ["foo"]]);
 			assert.deepEqual(context("foo (bar boo)", 5), [[], ["bar", "boo"]]);
 			assert.deepEqual(context("foo (bar boo)", 6), [[], ["bar", "boo"]]);
 			assert.deepEqual(context("foo (bar boo)", 7), [[], ["bar", "boo"]]);
@@ -436,7 +441,7 @@ describe('Filter', () => {
 			assert.deepEqual(context("foo (bar boo)", 9), [["bar"], ["boo"]]);
 			assert.deepEqual(context("foo (bar boo)", 10), [["bar"], ["boo"]]);
 			assert.deepEqual(context("foo (bar boo)", 11), [["bar"], ["boo"]]);
-			assert.deepEqual(context("foo (bar boo)", 12), [["bar", "boo"], []]);
+			assert.deepEqual(context("foo (bar boo)", 12), [["bar"], ["boo"]]);
 			assert.deepEqual(context("foo (bar boo)", 13), [[], []]);
 		});
 
@@ -444,8 +449,8 @@ describe('Filter', () => {
 			assert.deepEqual(context("foo && bar", 0), [[], ["foo"]]);
 			assert.deepEqual(context("foo && bar", 1), [[], ["foo"]]);
 			assert.deepEqual(context("foo && bar", 2), [[], ["foo"]]);
-			assert.deepEqual(context("foo && bar", 3), [["foo"], []]);
-			assert.deepEqual(context("foo && bar", 4), [["foo"], []]);
+			assert.deepEqual(context("foo && bar", 3), [[], ["foo"]]);
+			assert.deepEqual(context("foo && bar", 4), [[], ["foo"]]);
 			assert.deepEqual(context("foo && bar", 5), [[], []]);
 			assert.deepEqual(context("foo && bar", 6), [[], ["bar"]]);
 			assert.deepEqual(context("foo && bar", 7), [[], ["bar"]]);
@@ -453,6 +458,74 @@ describe('Filter', () => {
 			assert.deepEqual(context("foo && bar", 9), [[], ["bar"]]);
 			assert.deepEqual(context("foo && bar", 10), [["bar"], []]);
 			assert.deepEqual(context("foo && bar", 11), [["bar"], []]);
+		});
+
+		it("explicit operator multiple words", () => {
+			assert.deepEqual(context("glue foo && bar stool drone", 0), [[], ["glue", "foo"]]);
+			assert.deepEqual(context("glue foo && bar stool drone", 1), [[], ["glue", "foo"]]);
+			assert.deepEqual(context("glue foo && bar stool drone", 2), [[], ["glue", "foo"]]);
+			assert.deepEqual(context("glue foo && bar stool drone", 3), [[], ["glue", "foo"]]);
+			assert.deepEqual(context("glue foo && bar stool drone", 4), [["glue"], ["foo"]]);
+			assert.deepEqual(context("glue foo && bar stool drone", 5), [["glue"], ["foo"]]);
+			assert.deepEqual(context("glue foo && bar stool drone", 6), [["glue"], ["foo"]]);
+			assert.deepEqual(context("glue foo && bar stool drone", 7), [["glue"], ["foo"]]);
+			assert.deepEqual(context("glue foo && bar stool drone", 8), [["glue"], ["foo"]]);
+			assert.deepEqual(context("glue foo && bar stool drone", 9), [["glue"], ["foo"]]);
+			assert.deepEqual(context("glue foo && bar stool drone", 10), [[], []]);
+			assert.deepEqual(context("glue foo && bar stool drone", 11), [[], ["bar", "stool", "drone"]]);
+			assert.deepEqual(context("glue foo && bar stool drone", 12), [[], ["bar", "stool", "drone"]]);
+			assert.deepEqual(context("glue foo && bar stool drone", 13), [[], ["bar", "stool", "drone"]]);
+			assert.deepEqual(context("glue foo && bar stool drone", 14), [[], ["bar", "stool", "drone"]]);
+			assert.deepEqual(context("glue foo && bar stool drone", 15), [["bar"], ["stool", "drone"]]);
+			assert.deepEqual(context("glue foo && bar stool drone", 16), [["bar"], ["stool", "drone"]]);
+			assert.deepEqual(context("glue foo && bar stool drone", 17), [["bar"], ["stool", "drone"]]);
+			assert.deepEqual(context("glue foo && bar stool drone", 18), [["bar"], ["stool", "drone"]]);
+			assert.deepEqual(context("glue foo && bar stool drone", 19), [["bar"], ["stool", "drone"]]);
+			assert.deepEqual(context("glue foo && bar stool drone", 20), [["bar"], ["stool", "drone"]]);
+			assert.deepEqual(context("glue foo && bar stool drone", 21), [["bar", "stool"], ["drone"]]);
+			assert.deepEqual(context("glue foo && bar stool drone", 22), [["bar", "stool"], ["drone"]]);
+			assert.deepEqual(context("glue foo && bar stool drone", 23), [["bar", "stool"], ["drone"]]);
+			assert.deepEqual(context("glue foo && bar stool drone", 24), [["bar", "stool"], ["drone"]]);
+			assert.deepEqual(context("glue foo && bar stool drone", 25), [["bar", "stool"], ["drone"]]);
+			assert.deepEqual(context("glue foo && bar stool drone", 26), [["bar", "stool"], ["drone"]]);
+			assert.deepEqual(context("glue foo && bar stool drone", 27), [["bar", "stool", "drone"], []]);
+		});
+
+		it("filter expression", () => {
+			assert.deepEqual(context("user:foo bar", 0), [[], []]);
+			assert.deepEqual(context("user:foo bar", 1), [[], ["user:foo", "bar"]]);
+			assert.deepEqual(context("user:foo bar", 2), [[], ["user:foo", "bar"]]);
+			assert.deepEqual(context("user:foo bar", 3), [[], ["user:foo", "bar"]]);
+			assert.deepEqual(context("user:foo bar", 4), [[], ["user:foo", "bar"]]);
+			assert.deepEqual(context("user:foo bar", 5), [[], ["user:foo", "bar"]]);
+			assert.deepEqual(context("user:foo bar", 6), [[], ["user:foo", "bar"]]);
+			assert.deepEqual(context("user:foo bar", 7), [[], ["user:foo", "bar"]]);
+			assert.deepEqual(context("user:foo bar", 8), [["user:foo"], ["bar"]]);
+			assert.deepEqual(context("user:foo bar", 9), [["user:foo"], ["bar"]]);
+			assert.deepEqual(context("user:foo bar", 10), [["user:foo"], ["bar"]]);
+			assert.deepEqual(context("user:foo bar", 11), [["user:foo"], ["bar"]]);
+			assert.deepEqual(context("user:foo bar", 12), [["user:foo", "bar"], []]);
+		});
+
+		it("multiple filter expressions", () => {
+			assert.deepEqual(context("user:foo bar #a b", 0), [[], []]);
+			assert.deepEqual(context("user:foo bar #a b", 1), [[], ["user:foo", "bar"]]);
+			assert.deepEqual(context("user:foo bar #a b", 2), [[], ["user:foo", "bar"]]);
+			assert.deepEqual(context("user:foo bar #a b", 3), [[], ["user:foo", "bar"]]);
+			assert.deepEqual(context("user:foo bar #a b", 4), [[], ["user:foo", "bar"]]);
+			assert.deepEqual(context("user:foo bar #a b", 5), [[], ["user:foo", "bar"]]);
+			assert.deepEqual(context("user:foo bar #a b", 6), [[], ["user:foo", "bar"]]);
+			assert.deepEqual(context("user:foo bar #a b", 7), [[], ["user:foo", "bar"]]);
+			assert.deepEqual(context("user:foo bar #a b", 8), [["user:foo"], ["bar"]]);
+			assert.deepEqual(context("user:foo bar #a b", 9), [["user:foo"], ["bar"]]);
+			assert.deepEqual(context("user:foo bar #a b", 10), [["user:foo"], ["bar"]]);
+			assert.deepEqual(context("user:foo bar #a b", 11), [["user:foo"], ["bar"]]);
+			assert.deepEqual(context("user:foo bar #a b", 12), [["user:foo"], ["bar"]]);
+			assert.deepEqual(context("user:foo bar #a b", 13), [["user:foo"], ["bar"]]);
+			assert.deepEqual(context("user:foo bar #a b", 14), [[], ["#a", "b"]]);
+			assert.deepEqual(context("user:foo bar #a b", 15), [["#a"], ["b"]]);
+			assert.deepEqual(context("user:foo bar #a b", 16), [["#a"], ["b"]]);
+			assert.deepEqual(context("user:foo bar #a b", 17), [["#a", "b"], []]);
 		});
 	});
 });
