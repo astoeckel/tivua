@@ -123,21 +123,17 @@ this.tivua.view.components.searchbox = (function() {
 	/* Creates the annotation layer, highlighting the individual parts of the
 	   expression. This uses the "canonicalize" function, that transduces the
 	   syntax tree into a canaonicalized, user-defined tree. */
-	function _create_annotations(ast, s, users) {
+	function _create_annotations(ast, s) {
 		const transform = (expr, nd) => {
 			const type = nd ? nd.describe() : null;
 			if (type) {
 				const span = document.createElement("span");
 				span.setAttribute("class", `leaf ${type}`);
 				if (type == "filter") {
-					if (expr.indexOf("user:") == 0 || expr.indexOf("author:") == 0) {
+					if (nd.filter_type == 'user') {
 						span.style.backgroundColor = colors.author_id_to_color(nd.uid, true);
-						span.classList.add("user");
-					} else if (expr.indexOf("#") == 0 || expr.indexOf("tag:") == 0) {
-						span.classList.add("tag");
-					} else if (expr.indexOf("date:") == 0) {
-						span.classList.add("date");
 					}
+					span.classList.add(nd.filter_type);
 					span.textContent = " " + expr + " ";
 				} else {
 					span.textContent = expr;
@@ -158,7 +154,7 @@ this.tivua.view.components.searchbox = (function() {
 			return span;
 		};
 
-		return ast.validate(s, users).canonicalize(s, transform, join);
+		return ast.canonicalize(s, transform, join);
 	}
 
 
@@ -187,10 +183,10 @@ this.tivua.view.components.searchbox = (function() {
 		inp_search.addEventListener('change', () => {
 			/* Parse the filter expression into an AST */
 			const s = inp_search.value;
-			const ast = tivua.filter.parse(s);
+			const ast = tivua.filter.parse(s).validate(s, users);
 
 			/* Update the annotation layer and the input text */
-			const annotations = _create_annotations(ast, s, users);
+			const annotations = _create_annotations(ast, s);
 			inp_search.value = annotations.innerText || "";
 
 			/* If there is an error, mark the error box as possessing an error

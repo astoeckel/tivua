@@ -597,9 +597,10 @@ this.tivua.filter = (function (global) {
 		 * autocompleting a string in the UI), just return the (potentially
 		 * escaped) string.
 		 */
-		function _get_text(t) {
+		function _get_text(t, escape) {
+			escape = (escape === undefined) ? true : !!escape;
 			if (!s || typeof t == "string") {
-				return _escape(t);
+				return escape ? _escape(t) : t;
 			}
 			return s.substring(t.start, t.end);
 		}
@@ -663,7 +664,7 @@ this.tivua.filter = (function (global) {
 					return fT("", nd);
 				case NODE_ERR:
 					if (nd.token) {
-						return fT(_get_text(nd.token), nd);
+						return fT(_get_text(nd.token, false), nd);
 					}
 					return fT("", nd);
 			}
@@ -679,6 +680,52 @@ this.tivua.filter = (function (global) {
 	/**************************************************************************
 	 * VALIDATOR                                                              *
 	 **************************************************************************/
+
+	// Constants used for keyword validation
+	// TODO: Use server configuration
+	const KEYWORDS_MIN_LEN = 2;
+	const KEYWORDS_MAX_LEN = 30;
+	const KEYWORDS_SPLIT_RE = /[\n;:().,!?/]/;
+
+	// Constants used for date validation
+	const DATE_RE = /^([0-9]+)([-/_]([0-9A-Za-z]+)([-/_]([0-9]+))?)?$/;
+	const DATE_MONTHS = {
+		"january": 1,
+		"jan": 1,
+		"ja": 1,
+		"february": 2,
+		"feb": 2,
+		"fe": 2,
+		"march": 3,
+		"mar": 3,
+		"mr": 3,
+		"april": 4,
+		"apr": 4,
+		"ap": 4,
+		"may": 5,
+		"my": 5,
+		"june": 6,
+		"jun": 6,
+		"jn": 6,
+		"july": 7,
+		"jul": 7,
+		"jl": 7,
+		"august": 8,
+		"aug": 8,
+		"au": 8,
+		"september": 9,
+		"sep": 9,
+		"se": 9,
+		"october": 10,
+		"oct": 10,
+		"oc": 10,
+		"november": 11,
+		"nov": 11,
+		"nv": 11,
+		"december": 12,
+		"dec": 12,
+		"de": 12,
+	};
 
 	/**
 	 * The validate function recursively checks whether the expression
@@ -762,8 +809,100 @@ this.tivua.filter = (function (global) {
 
 			/* Otherwise store the uid in the node and replace the text with the
 			   canonical user name. */
+			nd.filter_type = 'user';
 			nd.value = user_list[match_uid].name;
 			nd.uid = match_uid;
+			return nd;
+		}
+
+		/**
+		 * Validates the "tag" filter expression.
+		 */
+		function _validate_tag(nd) {
+			/* Make sure the given tag name matches the constraints on
+			   keywords */
+			const value = _get_text(nd.value);
+			if ((value.length < KEYWORDS_MIN_LEN) ||
+				(value.length > KEYWORDS_MAX_LEN) ||
+				(value.match(KEYWORDS_SPLIT_RE))) {
+				return _error_node(nd, "%err_invalid_keyword");
+			}
+
+			/* Set the filter type and return the keyword */
+			nd.filter_type = "tag";
+			return nd;
+		}
+
+		function _validate_date(nd) {
+			const value = _get_text(nd.value);
+			const match = value.match(DATE_RE);
+			if (!match) {
+				return _error_node(nd, "%err_invalid_date");
+			}
+
+			/* Canonicalise the year, month, and date */
+			let yy = match[1], mm = match[3], dd = match[5];
+			if ((typeof mm === "string") && (mm.toLowerCase() in DATE_MONTHS)) {
+				mm = DATE_MONTHS[mm.toLowerCase()];
+			}
+			if ((typeof mm === "string") && !mm.match(/^[0-9]+$/)) {
+				return _error_node(nd, "%err_invalid_date");
+			}
+
+			/* Make sure we valid integers */
+			const has_mm = (mm !== undefined);
+			const has_dd = (dd !== undefined);
+			yy = parseInt(yy);
+			mm = has_mm ? parseInt(mm) : 1;
+			dd = has_dd ? parseInt(dd) : 1;
+			if (isNaN(yy) || isNaN(mm) || isNaN(dd)) {
+				return _error_node(nd, "%err_invalid_date");
+			}
+
+			/* Make sure the year, day and month are valid */
+			if (yy < 0 || mm < 1 || dd < 1 || mm > 12 || dd > 31) {
+				return _error_node(nd, "%err_invalid_date");
+			}
+
+			/* If the year is smaller than 100, treat it as describing a date
+			   in this century */
+			if (yy < 100) {
+				yy += (yy < 60) ? 2000 : 1900;
+			}
+
+			/* Try to generate the start date -- check whether it is a valid
+			   date by converting it back to numbers and comparing */
+			const start_date = new Date();
+			start_date.setUTCFullYear(yy);
+			start_date.setUTCMonth(mm - 1);
+			start_date.setUTCDate(dd);
+			start_date.setUTCHours(0);
+			start_date.setUTCMinutes(0);
+			start_date.setUTCSeconds(0);
+			start_date.setUTCMilliseconds(0);
+
+			const start_date_canon = new Date(start_date.valueOf());
+			if ((start_date_canon.getUTCFullYear() != yy) ||
+				(start_date_canon.getUTCMonth() != mm - 1) ||
+				(start_date_canon.getUTCDate() != dd)) {
+				return _error_node(nd, "%err_invalid_date");
+			}
+
+			/* Compute the end date -- either add exactly one day, month or
+			   year. */
+			const end_date = new Date();
+			end_date.setUTCFullYear(has_mm ? yy : (yy + 1));
+			end_date.setUTCMonth((has_dd || !has_mm) ? (mm - 1) : mm);
+			end_date.setUTCDate(dd);
+			end_date.setUTCHours(has_dd ? 24 : 0);
+			end_date.setUTCMinutes(0);
+			end_date.setUTCSeconds(0);
+			end_date.setUTCMilliseconds(0);
+
+			/* Attach start and end timestamps to the node */
+			nd.filter_type = "date";
+			nd.date_start = Math.floor(start_date.valueOf());
+			nd.date_end = Math.ceil(end_date.valueOf()) - 1;
 			return nd;
 		}
 
@@ -782,18 +921,18 @@ this.tivua.filter = (function (global) {
 			/* Fetch the key, this must be one of "user", "author", "tag"
 			   "date"" */
 			const key = _get_text(nd.key).toLowerCase();
-			if (["#", "user", "author", "tag", "date"].indexOf(key) == -1) {
-				return _error_node(nd, "%err_invalid_filter_expression");
-			}
-
-			/* If the user list is given, associate each user keyword with a
-			   uid. If no matching user is found, create an error node. */
 			switch (key) {
 				case "user":
 				case "author":
 					return _validate_user(nd);
+				case "#":
+				case "tag":
+					return _validate_tag(nd);
+				case "date":
+					return _validate_date(nd);
+				default:
+					return _error_node(nd, "%err_invalid_filter_expression");
 			}
-			return nd;
 		}
 		return _validate(ast);
 	}
