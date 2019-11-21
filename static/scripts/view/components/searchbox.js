@@ -52,8 +52,11 @@ this.tivua.view.components.searchbox = (function() {
 			const keywords = data[1].keywords;
 			const res = [];
 
-			// Filter for users
+			// Filter for users; skip the "[deleted]" user
 			for (let uid in users) {
+				if (parseInt(uid) <= 0) {
+					continue;
+				}
 				const user = users[uid];
 				let weight = 0.0;
 				if (matches(user.display_name)) {
