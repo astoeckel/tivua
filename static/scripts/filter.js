@@ -703,40 +703,17 @@ this.tivua.filter = (function (global) {
 	const DATE_RE = /^([0-9]+)([-/_]([0-9A-Za-z]+)([-/_]([0-9]+))?)?$/;
 	const DATE_MONTHS = {
 		"january": 1,
-		"jan": 1,
-		"ja": 1,
 		"february": 2,
-		"feb": 2,
-		"fe": 2,
 		"march": 3,
-		"mar": 3,
-		"mr": 3,
 		"april": 4,
-		"apr": 4,
-		"ap": 4,
 		"may": 5,
-		"my": 5,
 		"june": 6,
-		"jun": 6,
-		"jn": 6,
 		"july": 7,
-		"jul": 7,
-		"jl": 7,
 		"august": 8,
-		"aug": 8,
-		"au": 8,
 		"september": 9,
-		"sep": 9,
-		"se": 9,
 		"october": 10,
-		"oct": 10,
-		"oc": 10,
 		"november": 11,
-		"nov": 11,
-		"nv": 11,
 		"december": 12,
-		"dec": 12,
-		"de": 12,
 	};
 
 	/**
@@ -854,8 +831,13 @@ this.tivua.filter = (function (global) {
 
 			/* Canonicalise the year, month, and date */
 			let yy = match[1], mm = match[3], dd = match[5];
-			if ((typeof mm === "string") && (mm.toLowerCase() in DATE_MONTHS)) {
-				mm = DATE_MONTHS[mm.toLowerCase()];
+			if ((typeof mm === "string")) {
+				for (let month_name in DATE_MONTHS) {
+					if (month_name.indexOf(mm) == 0) {
+						mm = DATE_MONTHS[month_name];
+						break;
+					}
+				}
 			}
 			if ((typeof mm === "string") && !mm.match(/^[0-9]+$/)) {
 				return _error_node(nd, "%err_invalid_date");
