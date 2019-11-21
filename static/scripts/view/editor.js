@@ -35,6 +35,13 @@ this.tivua.view.editor = (function() {
 	const utils = tivua.utils;
 	const view = tivua.view;
 
+	// Constants used for keyword validation
+	// TODO: Use server configuration
+	const KEYWORDS_MIN_LEN = 2;
+	const KEYWORDS_MAX_LEN = 30;
+	const KEYWORDS_MAX_COUNT = 10;
+	const KEYWORDS_SPLIT_RE = /"[\n;:().,!?/]"/;
+
 	function _validate_author(users, btn_save, sel_author, span_author_error) {
 		const l10n = tivua.l10n;
 		let author_id = -1;
@@ -64,10 +71,10 @@ this.tivua.view.editor = (function() {
 	}
 
 	function _validate_keywords(btn_save, inp_keywords, inp_keywords_wrapper, span_keywords_error) {
-		const keywords = inp_keywords.value.split(',').map(s => s.trim()).filter(s => !!s);
-		let valid = keywords.length <= 10;
+		const keywords = inp_keywords.value.split(KEYWORDS_SPLIT_RE).map(s => s.trim()).filter(s => !!s);
+		let valid = keywords.length <= KEYWORDS_MAX_COUNT;
 		for (let keyword of keywords) {
-			valid = valid && (keyword.length <= 30);
+			valid = valid && (keyword.length <= KEYWORDS_MAX_LEN) && (keyword.length >= KEYWORDS_MIN_LEN);
 		}
 		view.utils.update_error_state(btn_save, 'keywords', valid);
 		inp_keywords_wrapper.classList.toggle('error', !valid);
