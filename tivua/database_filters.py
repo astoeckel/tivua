@@ -149,7 +149,7 @@ class FilterSQL:
             params=params)
 
 
-    def emit(self, select_keys):
+    def emit(self, select_keys, count=False):
         """
         Compiles the filter query into a SQL statement that operates on the
         given table.
@@ -226,9 +226,13 @@ class FilterSQL:
 
         # Create the rest of the SQL query
         select_from_alias = tables_subs["$0"]
-        sql_prefix = "SELECT {} FROM {} AS {}".format(", ".join(
-            map(lambda s: "{}.{}".format(select_from_alias, s), select_keys)),
-            self.select_from, select_from_alias)
+        if count:
+            sql_prefix = "SELECT COUNT() FROM {} AS {}".format(
+                self.select_from, select_from_alias)
+        else:
+            sql_prefix = "SELECT {} FROM {} AS {}".format(", ".join(
+                map(lambda s: "{}.{}".format(select_from_alias, s), select_keys)),
+                self.select_from, select_from_alias)
 
         # Generate the necessary JOINs
         sql_mid = ""
@@ -245,7 +249,7 @@ class FilterSQL:
 
         # If there are multiple JOINs on different tables, add a "GROUP BY"
         # statement
-        if len(set(tables.values())) > 1:
+        if (not count) and len(set(tables.values())) > 1:
             sql_suffix += " GROUP BY {}.{}".format(select_from_alias,
                                                    self.joins[self.select_from])
 

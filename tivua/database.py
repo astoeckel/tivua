@@ -524,6 +524,22 @@ class Database:
             t.execute(sql, params)
             return t.fetchall_dataclass(Post)
 
+
+    def total_post_count(self, filter=None):
+        """
+        Counts the total number of posts of a certain id.
+        """
+        with Transaction(self) as t:
+            if filter is None:
+                t.execute("""SELECT COUNT() FROM posts""")
+            else:
+                flt_sql, flt_params, _ = filter.compile().emit([], count=True)
+                t.execute(flt_sql, flt_params)
+
+            res = t.fetchone()[0]
+            return 0 if res is None else res
+
+
     def create_post(self, post, history=False):
         with Transaction(self) as t:
             table = "posts_history" if history else "posts"
