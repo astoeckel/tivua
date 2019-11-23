@@ -277,8 +277,6 @@ def _internal_wrap_api_handler(cback,
     @param api is a reference at the api instance.
     """
 
-    import codecs
-
     def _handler(req, query=None, match=None, head=False):
         # Copy the response code from the outside
         response_code = code
