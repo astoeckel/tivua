@@ -34,7 +34,6 @@ this.tivua.view.components.searchbox = (function() {
 
 	/* Module aliases */
 	const colors = tivua.colors;
-	const time = tivua.time;
 	const utils = tivua.utils;
 
 	/**
@@ -295,9 +294,12 @@ this.tivua.view.components.searchbox = (function() {
 
 		/* If the "clear" button is hit, reset the search */
 		btn_clear.addEventListener("click", () => {
+			/* Reset the value in the input box and hide the annotations */
 			inp_search.value = "";
 			_rebuild_annotations();
 			_update_annotation_visibility(false);
+
+			/* Trigger a search event */
 			div_searchbox.on_search("");
 		});
 
