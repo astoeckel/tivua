@@ -1045,11 +1045,11 @@ class API:
                 # post
                 for post in user_posts:
                     if post.cuid == user.uid:
-                        post.cuid = user.uid
+                        post.cuid = 0
                     if post.muid == user.uid:
-                        post.muid = user.uid
+                        post.muid = 0
                     if post.author == user.uid:
-                        post.author = user.uid
+                        post.author = 0
                     self.db.update_post(post, history=histroy)
 
                 return True
