@@ -343,8 +343,17 @@ this.tivua.view.cards = (function() {
 			s1ext = s1 + CARD_VIEW_OVERLAP;
 		}
 
+		/* Serialize the filter if one is given */
+		let filter_obj = null;
+		if (filter) {
+			const ast = tivua.filter.parse(filter).validate(filter, users);
+			if (!ast.get_first_error()) {
+				filter_obj = ast.serialize();
+			}
+		}
+
 		/* Query the posts in the computed range */
-		const query = api.get_post_list(s0ext, s1ext - s0ext);
+		const query = api.get_post_list(s0ext, s1ext - s0ext, filter_obj);
 		return query.then((response) => {
 			// Fetch the response parts
 			const total = response.total;

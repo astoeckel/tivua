@@ -93,9 +93,12 @@ this.tivua.xhr = (function () {
 	 * Posts                                                                  *
 	 **************************************************************************/
 
-	function get_post_list(session, start, limit) {
-		return xhr_fetch_json('GET',
-			`api/posts/list?start=${start}&limit=${limit}`, session);
+	function get_post_list(session, start, limit, filter) {
+		let url = `api/posts/list?start=${start}&limit=${limit}`;
+		if (filter) {
+			url += "&filter=" + encodeURIComponent(filter);
+		}
+		return xhr_fetch_json('GET', url, session);
 	}
 
 	function get_post(session, pid) {

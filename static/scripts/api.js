@@ -231,9 +231,10 @@ this.tivua.api = (function (window) {
 	/**
 	 * Returns a list of posts starting with the given date.
 	 */
-	function get_post_list(start, limit) {
+	function get_post_list(start, limit, filter) {
+		filter = filter ? JSON.stringify(filter) : null;
 		return _err(get_sid().then(sid => {
-			return xhr.get_post_list(sid, start | 0, limit | 0);
+			return xhr.get_post_list(sid, start | 0, limit | 0, filter);
 		}));
 	}
 
