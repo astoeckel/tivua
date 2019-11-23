@@ -451,7 +451,23 @@ this.tivua.filter = (function (global) {
 		 * node.
 		 */
 		autocomplete_context(i) {
-			return global.tivua.autocomplete_context(this, i);
+			return global.tivua.filter.autocomplete_context(this, i);
+		}
+
+		/**
+		 * Returns a JSON object representing the filter expression. This is
+		 * what is being sent to the server.
+		 */
+		serialize() {
+			return global.tivua.filter.serialize(this);
+		}
+
+		/**
+		 * Creates a new AST that is combined with the given node via an
+		 * implicit "and".
+		 */
+		and(other) {
+			return ASTNode(NODE_AND, this, other);
 		}
 	}
 
@@ -1214,50 +1230,87 @@ this.tivua.filter = (function (global) {
 	}
 
 	/**************************************************************************
-	 * FILTER                                                                 *
+	 * SERIALISATION                                                          *
 	 **************************************************************************/
 
-	class Filter {
-		simplify() {
-			return this;
-		}
-	}
-
-	class FilterNoOp extends Filter {
-	}
-
-	class FilterBinaryOp extends Filter {
-		simplify() {
-			return (this.exprs.length == 0) ? FilterNoOp() :
-				((this.exprs.length == 1) ? this.exprs[1] : this);
-		}
-	}
-
-	class FilterOr extends FilterBinaryOp {
-		constructor(...exprs) {
-			this.op = "OR";
-			this.exprs = exprs;
-		}
-	}
-
-	class FilterAnd extends FilterBinaryOp {
-		constructor(...exprs) {
-			this.op = "AND";
-			this.exprs = exprs;
-		}
-	}
-
 	/**
-	 * The create_filter_tree() function takes a parsed AST and converts it into
-	 * a filter tree. This filter tree can then be simplified and converted into
-	 * a compact JSON string that can be sent to the server.
+	 * Turns a parsed and validated AST into a JSON object describing the filter
+	 * that can in turn be sent to the server.
 	 *
 	 * @param {ASTNode} ast is an AST as returned by the parse() function.
-	 * @param {any} users is a map from user ids to user names. This is used to
-	 * convert "user" tags
 	 */
-	function create_filter_tree(ast, users) {
+	function serialize(ast) {
+		/**
+		 * Used to get the underlying text of a token; handles tokens replaced
+		 * by strings.
+		 */
+		function _get_text(t) {
+			return typeof t == "string" ? t : t.text;
+		}
 
+		/**
+		 * Joins child nodes with the same operator into a single operator.
+		 */
+		function _join(res, c1, c2) {
+			if (Array.isArray(c1) && c1[0] == res[0]) {
+				res = res.concat(c1.slice(1));
+			} else {
+				res = res.concat([c1]);
+			}
+			if (Array.isArray(c2) && c2[0] == res[0]) {
+				res = res.concat(c2.slice(1));
+			} else {
+				res = res.concat([c2]);
+			}
+			return res;
+		}
+
+		function _serialize(nd) {
+			switch (nd.type) {
+				case NODE_WORD:
+					return _get_text(nd.value);
+				case NODE_FILTER: {
+					let key = nd.filter_type || _get_text(nd.key);
+					let value =  _get_text(nd.value);
+					switch (key) {
+						case "user":
+						case "author":
+							key = "user";
+							value = nd.uid;
+							break;
+						case "date":
+							value = [
+								Math.floor(nd.date_start / 1000),
+								Math.ceil(nd.date_end / 1000)];
+							break;
+						case "#":
+						case "tag":
+							return ["#", value];
+					}
+					let obj = {};
+					obj[key] = value;
+					return obj;
+				}
+				case NODE_AND:
+					return _join(["&"],
+						_serialize(nd.children[0]), _serialize(nd.children[1]));
+				case NODE_OR:
+					return _join(["|"],
+						_serialize(nd.children[0]), _serialize(nd.children[1]));
+				case NODE_NOT: {
+					const c = _serialize(nd.children[0]);
+					if (Array.isArray(c) && c[0] == "!") {
+						return c.slice(1);
+					}
+					return ["!"].concat(c);
+				}
+				case NODE_NOP:
+				case NODE_ERR:
+					return null;
+			}
+		}
+
+		return _serialize(ast);
 	}
 
 
@@ -1267,5 +1320,6 @@ this.tivua.filter = (function (global) {
 		"validate": validate,
 		"canonicalize": canonicalize,
 		"autocomplete_context": autocomplete_context,
+		"serialize": serialize,
 	};
 })(this);

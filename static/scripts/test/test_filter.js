@@ -92,6 +92,13 @@ function ast_to_string(node) {
 	return "";
 }
 
+const user_list = {
+	1: {
+		"name": "jdoe",
+		"display_name": "Joane Doe",
+	}
+};
+
 describe('Filter', () => {
 	describe('#tokenize()', () => {
 		function mk_token(type, text, start, end) {
@@ -361,12 +368,6 @@ describe('Filter', () => {
 
 	describe('#validate()', () => {
 		function validate(s) {
-			const user_list = {
-				1: {
-					"name": "jdoe",
-					"display_name": "Joane Doe",
-				}
-			};
 			const ast = filter.parse(s).validate(s, user_list);
 			return [ast_to_string(ast), ast.canonicalize(s)];
 		}
@@ -526,6 +527,48 @@ describe('Filter', () => {
 			assert.deepEqual(context("user:foo bar #a b", 15), [["#a"], ["b"]]);
 			assert.deepEqual(context("user:foo bar #a b", 16), [["#a"], ["b"]]);
 			assert.deepEqual(context("user:foo bar #a b", 17), [["#a", "b"], []]);
+		});
+	});
+
+	describe("#serialize()", () => {
+		function serialize(s) {
+			return filter.parse(s).validate(s, user_list).serialize();
+		}
+
+		it("chain of words 1", () => {
+			assert.deepEqual(serialize("foo bar"),
+				["&", "foo", "bar"]);
+		});
+
+		it("chain of words 2", () => {
+			assert.deepEqual(serialize("foo bar foom"),
+				["&", "foo", "bar", "foom"]);
+		});
+
+		it("or operator", () => {
+			assert.deepEqual(serialize("foo bar foom || foo2"),
+				["|", ["&", "foo", "bar", "foom"], "foo2"]);
+		});
+
+		it("not operator", () => {
+			assert.deepEqual(serialize("!foo bar foom || foo2"),
+				["|", ["&", ["!", "foo"], "bar", "foom"], "foo2"]);
+		});
+
+		it("user filter", () => {
+			assert.deepEqual(serialize("!foo bar || user:jdoe"),
+				["|", ["&", ["!", "foo"], "bar"], {"user": 1}]);
+		});
+
+		it("date filter", () => {
+			assert.deepEqual(serialize("!foo bar || date:2019"),
+				["|", ["&", ["!", "foo"], "bar"],
+				{"date": [1546300800000, 1577836799999]}]);
+		});
+
+		it("tag filter", () => {
+			assert.deepEqual(serialize("#foo (#bar || bar)"),
+				["&", ["#", "foo"], ["|", ["#", "bar"], "bar"]]);
 		});
 	});
 });
