@@ -91,7 +91,7 @@
 			</header>
 			<main class="cards"></main>
 			<footer>
-				<div id="lbl_post">Post&nbsp;<span id="lbl_post_start"></span>&nbsp;to&nbsp;<span id="lbl_post_end"></span>&nbsp;of&nbsp;<span id="lbl_post_total"></span></div>
+				<div id="lbl_post"></div>
 				<div>
 					<button id="btn_page_first" title="First page"><span class="icon"></span></button>
 					<button id="btn_page_prev" title="Previous page"><span class="icon"></span></button>
@@ -137,8 +137,15 @@
 		<!-- MAIN VIEW - NO ENTRIES MESSAGE -->
 		<template id="tmpl_card_view_welcome">
 			<div class="message">
-				<h1><span>🐣</span>%header_welcome</h1>
-				<span>%msg_welcome</span>
+				<h1><span>🐣</span>%header_cards_welcome</h1>
+				<span>%msg_cards_welcome</span>
+			</div>
+		</template>
+
+		<template id="tmpl_card_view_no_results">
+			<div class="message">
+				<h1><span>🔍</span>%header_cards_no_results</h1>
+				<span>%msg_cards_no_results</span>
 			</div>
 		</template>
 

@@ -71,11 +71,16 @@ this.tivua.view.cards = (function() {
 
 		/* Update the post counter */
 		if (total > 0) {
-			view.querySelector("#lbl_post_start").innerText = i0;
-			view.querySelector("#lbl_post_end").innerText = i1;
-			view.querySelector("#lbl_post_total").innerText = total;
+			view.querySelector("#lbl_post").innerText =
+				l10n.translate((total == 1) ?
+						"%msg_cards_post_count_singular" :
+						"%msg_cards_post_count_plural")
+					.replace("{start}", i0)
+					.replace("{end}", i1)
+					.replace("{total}", total);
 		} else {
-			l10n.set_node_text(view.querySelector("#lbl_post"), "%msg_no_posts");
+			view.querySelector("#lbl_post").innerText =
+				l10n.translate("%msg_cards_no_posts");
 		}
 
 		/* Update the page select box */
@@ -417,11 +422,15 @@ this.tivua.view.cards = (function() {
 			}
 
 			// Show a message in case there are no messages
-			// TODO: Distinguish between there being no responses because of an
-			// empty search or a fresh instance
+			console.log("(!)", total);
 			if (total == 0) {
-				const msg = utils.import_template('tmpl_card_view_welcome');
-				main.appendChild(msg);
+				if (filter) {
+					const msg = utils.import_template('tmpl_card_view_no_results');
+					main.appendChild(msg);
+				} else {
+					const msg = utils.import_template('tmpl_card_view_welcome');
+					main.appendChild(msg);
+				}
 			}
 
 			/* Actually show the card view, either by just replacing the

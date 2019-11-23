@@ -59,10 +59,16 @@ this.tivua.l10n = (function () {
 				"No",
 
 			// Welcome screen
-			"%header_welcome":
+			"%header_cards_welcome":
 				"Welcome to Tivua!",
-			"%msg_welcome":
+			"%msg_cards_welcome":
 				"There are no posts yet. Click on the \"Add entry\" button above to create one.",
+
+			// No search results screen
+			"%header_cards_no_results":
+				"No results",
+			"%msg_cards_no_results":
+				"Your search did no match any posts.",
 
 			// Menu
 			"%tooltip_menu":
@@ -120,8 +126,12 @@ this.tivua.l10n = (function () {
 				".",
 
 			// Card view
-			"%msg_no_posts":
+			"%msg_cards_no_posts":
 				"No posts.",
+			"%msg_cards_post_count_plural":
+				"Posts {start} to {end} of {total}",
+			"%msg_cards_post_count_singular":
+				"Post {start} of {total}",
 			"%msg_post_history":
 				"Last edited on %date by %author",
 
