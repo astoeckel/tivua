@@ -241,8 +241,8 @@ this.tivua.view.components.searchbox = (function() {
 
 	/**
 	 * Creates the annotation layer, highlighting the individual parts of the
-	 * expression. This uses the "canonicalize" function, that transduces the
-	 * syntax tree into a canonicalised, user-defined tree.
+	 * expression. This uses the "ASTNode.canonicalize" function, which
+	 * transduces the syntax tree into a canonicalised, user-defined tree.
 	 */
 	function _create_annotations(ast, s) {
 		const transform = (expr, nd) => {
@@ -251,7 +251,7 @@ this.tivua.view.components.searchbox = (function() {
 				const span = document.createElement("span");
 				span.setAttribute("class", `leaf ${type}`);
 				if (type == "filter") {
-					if (nd.filter_type == 'user') {
+					if (nd.filter_type == "user") {
 						const color = colors.author_id_to_color(nd.uid, true);
 						span.style.backgroundColor = color;
 					/*	span.style.borderColor = color;*/
@@ -283,7 +283,7 @@ this.tivua.view.components.searchbox = (function() {
 	/**
 	 * Creates a new searchbox within the given root element.
 	 */
-	function _show_searchbox(api, root, autocomplete_root, events, value, users) {
+	function _show_searchbox(api, root, autocomplete_root, users) {
 		const l10n = tivua.l10n;
 
 		/* Instantiate the template and fetch the individual components */
@@ -293,19 +293,19 @@ this.tivua.view.components.searchbox = (function() {
 		const inp_search = tmpl.querySelector("[name=inp_search]");
 		const btn_clear = tmpl.querySelector("[name=btn_clear]");
 
+		/* If the "clear" button is hit, reset the search */
+		btn_clear.addEventListener("click", () => {
+			inp_search.value = "";
+			_rebuild_annotations();
+			_update_annotation_visibility(false);
+			div_searchbox.on_search("");
+		});
+
 		/* Attach the autocomplete to the search bar */
 		_init_autocomplete(api, autocomplete_root, inp_search, div_searchbox);
 
-		/* Hide the annotation layer whenever the input field is focused */
-		inp_search.addEventListener('focus', () => {
-			div_annotations.style.display = "none";
-			if (inp_search.value) {
-				inp_search.classList.remove("hidden");
-			}
-		});
-
-		/* Rebuild the filter expression whenever there is a change */
-		inp_search.addEventListener('change', () => {
+		/* Rebuilds the annotations in the background of the searchbox */
+		function _rebuild_annotations() {
 			/* Parse the filter expression into an AST */
 			const s = inp_search.value;
 			const ast = tivua.filter.parse(s).validate(s, users);
@@ -322,6 +322,37 @@ this.tivua.view.components.searchbox = (function() {
 
 			/* Update the annotation layer */
 			utils.replace_content(div_annotations, annotations);
+
+			/* Return true if there was no error */
+			return !err;
+		}
+
+		/* Toggles the annotation and input box visibility */
+		function _update_annotation_visibility(visible) {
+			if (visible && inp_search.value) {
+				inp_search.classList.add("hidden");
+				div_annotations.style.display = "flex";
+			} else {
+				div_annotations.style.display = "none";
+				inp_search.classList.remove("hidden");
+			}
+		}
+
+		/* Hide the annotation layer whenever the input field is focused */
+		inp_search.addEventListener('focus', () => {
+			_update_annotation_visibility(false);
+		});
+
+		/* Rebuild the filter expression whenever there is a change */
+		inp_search.addEventListener('change', () => {
+			/* Make sure the annotations are in sync with the updated search
+			   box. */
+			const ok = _rebuild_annotations();
+
+			/* If there is no error, trigger the "on_search" event */
+			if (ok && div_searchbox.on_search) {
+				div_searchbox.on_search(div_searchbox.get_filter());
+			}
 		});
 
 		/* Show the annotation layer and create the annotations whenever the
@@ -335,29 +366,32 @@ this.tivua.view.components.searchbox = (function() {
 
 			/* Display the annotations again (this has been updated by the
 			   change event). */
-			if (inp_search.value) {
-				inp_search.classList.add("hidden");
-			}
-			div_annotations.style.display = "flex";
+			_update_annotation_visibility(true);
 		});
+
+		/* Add some properties to the search box */
+		div_searchbox.on_search = () => { throw "Not implemented"; }
+		div_searchbox.set_filter = (filter) => {
+			/* Update the search box value */
+			inp_search.value = filter;
+
+			/* Rebuild the annotations and display them (if the input box
+			   doesn't have the focus)*/
+			_rebuild_annotations();
+			_update_annotation_visibility(document.activeElement != inp_search);
+		};
+		div_searchbox.get_filter = (filter) => {
+			const s = inp_search.value;
+			return tivua.filter.parse(s).canonicalize(s);
+		};
 
 		/* Insert the template into the root container */
 		utils.replace_content(root, tmpl);
+		return div_searchbox;
 	}
 
-	function create_searchbox(api, root, autocomplete_root, value) {
-		const events = {
-			"on_search": () => { throw "Not implemented"; },
-			"on_clear": () => { throw "Not implemented"; },
-		};
-		const promises = [
-			api.get_user_list(),
-		];
-		return Promise.all(promises).then((data) => {
-			const users = data[0].users;
-			_show_searchbox(api, root, autocomplete_root, events, value, users);
-			return events;
-		});
+	function create_searchbox(api, root, autocomplete_root, users) {
+		return _show_searchbox(api, root, autocomplete_root, users);
 	}
 
 	return {

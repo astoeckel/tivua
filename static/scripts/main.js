@@ -53,12 +53,15 @@ this.tivua.main = (function () {
 		"on_back": () => {
 			window.history.back();
 		},
-		"on_go_to_page": (page, posts_per_page) => {
+		"on_navigate": (page, posts_per_page, filter) => {
+			const params = ["#list"];
 			if (page > 0) {
-				switch_to_fragment("#list,start=" + (page * posts_per_page));
-			} else {
-				switch_to_fragment("#list");
+				params.push("start=" + (page * posts_per_page));
 			}
+			if (filter) {
+				params.push("filter=" + encodeURIComponent(filter.trim()));
+			}
+			switch_to_fragment(params.join(","));
 		},
 	};
 
@@ -84,10 +87,14 @@ this.tivua.main = (function () {
 						);
 					});
 				};
-			case "list":
-				return (api, root) => view.cards.create(api, root, params["start"] | 0);
+			case "list": {
+				const start = params.start | 0;
+				const filter = params.filter ? decodeURIComponent(params.filter) : "";
+				return (api, root) => view.cards.create(api, root, start, filter);
+			}
 			case "edit":
-				return (api, root) => view.editor.create(api, root, params["id"]);
+				return (api, root) => view.editor.create(
+					api, root, params["id"]);
 			case "add":
 				return view.editor.create;
 			case "users":
@@ -101,7 +108,12 @@ this.tivua.main = (function () {
 	function _encode_fragment(view_name, params) {
 		let res = "#" + encodeURIComponent(view_name);
 		for (let key in params) {
-			res += "," + encodeURIComponent(key) + "=" + encodeURIComponent(params[key].toString());
+			if (key != 'filter') {
+				res += "," + encodeURIComponent(key) + "=" + encodeURIComponent(params[key].toString());
+			} else {
+				res += "," + encodeURIComponent(key) + "=" + params[key].toString();
+				break;
+			}
 		}
 		return res;
 	}
@@ -112,13 +124,23 @@ this.tivua.main = (function () {
 			return [null, null];
 		}
 
-		// Split the fragment along key-value pairs
+		// Split the fragment along key-value pairs; special handling for the
+		// "filter" key value pair -- assume that this is the last pair and
+		// ignore additional commas.
 		const frags = frag.substr(1).split(",");
 		const view_name = frags[0];
 		const params = {}
 		for (let i = 1; i < frags.length; i++) {
 			const [key, value] = frags[i].split("=", 2);
-			params[key] = value;
+			if (key == 'filter') {
+				params[key] = value;
+				if (i + 1 < frags.length) {
+					params[key] += "," + frags.slice(i + 1).join(",");
+				}
+				break;
+			} else {
+				params[key] = value;
+			}
 		}
 		return [view_name, params];
 	}

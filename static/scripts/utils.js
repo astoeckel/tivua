@@ -289,6 +289,12 @@ this.tivua.utils = (function (window) {
 		return -1;
 	}
 
+	function remove_event_listeners(node) {
+		const clone = node.cloneNode(true);
+		node.parentNode.replaceChild(clone, node);
+		return clone;
+	}
+
 
 	return {
 		'clear': clear,
@@ -306,5 +312,6 @@ this.tivua.utils = (function (window) {
 		'execute_action': execute_action,
 		'exec': exec,
 		'binary_search': binary_search,
+		'remove_event_listeners': remove_event_listeners,
 	};
 })(this);
