@@ -20,6 +20,7 @@ import json
 import traceback
 
 from tivua.api import *
+from tivua.database_filters import *
 
 ################################################################################
 # LOGGER                                                                       #
@@ -433,18 +434,24 @@ def _api_get_posts_list(api):
     def _handler(req, query, match, session, body):
         # Validate the arguments
         try:
-            start, limit = 0, -1
+            start, limit, filter = 0, -1, None
             if "start" in query:
                 start = int(query["start"][0])
             if "limit" in query:
                 limit = int(query["limit"][0])
+            if "filter" in query:
+                filter = Filter.deserialize(json.loads(query["filter"][0]))
         except:
             raise ValidationError()
 
         # Execute the query
         return {
-            "posts": api.get_post_list(start, limit),
-            "total": api.get_total_post_count(),
+            "posts": api.get_post_list(
+                start=start,
+                limit=limit,
+                filter=filter),
+            "total": api.get_total_post_count(
+                filter=filter),
         }
 
     return _internal_wrap_api_handler(_handler, api=api)

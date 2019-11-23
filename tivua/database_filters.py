@@ -314,6 +314,48 @@ class Filter:
         """
         return FilterNot(self)
 
+    @staticmethod
+    def _deserialize_list(obj):
+        if len(obj) == 2 and obj[0] == "!":
+            return ~Filter.deserialize(obj[1])
+        if len(obj) >= 3 and obj[0] == "&":
+            res = Filter.deserialize(obj[1])
+            for i in range(2, len(obj)):
+                res = res & Filter.deserialize(obj[i])
+            return res
+        if len(obj) >= 3 and obj[0] == "|":
+            res = Filter.deserialize(obj[1])
+            for i in range(2, len(obj)):
+                res = res | Filter.deserialize(obj[i])
+            return res
+        if len(obj) == 2 and obj[0] == "#":
+            return FilterKeyword(obj[1])
+        raise ValueError()
+
+    @staticmethod
+    def _deserialize_dict(obj):
+        if len(obj) == 1:
+            key, value = next(iter(obj.items()))
+            if key == "date" and isinstance(value, list):
+                return FilterDateInterval(int(value[0]), int(value[1]))
+            if key == "user":
+                return FilterAuthor(int(value))
+        raise ValueError()
+
+    @staticmethod
+    def deserialize(obj):
+        """
+        Deserialises a serialized filter object received from the client into
+        the corresponding filter structure.
+        """
+        if isinstance(obj, list):
+            return Filter._deserialize_list(obj)
+        if isinstance(obj, dict):
+            return Filter._deserialize_dict(obj)
+        if isinstance(obj, str):
+            return FilterFullText(obj)
+        raise ValueError()
+
 
 class FilterTrue(Filter):
     """
@@ -505,6 +547,10 @@ class FilterAuthor(Filter):
 
 
 class FilterDateInterval(Filter):
+    """
+    Filters posts by the user-defined date.
+    """
+
     def __init__(self, min_=None, max_=None):
         """
         Creates a new FilterDateInterval instance.

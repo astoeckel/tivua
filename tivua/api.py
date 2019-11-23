@@ -707,7 +707,7 @@ class API:
 
         return post
 
-    def get_post_list(self, start, limit):
+    def get_post_list(self, start, limit, filter=None):
         """
         Returns the posts in the specified range ordered by date.
         """
@@ -718,7 +718,7 @@ class API:
             raise ValidationError()
 
         # Select the posts
-        posts = self.db.list_posts(start, limit)
+        posts = self.db.list_posts(start, limit, False, filter)
 
         # Convert the posts to dictionaries
         return list(map(API._post_to_dict, posts))
@@ -729,11 +729,11 @@ class API:
         """
         return API._post_to_dict(self.db.get_post(pid))
 
-    def get_total_post_count(self):
+    def get_total_post_count(self, filter=None):
         """
         Returns the total number of posts.
         """
-        return self.db.total_post_count()
+        return self.db.total_post_count(filter)
 
     def create_post(self, post):
         """
