@@ -562,14 +562,6 @@ class Database:
             t.execute("""SELECT * FROM posts WHERE pid = ? LIMIT 1""", (pid, ))
             return t.fetchone_dataclass(Post)
 
-    def total_post_count(self):
-        """
-        Counts the total number of posts of a certain id.
-        """
-        with Transaction(self) as t:
-            t.execute("""SELECT COUNT() FROM posts""")
-            return t.fetchone()[0]
-
     ############################################################################
     # Posts full text search                                                   #
     ############################################################################
@@ -579,6 +571,15 @@ class Database:
         Updates or creates the post fulltext search index for the post with the
         given pid.
         """
+
+        # If a Post object is given as content, generate the corresponding
+        # searchable string
+        if isinstance(content, Post):
+            keywords = ""
+            if content.keywords:
+                keywords = " " + " ".join(content.keywords.split(","))
+            content = content.content + keywords
+
         with Transaction(self) as t:
             # Check whether there already is some fulltext stored for the given
             # row id

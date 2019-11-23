@@ -756,7 +756,7 @@ class API:
             p.pid = self.db.create_post(p)
 
             # Update the fulltext search
-            self.db.update_fulltext(p.pid, p.content)
+            self.db.update_fulltext(p.pid, p)
 
             # Insert keywords
             keywords = self.db.keywords
@@ -813,7 +813,7 @@ class API:
                 raise NotFoundError()
 
             # Update the fulltext search
-            self.db.update_fulltext(pid, p.content)
+            self.db.update_fulltext(pid, p)
 
             # Insert the new keywords
             keywords = self.db.keywords
@@ -1212,7 +1212,9 @@ class API:
                     self.db.configuration[key] = value
             if "posts" in obj:
                 for post in obj["posts"]:
-                    self.db.create_post(API.coerce_post(post))
+                    p = API.coerce_post(post)
+                    self.db.create_post(p)
+                    self.db.update_fulltext(p.pid, p)
             if "posts_history" in obj:
                 for post in obj["posts_history"]:
                     self.db.create_post(API.coerce_post(post), history=True)
