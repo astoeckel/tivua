@@ -17,8 +17,10 @@
 import pytest
 from tivua.database_filters import *
 
-def compile_filter(flt):
-    sql, params, _ = flt.simplify().compile("posts").emit(["pid"])
+def compile_filter(flt, simplify=True):
+    if simplify:
+        flt = flt.simplify()
+    sql, params, _ = flt.compile("posts").emit(["pid"])
     return sql, params
 
 def test_simple_author_filter():
@@ -152,4 +154,7 @@ def test_filter_fulltext():
     sql, params = compile_filter(FilterFullText("riser\"'") | FilterKeyword("nengo"))
     assert sql == "SELECT p.pid FROM posts AS p WHERE ((p.pid IN (SELECT p.pid FROM posts AS p JOIN fulltext AS f ON (f.rowid = p.pid) WHERE (f.content MATCH ?) GROUP BY p.pid)) OR (p.pid IN (SELECT p.pid FROM posts AS p JOIN keywords AS k ON (k.pid = p.pid) WHERE (k.keyword = ?) GROUP BY p.pid)))"
     assert params == ("\"riser\"", "nengo")
-    print(sql, params)
+
+    sql, params = compile_filter(FilterFullText("a") & FilterFullText("b") & FilterFullText("c"), simplify=False)
+    assert sql == "SELECT p.pid FROM posts AS p JOIN fulltext AS f1 ON (f1.rowid = p.pid) JOIN fulltext AS f2 ON (f2.rowid = p.pid) JOIN fulltext AS f3 ON (f3.rowid = p.pid) WHERE (((f2.content MATCH ?) AND (f3.content MATCH ?)) AND (f1.content MATCH ?)) GROUP BY p.pid"
+    assert params == ('"a"', '"b"', '"c"')

@@ -23,6 +23,8 @@ and compiled into a corresponding SQL query.
 @author Andreas Stöckel
 """
 
+import re
+
 ################################################################################
 # PUBLIC INTERFACE                                                             #
 ################################################################################
@@ -222,7 +224,8 @@ class FilterSQL:
         tables, tables_subs = _generate_table_aliases(tables)
         sql_suffix = self.sql
         for src, tar in tables_subs.items():
-            sql_suffix = sql_suffix.replace(src, tar)
+            expr = src.replace("$", "\\$") + "([^#])"
+            sql_suffix = re.sub(expr, tar + "\\1", sql_suffix)
 
         # Create the rest of the SQL query
         select_from_alias = tables_subs["$0"]
