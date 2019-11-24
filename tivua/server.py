@@ -440,7 +440,12 @@ def _api_get_posts_list(api):
             if "limit" in query:
                 limit = int(query["limit"][0])
             if "filter" in query:
-                filter = Filter.deserialize(json.loads(query["filter"][0]))
+                # Turn the JSON-serialised filter string back into an object
+                filter_obj = json.loads(query["filter"][0])
+
+                # Deserialise the object into a filter tree and simplify the
+                # tree
+                filter = Filter.deserialize(filter_obj).simplify()
         except:
             raise ValidationError()
 
