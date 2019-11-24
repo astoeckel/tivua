@@ -350,8 +350,21 @@ this.tivua.view.cards = (function() {
 		if (filter) {
 			const ast = tivua.filter.parse(filter).validate(filter, users);
 			if (!ast.get_first_error()) {
+				/* Serialize the AST for sending it to the server */
 				filter_obj = ast.serialize();
-				filter_words = ast.words().map(x => stemmer(x.toLowerCase()));
+
+				/* Fetch all words in the query. If the stemming algorithm
+				   changes the word's suffix (e.g. terry => terri), include the
+				   original word as well. */
+				filter_words = [];
+				for (let word of ast.words()) {
+					word = word.toLowerCase();
+					let stemmed = stemmer(word);
+					if (word.indexOf(stemmed) == -1) {
+						filter_words.push(word);
+					}
+					filter_words.push(stemmed);
+				}
 			}
 		}
 

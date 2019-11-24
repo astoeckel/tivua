@@ -368,7 +368,10 @@ this.tivua.utils = (function (window) {
 		}
 
 		/* Filter empty terms */
-		terms = terms.filter(x => !!(x.trim()))
+		terms = terms.filter(x => !!(x.trim()));
+		if (!terms.length) {
+			return node;
+		}
 
 		/* For each term, escape regular expression special characters */
 		terms = terms.map(x => x.trim().replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'));
@@ -376,7 +379,7 @@ this.tivua.utils = (function (window) {
 		/* If "whole_word" is true, match any non-white space cahracters behind
 		   a match */
 		if (whole_word) {
-			terms = terms.map(x => x + "\\S*");
+			terms = terms.map(x => x + "[^ ,.!?'\"/_()-]*");
 		}
 
 		/* Create the actual regular expression and recursivly highlight the
