@@ -295,6 +295,94 @@ this.tivua.utils = (function (window) {
 		return clone;
 	}
 
+	/**
+	 * Highlights the given word in the DOM tree. Inserts the "<mark>" tag
+	 * arround all text fragments that match one in the list of terms.
+	 *
+	 * @param {HTMLElement} node the DOM subtree in which the given term should
+	 * be highlighted.
+	 * @param {Array} terms is a list of terms that should be highlighted
+	 * @param {bool} whole_word if true, highlights the complete word for which
+	 * a prefix is matching.
+	 */
+	function highlight(node, terms, whole_word) {
+		/* Internally used recursive function actually performing the
+		   highlighting */
+		function _highlight(node, re) {
+			if (node.nodeType == document.ELEMENT_NODE) {
+				/* Descend into element nodes and highlight all their
+				   children */
+				let child = node.firstChild;
+				while (child) {
+					child = _highlight(child, re).nextSibling;
+				}
+				return node;
+			} else if (node.nodeType == document.TEXT_NODE) {
+				/* This is a text node. Fetch the parent node and the actual
+				   text content */
+				const parent = node.parentNode;
+				let text = node.textContent;
+
+				/* last_child will point at the last child node we inserted into
+				   the parent node */
+				let last_child = null;
+
+				/* Try to match the regular expression to the text as often as
+				   possible, splitting the text into a prefix, overlap, and
+				   suffix */
+				while (text) {
+					let match = text.match(re);
+					if (!match) {
+						/* No further matches, insert the rest of the text */
+						last_child = document.createTextNode(text);
+						parent.insertBefore(last_child, node);
+						break;
+					}
+					/* There has been a match, get the overlap, prefix and
+					   suffix */
+					let overlap = match[1];
+					let prefix = text.substring(0, text.indexOf(overlap));
+					let suffix = text.substring(
+						text.indexOf(overlap) + overlap.length);
+
+					/* Create the highlighted element */
+					let mark = document.createElement("mark");
+					mark.innerText = overlap;
+
+					/* Insert the prefix and the highlighted text */
+					parent.insertBefore(document.createTextNode(prefix), node);
+					parent.insertBefore(mark, node);
+
+					/* Continue the loop with the suffix and remember the last
+					   child we inserted into the tree */
+					text = suffix;
+					last_child = mark;
+				}
+				if (last_child) {
+					parent.removeChild(node);
+					return last_child;
+				}
+				return node;
+			}
+			return node;
+		}
+
+		/* Filter empty terms */
+		terms = terms.filter(x => !!(x.trim()))
+
+		/* For each term, escape regular expression special characters */
+		terms = terms.map(x => x.trim().replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'));
+
+		/* If "whole_word" is true, match any non-white space cahracters behind
+		   a match */
+		if (whole_word) {
+			terms = terms.map(x => x + "\\S*");
+		}
+
+		/* Create the actual regular expression and recursivly highlight the
+		   text */
+		return _highlight(node, new RegExp("(" + terms.join('|') + ")", "i"));
+	}
 
 	return {
 		'clear': clear,
@@ -313,5 +401,6 @@ this.tivua.utils = (function (window) {
 		'exec': exec,
 		'binary_search': binary_search,
 		'remove_event_listeners': remove_event_listeners,
+		'highlight': highlight,
 	};
 })(this);

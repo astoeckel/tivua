@@ -343,12 +343,15 @@ this.tivua.view.cards = (function() {
 			s1ext = s1 + CARD_VIEW_OVERLAP;
 		}
 
-		/* Serialize the filter if one is given */
-		let filter_obj = null;
+		/* Serialize the filter if one is given, extract the search terms for
+		   highlighting. Apply the Porter Stemming algorithm to each search
+		   term, because the DB is doing this internally as well. */
+		let filter_obj = null, filter_words = [];
 		if (filter) {
 			const ast = tivua.filter.parse(filter).validate(filter, users);
 			if (!ast.get_first_error()) {
 				filter_obj = ast.serialize();
+				filter_words = ast.words().map(x => stemmer(x.toLowerCase()));
 			}
 		}
 
@@ -422,7 +425,18 @@ this.tivua.view.cards = (function() {
 				main.appendChild(container);
 
 				for (let post of posts_) {
+					/* Create the card itself */
 					const card = _create_card_view_card(post, users);
+
+					/* If a text filter is active, highlight matched words */
+					if (filter_words.length) {
+						utils.highlight(
+							card.querySelector(".content"),
+							filter_words,
+							true);
+					}
+
+					/* Hook up the edit button */
 					const btn_edit = card.querySelector(".meta > button");
 					btn_edit.addEventListener(
 						'click', utils.exec("#edit,id=" + post.pid));
@@ -431,7 +445,6 @@ this.tivua.view.cards = (function() {
 			}
 
 			// Show a message in case there are no messages
-			console.log("(!)", total);
 			if (total == 0) {
 				if (filter) {
 					const msg = utils.import_template('tmpl_card_view_no_results');

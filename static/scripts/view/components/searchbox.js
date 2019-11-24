@@ -194,27 +194,8 @@ this.tivua.view.components.searchbox = (function() {
 		}
 
 		/* Create a regular expression for highlighting the matches */
-		search = item.term.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-		let re = new RegExp("(" + search.split(' ').join('|') + ")", "i");
-
-		/* Highlight the matching strings */
-		while (text) {
-			let match = text.match(re);
-			if (!match) {
-				div_suggestion.appendChild(document.createTextNode(text));
-				break;
-			} else {
-				let overlap = match[1];
-				let prefix = text.substring(0, text.indexOf(overlap));
-				let suffix = text.substring(text.indexOf(overlap) + overlap.length);
-
-				let b_highlight = document.createElement("b");
-				b_highlight.innerText = overlap;
-				div_suggestion.appendChild(document.createTextNode(prefix));
-				div_suggestion.appendChild(b_highlight);
-				text = suffix;
-			}
-		}
+		div_suggestion.appendChild(document.createTextNode(text));
+		utils.highlight(div_suggestion, search.split(" "));
 
 		return div_suggestion;
 	}

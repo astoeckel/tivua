@@ -1750,7 +1750,7 @@ a[href="#logout"] .icon::before {
 	padding: 0 2rem;
 }
 
-.autocomplete-suggestion b {
+mark {
 	font-weight: bold;
 	background-color: #edd400;
 }

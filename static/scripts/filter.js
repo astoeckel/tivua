@@ -421,6 +421,18 @@ this.tivua.filter = (function (global) {
 		}
 
 		/**
+		 * Returns all the full-text search terms in the AST node.
+		 */
+		words() {
+			if (this.type == NODE_WORD) {
+				let t = this.value;
+				return [typeof t == "string" ? t : t.text];
+			}
+			return this.children.map(x => x.words()).reduce(
+				(a, b) => a.concat(b), []);
+		}
+
+		/**
 		 * Returns the first error node in the tree or null if there is none.
 		 */
 		get_first_error() {
