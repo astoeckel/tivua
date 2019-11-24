@@ -63,6 +63,12 @@ def test_logical_or_filter():
     assert sql == "SELECT p.pid FROM posts AS p WHERE (p.author = ?)"
     assert params == (4,)
 
+    # OR-combination of two authors
+    sql, params = compile_filter(FilterAuthor(4) | FilterAuthor(5))
+    assert sql == "SELECT p.pid FROM posts AS p WHERE ((p.author = ?) OR (p.author = ?))"
+    assert params == (4, 5)
+    print(sql, params)
+
 def test_logical_and_filter():
     sql, params = compile_filter(FilterAuthor(4) & FilterUID(5))
     assert sql == "SELECT p.pid FROM posts AS p WHERE ((p.author = ?) AND ((p.cuid = ?) OR (p.muid = ?)))"

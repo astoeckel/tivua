@@ -415,6 +415,7 @@ class FilterLogical(Filter):
             if isinstance(b, FilterFalse):
                 return a
         if op == "AND":
+            # Simplifications with constants
             if isinstance(a, FilterFalse) or isinstance(b, FilterFalse):
                 return FilterFalse()
             if isinstance(a, FilterTrue):
@@ -422,12 +423,12 @@ class FilterLogical(Filter):
             if isinstance(b, FilterTrue):
                 return a
 
-        # Combination of two different author filters with AND
-        if isinstance(a, FilterAuthor) and isinstance(b, FilterAuthor):
-            if a.uid != b.uid:
-                return FilterFalse()
-            else:
-                return a
+            # Combination of two different author filters with AND
+            if isinstance(a, FilterAuthor) and isinstance(b, FilterAuthor):
+                if a.uid != b.uid:
+                    return FilterFalse()
+                else:
+                    return a
 
         # Otherwise just return a new instance containing the simplified
         # sub-filters
