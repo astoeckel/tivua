@@ -379,7 +379,7 @@ this.tivua.utils = (function (window) {
 		/* If "whole_word" is true, match any non-white space cahracters behind
 		   a match */
 		if (whole_word) {
-			terms = terms.map(x => x + "[^ ,.!?'\"/_()-]*");
+			terms = terms.map(x => x + "[^ ,.:!?'\"/_()-]*");
 		}
 
 		/* Create the actual regular expression and recursivly highlight the
