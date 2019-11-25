@@ -340,10 +340,10 @@ this.tivua.utils = (function (window) {
 					}
 					/* There has been a match, get the overlap, prefix and
 					   suffix */
-					let overlap = match[1];
-					let prefix = text.substring(0, text.indexOf(overlap));
-					let suffix = text.substring(
-						text.indexOf(overlap) + overlap.length);
+					let overlap = whole_word ? match[2] : match[1];
+					let offs = text.indexOf(match[0]) + match[0].indexOf(overlap);
+					let prefix = text.substring(0, offs);
+					let suffix = text.substring(offs + overlap.length);
 
 					/* Create the highlighted element */
 					let mark = document.createElement("mark");
@@ -378,13 +378,17 @@ this.tivua.utils = (function (window) {
 
 		/* If "whole_word" is true, match any non-white space cahracters behind
 		   a match */
+		let re = null;
 		if (whole_word) {
 			terms = terms.map(x => x + "[^ ,.:!?'\"/_()-]*");
+			re = new RegExp("(^|[ ():-])(" + terms.join('|') + ")", "i");
+		} else {
+			re = new RegExp("(" + terms.join('|') + ")", "i");
 		}
 
 		/* Create the actual regular expression and recursivly highlight the
 		   text */
-		return _highlight(node, new RegExp("(" + terms.join('|') + ")", "i"));
+		return _highlight(node, re);
 	}
 
 	return {
