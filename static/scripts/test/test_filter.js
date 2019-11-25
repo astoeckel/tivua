@@ -563,7 +563,7 @@ describe('Filter', () => {
 		it("date filter", () => {
 			assert.deepEqual(serialize("!foo bar || date:2019"),
 				["|", ["&", ["!", "foo"], "bar"],
-				{"date": [1546300800000, 1577836799999]}]);
+				{"date": [1546300800, 1577836799]}]);
 		});
 
 		it("tag filter", () => {

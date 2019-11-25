@@ -1015,8 +1015,8 @@ this.tivua.filter = (function (global) {
 
 			/* Attach start and end timestamps to the node */
 			nd.filter_type = "date";
-			nd.date_start = Math.floor(start_date.valueOf());
-			nd.date_end = Math.ceil(end_date.valueOf()) - 1;
+			nd.date_start = Math.floor(start_date.valueOf() / 1000);
+			nd.date_end = Math.ceil(end_date.valueOf() / 1000) - 1;
 			return nd;
 		}
 
@@ -1292,8 +1292,8 @@ this.tivua.filter = (function (global) {
 							break;
 						case "date":
 							value = [
-								Math.floor(nd.date_start / 1000),
-								Math.ceil(nd.date_end / 1000)];
+								Math.floor(nd.date_start),
+								Math.ceil(nd.date_end)];
 							break;
 						case "#":
 						case "tag":
