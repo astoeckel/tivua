@@ -622,6 +622,9 @@ class FilterFullText(Filter):
     def __init__(self, match):
         self.match = match
 
+    def do_simplify(self):
+        return self if self.match else FilterTrue()
+
     def do_compile(self, select_from, joins):
         def _compile_match_tree(match):
             if isinstance(match, str):
