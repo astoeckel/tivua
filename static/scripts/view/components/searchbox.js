@@ -166,7 +166,7 @@ this.tivua.view.components.searchbox = (function() {
 	/**
 	 * Renders a single autocomplete item.
 	 */
-	function _autocomplete_render_item(item, search) {
+	function _autocomplete_render_item(item) {
 		/* Create the result div */
 		let div_suggestion = document.createElement("div");
 		div_suggestion.setAttribute("class", "autocomplete-suggestion");
@@ -195,7 +195,7 @@ this.tivua.view.components.searchbox = (function() {
 
 		/* Create a regular expression for highlighting the matches */
 		div_suggestion.appendChild(document.createTextNode(text));
-		utils.highlight(div_suggestion, search.split(" "));
+		utils.highlight(div_suggestion, item.term.split(" "));
 
 		return div_suggestion;
 	}
