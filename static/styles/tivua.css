@@ -679,7 +679,7 @@ footer button#btn_page_last .icon::before {
 
 footer #lbl_post {
 	display: block;
-	flex: 0 1 12rem;
+	// flex: 0 1 12rem;
 }
 
 /******************************************************************************
@@ -1017,6 +1017,9 @@ main.cards div.entry > div.content {
 	flex: 1 1 auto;
 	padding: 1rem 2rem;
 	line-height: 1.75;
+
+	max-width: 100%;
+    box-sizing: border-box;
 }
 
 main.cards div.entry > div.extra {
