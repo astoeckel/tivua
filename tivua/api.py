@@ -570,11 +570,11 @@ class API:
                         settings[key] = value
 
             # Serialise the settings to a string
-            settings_str = json.dumps(settings)
+            settings_str = json.dumps(settings, sort_keys=True)
             if len(settings_str) > API.MAX_SETTINGS_LEN:
                 raise ValidationError()
 
-            # Store the old values in the database
+            # Store the merged values in the database
             self.db.settings[uid] = settings_str
             return settings
 
