@@ -308,13 +308,24 @@ this.tivua.utils = (function (window) {
 	function highlight(node, terms, whole_word) {
 		/* Internally used recursive function actually performing the
 		   highlighting */
-		function _highlight(node, re) {
+		function _highlight(node, re_link, re_text) {
 			if (node.nodeType == document.ELEMENT_NODE) {
 				/* Descend into element nodes and highlight all their
 				   children */
 				let child = node.firstChild;
 				while (child) {
-					child = _highlight(child, re).nextSibling;
+					child = _highlight(child, re_link, re_text).nextSibling;
+				}
+				for (let attr of node.attributes) {
+					if (attr.name != 'href') {
+						continue;
+					}
+					if (attr.value.match(re_link)){
+						let mark = document.createElement("mark");
+						node.parentNode.insertBefore(mark, node);
+						mark.appendChild(node);
+						return mark;
+					}
 				}
 				return node;
 			} else if (node.nodeType == document.TEXT_NODE) {
@@ -331,7 +342,7 @@ this.tivua.utils = (function (window) {
 				   possible, splitting the text into a prefix, overlap, and
 				   suffix */
 				while (text) {
-					let match = text.match(re);
+					let match = text.match(re_text);
 					if (!match) {
 						/* No further matches, insert the rest of the text */
 						last_child = document.createTextNode(text);
@@ -378,17 +389,16 @@ this.tivua.utils = (function (window) {
 
 		/* If "whole_word" is true, match any non-white space cahracters behind
 		   a match */
-		let re = null;
+		let re_link = null, re_text = null;
+		re_link = re_text = new RegExp("(" + terms.join('|') + ")", "i");
 		if (whole_word) {
 			terms = terms.map(x => x + "[^ ,.:!?'\"/_()-]*");
-			re = new RegExp("(^|[ ():-])(" + terms.join('|') + ")", "i");
-		} else {
-			re = new RegExp("(" + terms.join('|') + ")", "i");
-		}
+			re_text = new RegExp("(^|[ ():-])(" + terms.join('|') + ")", "i");
+		} 
 
 		/* Create the actual regular expression and recursivly highlight the
 		   text */
-		return _highlight(node, re);
+		return _highlight(node, re_link, re_text);
 	}
 
 	return {
