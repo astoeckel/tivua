@@ -287,7 +287,7 @@ def main_user(args):
         try:
             if cmd == "add":
                 password, user = api.create_user(
-                    name=name,
+                    user_name=name,
                     role=args.role,
                     display_name=args.display_name)
                 print(("Successfully created user #{} \"{}\" with role \"{}\". " +
@@ -302,7 +302,7 @@ def main_user(args):
                     print("Consider using \"set-role {} inactive\" " +
                           "instead.".format(name))
                 else:
-                    print("Successfully deleted user \"{}\"")
+                    print("Successfully deleted user \"{}\"".format(name))
             elif cmd == "reset-password":
                 password = api.reset_user_password(user_name=name)
                 print(("Successfully created a new password for user \"{}\". " +

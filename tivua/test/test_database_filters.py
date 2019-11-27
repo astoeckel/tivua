@@ -164,3 +164,20 @@ def test_filter_fulltext():
     sql, params = compile_filter(FilterFullText("a") & FilterFullText("b") & FilterFullText("c"), simplify=False)
     assert sql == "SELECT p.pid FROM posts AS p JOIN fulltext AS f1 ON (f1.rowid = p.pid) JOIN fulltext AS f2 ON (f2.rowid = p.pid) JOIN fulltext AS f3 ON (f3.rowid = p.pid) WHERE (((f2.content MATCH ?) AND (f3.content MATCH ?)) AND (f1.content MATCH ?)) GROUP BY p.pid"
     assert params == ('"a"', '"b"', '"c"')
+
+def compile_filter_history(flt, simplify=True):
+    if simplify:
+        flt = flt.simplify()
+    flt_compiled = flt.compile("posts")
+    for key, value in flt_compiled.tables.items():
+        if value == "posts":
+            flt_compiled.tables[key] = "posts_history"
+    flt_compiled.select_from="posts_history"
+    sql, params, _ = flt_compiled.emit(["pid"])
+    return sql, params
+
+def test_simple_author_filter_history():
+    sql, params = compile_filter_history(FilterAuthor(4))
+    print(sql)
+    assert sql == "SELECT p.pid FROM posts_history AS p WHERE (p.author = ?)"
+    assert params == (4,)

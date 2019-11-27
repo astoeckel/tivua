@@ -30,6 +30,7 @@ import re
 ################################################################################
 
 DEFAULT_JOINS = {
+    "posts_history":"pid",
     "posts": "pid",
     "keywords": "pid",
     "fulltext": "rowid"

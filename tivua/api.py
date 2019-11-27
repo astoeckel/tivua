@@ -38,6 +38,7 @@ import re, os, json
 from dataclasses import astuple, asdict
 
 from tivua.database import Transaction, Post, User
+from tivua.database_filters import FilterUID, FilterAuthor
 
 
 class ValidationError(ValueError):

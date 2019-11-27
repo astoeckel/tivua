@@ -506,12 +506,17 @@ class Database:
                 params = (limit, start)
             else:
                 # TODO: Filtering the history table is not implemented yet
-                if history:
-                    raise NotImplementedError()
+
 
                 # Fetch the keys we would like to read
                 keys = list(Post.__dataclass_fields__.keys())
-
+                
+                flt_compiled = filter.compile()
+                if history:
+                    for key, value in flt_compiled.tables.items():
+                        if value == "posts":
+                            flt_compiled.tables[key] = "posts_history"
+                    flt_compiled.select_from="posts_history"
                 # Compile the filter and extract the SQL and parameters
                 flt_sql, flt_params, flt_alias = filter.compile().emit(keys)
 
