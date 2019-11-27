@@ -373,22 +373,8 @@ this.tivua.api = (function (window) {
 		});
 	}
 
-	/**
-	 * Attempts a login. First logs the current user out, then retrieves a login
-	 * challenge, computes the password hash and sends it to the server for
-	 * verification.
-	 *
-	 * @param user is the user-provided username.
-	 * @param password is the password entered by the user.
-	 */
-	function post_login(username, password) {
-		// Backup the OAC handler, an "access denied" error here should
-		// not result in the login dialogue to popup, we already are in
-		// the login dialogue
-		const oac_handler = tivua.api.on_access_denied;
-		tivua.api.on_access_denied = null;
-
-		return _err(post_logout().then(() => {
+	function _post_login_internal(username, password) {
+		return post_logout().then(() => {
 			return xhr.get_login_challenge();
 		}).then(data => {
 			return new Promise((resolve, reject) => {
@@ -423,7 +409,25 @@ this.tivua.api = (function (window) {
 					sjcl.codec.hex.fromBits(response)
 				)).then(resolve).catch(reject);
 			});
-		}).then(data => {
+		});
+	}
+
+	/**
+	 * Attempts a login. First logs the current user out, then retrieves a login
+	 * challenge, computes the password hash and sends it to the server for
+	 * verification.
+	 *
+	 * @param user is the user-provided username.
+	 * @param password is the password entered by the user.
+	 */
+	function post_login(username, password) {
+		// Backup the OAC handler, an "access denied" error here should
+		// not result in the login dialogue to popup, we already are in
+		// the login dialogue
+		const oac_handler = tivua.api.on_access_denied;
+		tivua.api.on_access_denied = null;
+
+		return _err(_post_login_internal(username, password).then(data => {
 			return new Promise((resolve, reject) => {
 				// The _err call above already handled errors, so if we get
 				// here, the status should be "success".
