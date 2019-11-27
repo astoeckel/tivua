@@ -214,7 +214,7 @@ this.tivua.view.login = (function() {
 					.catch((error) => {
 						// Display the error message
 						_reset_login_username_password_error(false, false);
-						l10n.set_node_text(lbl_err_username, error["what"]);
+						l10n.set_node_text(lbl_err_username, error["what"]||error.message);
 						l10n.set_node_text(lbl_err_password, "");
 
 						// Remove the busy marker
