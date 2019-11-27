@@ -1,4 +1,4 @@
-/*
+﻿/*
  *  TIVUA -- Shared research blog
  *  Copyright (C) 2019  Andreas Stöckel
  *
@@ -1132,7 +1132,7 @@ main.editor > div.row {
 }
 
 main.editor input[type="date"] {
-	flex: 0 0 10rem;
+	flex: 0 0 11.5rem;
 }
 
 main.editor > div.row > input,
