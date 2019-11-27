@@ -679,7 +679,6 @@ footer button#btn_page_last .icon::before {
 
 footer #lbl_post {
 	display: block;
-	// flex: 0 1 12rem;
 }
 
 /******************************************************************************
@@ -915,10 +914,6 @@ main.cards:not(.continuous) div.card_container {
 	max-width: none;
 }
 
-main.cards:not(.continuous) div.entry > div.content {
-	overflow: auto;
-}
-
 main.cards:not(.continuous) div.entry {
 	max-height: 40rem;
 }
@@ -1024,8 +1019,9 @@ main.cards div.entry > div.content {
 	padding: 1rem 2rem;
 	line-height: 1.75;
 
+	overflow: auto;
 	max-width: 100%;
-    box-sizing: border-box;
+	box-sizing: border-box;	
 }
 
 main.cards div.entry > div.extra {
