@@ -374,9 +374,7 @@ this.tivua.api = (function (window) {
 	}
 
 	function _post_login_internal(username, password) {
-		return post_logout().then(() => {
-			return xhr.get_login_challenge();
-		}).then(data => {
+		return xhr.get_login_challenge().then(data => {
 			return new Promise((resolve, reject) => {
 				// Make sure the given salt and challenge have the right format
 				const re = /^[0-9a-f]{64}$/;
@@ -427,22 +425,24 @@ this.tivua.api = (function (window) {
 		const oac_handler = tivua.api.on_access_denied;
 		tivua.api.on_access_denied = null;
 
-		return _err(_post_login_internal(username, password).then(data => {
-			return new Promise((resolve, reject) => {
-				// The _err call above already handled errors, so if we get
-				// here, the status should be "success".
-				if (data["status"] === "success") {
-					const sid = data["session"]["sid"];
-					cache["session_data"][sid] = data["session"];
-					utils.set_cookie("sid", data["session"]["sid"],
-					                 session_timeout_days);
-					resolve(data);
-				} else {
-					reject({
-						"status": "error",
-						"what": "%invalid_server_response"
-					});
-				}
+		return _err(post_logout().then(() => {
+			return _post_login_internal(username, password).then(data => {
+				return new Promise((resolve, reject) => {
+					// The _err call above already handled errors, so if we get
+					// here, the status should be "success".
+					if (data["status"] === "success") {
+						const sid = data["session"]["sid"];
+						cache["session_data"][sid] = data["session"];
+						utils.set_cookie("sid", data["session"]["sid"],
+										 session_timeout_days);
+						resolve(data);
+					} else {
+						reject({
+							"status": "error",
+							"what": "%invalid_server_response"
+						});
+					}
+				});
 			});
 		})).finally(() => {
 			// Restore the OAC handler
