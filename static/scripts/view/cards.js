@@ -392,11 +392,11 @@ this.tivua.view.cards = (function() {
 				if ((i0 >= s0 && i0 < s1) || (i1 >= s0 && i1 < s1) || s1 < 0) {
 					// Sort posts by colour and date
 					cur_posts.sort((a, b) => {
-						const d_hue = colors.author_id_to_hue(a["author"]) - colors.author_id_to_hue(b["author"]);
-						if (d_hue == 0) {
-							return a["date"] - b["date"];
+						const d_date = b["date"] - a["date"];
+						if (d_date == 0) {
+							return colors.author_id_to_hue(a["author"]) - colors.author_id_to_hue(b["author"]);
 						}
-						return d_hue;
+						return d_date;
 					});
 
 					/* Add the week to the list */
