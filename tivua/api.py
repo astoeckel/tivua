@@ -1051,7 +1051,7 @@ class API:
                         post.muid = 0
                     if post.author == user.uid:
                         post.author = 0
-                    self.db.update_post(post, history=histroy)
+                    self.db.update_post(post, history=history)
 
                 return True
 

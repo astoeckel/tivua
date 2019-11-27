@@ -175,6 +175,9 @@ def create_parser():
         choices=['inactive', 'reader', 'author', 'admin'],
     )
 
+    # "user list" command
+    p_user_list = _mkp(subs_user, 'list', 'Lists users')
+
     return parser
 
 
@@ -282,9 +285,13 @@ def main_user(args):
     import tivua.api
 
     api = _init(args)
-    cmd, name = args.user_command, args.name
+    cmd = args.user_command
     with api:
         try:
+            if cmd == "list":
+                print(api.get_user_list())
+            else:
+                name = args.name 
             if cmd == "add":
                 password, user = api.create_user(
                     user_name=name,
