@@ -1011,6 +1011,12 @@ main.cards div.entry > div.meta > button.edit:focus::before {
 	opacity: 1;
 }
 
+main.cards div.content h1, 
+main.cards div.content h2, 
+main.cards div.content h3 {
+	font-weight: bold;
+}
+
 main.cards div.entry > div.content {
 	align-self: stretch;
 	justify-self: start;
