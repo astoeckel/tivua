@@ -63,12 +63,16 @@ this.tivua.render = (function (window) {
 				'b': null,
 				'em': null,
 				'strong': null,
+				's': null,
 				'i': null,
 				'u': null,
 				'ul': null,
 				'ol': null,
 				'dl': null,
 				'li': null,
+				'h1': null,
+				'h2': null,
+				'h3': null,
 				'code': {
 					'class': math_sanitizer,
 				},
@@ -80,19 +84,25 @@ this.tivua.render = (function (window) {
 
 		sanitizeNode(node, top_level=false) {
 			const node_name = node.nodeName.toLowerCase();
-			if (node_name == '#text') {
+			const node_type = node.nodeType;
+			if (node_type == document.TEXT_NODE) {
 				return node;
 			}
-			if (node_name == '#comment') {
+			if (node_type == document.COMMENT_NODE) {
 				return null;
 			}
-			if (!top_level && !(node_name in this.allowedTags)) {
-				return null;
+			let copy;
+			const is_invalid = (!top_level && !(node_name in this.allowedTags));
+			if (is_invalid) {
+				copy = document.createDocumentFragment();
+				const bad_tag = document.createElement('span');
+				bad_tag.innerText = '<'+node_name+'>';
+				bad_tag.classList.add('error');
+				copy.appendChild(bad_tag);
+			} else {
+				// create a new node
+				copy = this.doc.createElement(node_name);
 			}
-
-			// create a new node
-			const copy = this.doc.createElement(node_name);
-
 			// copy the whitelist of attributes using the per-attribute sanitizer
 			const allowed_tags = this.allowedTags[node_name] || {};
 			for (let attr of node.attributes) {
@@ -111,6 +121,12 @@ this.tivua.render = (function (window) {
 				if (child_copy) {
 					copy.appendChild(child_copy);
 				}
+			}
+			if (is_invalid) {
+				const bad_tag = document.createElement('span');
+				bad_tag.innerText = '</'+node_name+'>';
+				bad_tag.classList.add('error');
+				copy.appendChild(bad_tag);				
 			}
 			return copy;
 		}
