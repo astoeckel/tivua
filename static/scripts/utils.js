@@ -115,7 +115,12 @@ this.tivua.utils = (function (window) {
 		root.appendChild(elem);
 	}
 
-	function storage_available(type) {
+	/**
+	 * Checks the availability of the localStorage object.
+	 *
+	 * https://developer.mozilla.org/en-US/docs/Web/API/Web_Storage_API/Using_the_Web_Storage_API
+	 */
+	function _local_storage_available(type) {
 		var storage;
 		try {
 			storage = window[type];
@@ -140,11 +145,11 @@ this.tivua.utils = (function (window) {
 		}
 	}
 
-	// See https://stackoverflow.com/questions/14573223/set-cookie-and-get-cookie-with-javascript
 	function set_cookie(name, value, days=null) {
-		if (storage_available("localStorage")) {
-			window.localStorage[name] = value;
+		if (_local_storage_available("localStorage")) {
+			window.localStorage.setItem(name, value);
 		} else {
+			// See https://stackoverflow.com/questions/14573223/set-cookie-and-get-cookie-with-javascript
 			let expires = "";
 			if (days) {
 				let date = new Date();
@@ -156,9 +161,10 @@ this.tivua.utils = (function (window) {
 	}
 
 	function get_cookie(name) {
-		if (storage_available("localStorage")) {
+		if (_local_storage_available("localStorage")) {
 			return window.localStorage.getItem(name);
 		} else {
+			// See https://stackoverflow.com/questions/14573223/set-cookie-and-get-cookie-with-javascript
 			let nameEQ = name + "=";
 			let ca = document.cookie.split(';');
 			for (let i=0; i < ca.length; i++) {
@@ -167,7 +173,7 @@ this.tivua.utils = (function (window) {
 					c = c.substring(1,c.length);
 				}
 				if (c.indexOf(nameEQ) == 0) {
-						return decodeURIComponent(c.substring(nameEQ.length, c.length));
+					return decodeURIComponent(c.substring(nameEQ.length, c.length));
 				}
 			}
 			return null;
