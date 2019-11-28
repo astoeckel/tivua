@@ -184,7 +184,6 @@ def create_parser():
     # "config list" command
     p_config_list = _mkp(subs_config, 'list', 'Lists all configuration option and their value')
     
-
     # "config get" command
     p_config_get = _mkp(subs_config, 'get', 'Prints the given option')
     p_config_get.add_argument(
