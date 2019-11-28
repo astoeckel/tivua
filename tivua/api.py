@@ -1022,6 +1022,8 @@ class API:
                Supply either uid or user_name.
         @param user_name is the name of the user that should be deleted. Supply
                either uid or user_name.
+        @param force if true, force the deletion of users who contributed
+               content.
         """
 
         with Transaction(self.db):
