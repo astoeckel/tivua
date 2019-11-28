@@ -175,6 +175,9 @@ def create_parser():
         choices=['inactive', 'reader', 'author', 'admin'],
     )
 
+    # "user list" command
+    p_user_list = _mkp(subs_user, 'list', 'Lists users')
+
     # "config" command
     p_config = _mkp(subs, 'config', 'Manages configuration strings')
     subs_config = p_config.add_subparsers()
@@ -183,13 +186,13 @@ def create_parser():
 
     # "config list" command
     p_config_list = _mkp(subs_config, 'list', 'Lists all configuration option and their value')
-    
+
     # "config get" command
     p_config_get = _mkp(subs_config, 'get', 'Prints the given option')
     p_config_get.add_argument(
         'option',
         help='The option to print')
-    
+
     # "config set" command
     p_config_set = _mkp(subs_config, 'set', 'Sets the option to a specific value')
     p_config_set.add_argument(
@@ -306,12 +309,16 @@ def main_user(args):
     import tivua.api
 
     api = _init(args)
-    cmd, name = args.user_command, args.name
+    cmd = args.user_command
     with api:
         try:
+            if cmd == "list":
+                print(api.get_user_list())
+            else:
+                name = args.name 
             if cmd == "add":
                 password, user = api.create_user(
-                    name=name,
+                    user_name=name,
                     role=args.role,
                     display_name=args.display_name)
                 print(("Successfully created user #{} \"{}\" with role \"{}\". " +
@@ -319,14 +326,15 @@ def main_user(args):
                             user.uid, name, args.role, password))
             elif cmd == "delete":
                 if not api.delete_user(user_name=name, force=args.force):
-                    print("WARNING: all content created by the user will " +
-                          "be deleted.")
-                    print("Specify the --force commandline argument to " +
+                    print("WARNING: This user contributed content. Deleting "
+                          "this user will move the ownership of this content "
+                          "to the \"[deleted]\" user.")
+                    print("Specify the --force commandline argument to "
                           "confirm the deletion of users with posts.")
-                    print("Consider using \"set-role {} inactive\" " +
+                    print("Consider using \"set-role {} inactive\" "
                           "instead.".format(name))
                 else:
-                    print("Successfully deleted user \"{}\"")
+                    print("Successfully deleted user \"{}\"".format(name))
             elif cmd == "reset-password":
                 password = api.reset_user_password(user_name=name)
                 print(("Successfully created a new password for user \"{}\". " +

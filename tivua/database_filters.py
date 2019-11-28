@@ -30,6 +30,7 @@ import re
 ################################################################################
 
 DEFAULT_JOINS = {
+    "posts_history":"pid",
     "posts": "pid",
     "keywords": "pid",
     "fulltext": "rowid"
@@ -45,7 +46,13 @@ class FilterSQL:
     refer to a number of user-defined parameters.
     """
 
-    def __init__(self, select_from, joins, tables=None, sql=None, params=None):
+    def __init__(self,
+                 select_from,
+                 joins,
+                 tables=None,
+                 sql=None,
+                 params=None,
+                 table_subs=None):
         """
         Creates a new FilterSQL object with the given "where" and "join"
         descriptors.
@@ -56,6 +63,9 @@ class FilterSQL:
         @param sql is the SQL query underlying the filter operation.
         @param params is a tuple of parameters that have to be inserted into the
                SQL query.
+        @param table_subs is a list of substitutions that replaces a the name
+               of one table with another. This mainly used for swapping the
+               "posts" table with the "posts_history" table.
         """
         self.select_from = (DEFAULT_SELECT_FROM
                 if select_from is None else select_from)
@@ -63,9 +73,10 @@ class FilterSQL:
         self.tables = dict() if tables is None else tables
         self.sql = str() if sql is None else sql
         self.params = tuple() if params is None else params
+        self.table_subs = dict() if table_subs is None else table_subs
 
     @staticmethod
-    def combine(select_from, joins, op, a=None, b=None, is_unary=False):
+    def combine(select_from, joins, table_subs, op, a=None, b=None, is_unary=False):
         """
         Applies either a unary operation or a binary operation to the one/two
         SQL queries.
@@ -92,8 +103,8 @@ class FilterSQL:
                 return ""
 
         # Make sure both a and b are proper FilterSQL objects
-        a = FilterSQL(select_from, joins) if a is None else a
-        b = FilterSQL(select_from, joins) if b is None else b
+        a = FilterSQL(select_from, joins, table_subs) if a is None else a
+        b = FilterSQL(select_from, joins, table_subs) if b is None else b
 
         # Special case: If we're using NOT or OR and mix different tables, we
         # must use sub-queries
@@ -117,7 +128,8 @@ class FilterSQL:
                     joins=joins,
                     tables={"$select_from": select_from},
                     sql=_op(sql_a, sql_b),
-                    params=params_a + params_b)
+                    params=params_a + params_b,
+                    table_subs=table_subs)
 
         # Make sure there are no collisions in the table aliases from the "a"
         # and "b" branches
@@ -138,7 +150,7 @@ class FilterSQL:
             elif alias in b.tables:
                 tables[alias] = b.tables[alias]
 
-        # Combine the SQL and the parameters
+        # Combine the SQL query and parameters
         sql = _op(sql_a, sql_b)
         params = a.params + b.params
 
@@ -148,7 +160,8 @@ class FilterSQL:
             joins=joins,
             tables=tables,
             sql=sql,
-            params=params)
+            params=params,
+            table_subs=table_subs)
 
 
     def emit(self, select_keys, count=False):
@@ -178,6 +191,12 @@ class FilterSQL:
                     if (prefix_count[ps[i]] > 1) and (len(ls[i]) > len(ps[i])):
                         ps[i] += ls[i][len(ps[i])]
 
+        def _subs(table):
+            """
+            Performs table substitutions according to the "table_subs"
+            dictionary.
+            """
+            return self.table_subs[table] if table in self.table_subs else table
 
         def _generate_table_aliases(tables):
             """
@@ -197,17 +216,17 @@ class FilterSQL:
 
             # Create a new map from alias onto table, but this time with nicer
             # aliases -- also create a list of substitutions
-            tables_new, tables_subs = dict(), dict()
+            tables_new, table_subs = dict(), dict()
             for i, table in enumerate(names):
                 aliases_sorted = list(sorted(aliases[table]))
                 if len(aliases_sorted) == 1:
                     old, new = aliases_sorted[0], short_names[i]
                     tables_new[new] = table
-                    tables_subs[old] = new
+                    table_subs[old] = new
                 else:
                     for j in range(len(aliases_sorted)):
                         old = aliases_sorted[j]
-                        if table == self.select_from:
+                        if table == select_from:
                             # We do not need joins on the table we're selecting
                             # from, so collapse the aliases refering to this
                             # table into a single one
@@ -215,27 +234,32 @@ class FilterSQL:
                         else:
                             new = short_names[i] + str(j + 1)
                         tables_new[new] = table
-                        tables_subs[old] = new
-            return tables_new, tables_subs
+                        table_subs[old] = new
+            return tables_new, table_subs
+
+        # Substitute table names
+        select_from = _subs(self.select_from)
+        tables = {}
+        for alias, table in self.tables.items():
+            tables[alias] = _subs(table)
 
         # Generate short table aliases and substitute them into the SQL query
-        tables = self.tables.copy()
-        tables["$0"] = self.select_from
-        tables, tables_subs = _generate_table_aliases(tables)
+        tables["$0"] = select_from
+        tables, table_subs = _generate_table_aliases(tables)
         sql_suffix = self.sql
-        for src, tar in tables_subs.items():
+        for src, tar in table_subs.items():
             expr = src.replace("$", "\\$") + "([^#])"
             sql_suffix = re.sub(expr, tar + "\\1", sql_suffix)
 
         # Create the rest of the SQL query
-        select_from_alias = tables_subs["$0"]
+        select_from_alias = table_subs["$0"]
         if count:
             sql_prefix = "SELECT COUNT() FROM {} AS {}".format(
-                self.select_from, select_from_alias)
+                select_from, select_from_alias)
         else:
             sql_prefix = "SELECT {} FROM {} AS {}".format(", ".join(
                 map(lambda s: "{}.{}".format(select_from_alias, s), select_keys)),
-                self.select_from, select_from_alias)
+                select_from, select_from_alias)
 
         # Generate the necessary JOINs
         sql_mid = ""
@@ -248,13 +272,13 @@ class FilterSQL:
                 src_alias=alias,
                 tar_alias=select_from_alias,
                 src=self.joins[table],
-                tar=self.joins[self.select_from])
+                tar=self.joins[select_from])
 
         # If there are multiple JOINs on different tables, add a "GROUP BY"
         # statement
         if (not count) and len(set(tables.values())) > 1:
             sql_suffix += " GROUP BY {}.{}".format(select_from_alias,
-                                                   self.joins[self.select_from])
+                                                   self.joins[select_from])
 
         if sql_suffix:
             sql = "{}{} WHERE {}".format(sql_prefix, sql_mid, sql_suffix)
@@ -275,7 +299,7 @@ class Filter:
         """
         return self
 
-    def do_compile(self, select_from, joins):
+    def do_compile(self, select_from, joins, table_subs):
         """
         Actual implication of "compile"; to be implemented by child classes.
         """
@@ -288,14 +312,15 @@ class Filter:
         """
         return self.do_simplify()
 
-    def compile(self, select_from=None, joins=None):
+    def compile(self, select_from=None, joins=None, table_subs=None):
         """
         The "compile" function returns a FilterSQL object -- the FilterSQL
         object represents the SQL for a set of "where" and "join" operations.
         """
         return self.do_compile(
             DEFAULT_SELECT_FROM if select_from is None else select_from,
-            DEFAULT_JOINS if joins is None else joins)
+            DEFAULT_JOINS if joins is None else joins,
+            table_subs)
 
     def __and__(self, other):
         """
@@ -366,8 +391,8 @@ class FilterTrue(Filter):
     simplification process.
     """
 
-    def do_compile(self, select_from, joins):
-        return FilterSQL(select_from, joins)
+    def do_compile(self, select_from, joins, table_subs):
+        return FilterSQL(select_from, joins, table_subs=table_subs)
 
 
 class FilterFalse(Filter):
@@ -376,9 +401,10 @@ class FilterFalse(Filter):
     simplification process.
     """
 
-    def do_compile(self, select_from, joins):
+    def do_compile(self, select_from, joins, table_subs):
         return FilterSQL(select_from, joins, tables={},
-                         sql="FALSE", params=tuple())
+                         sql="FALSE", params=tuple(),
+                         table_subs=table_subs)
 
 
 class FilterLogical(Filter):
@@ -434,7 +460,7 @@ class FilterLogical(Filter):
         # sub-filters
         return self.__class__(a, b, op)
 
-    def do_compile(self, select_from, joins):
+    def do_compile(self, select_from, joins, table_subs):
         """
         Compiles the logical operation
         """
@@ -442,9 +468,10 @@ class FilterLogical(Filter):
         return FilterSQL.combine(
             select_from=select_from,
             joins=joins,
+            table_subs=table_subs,
             op=self.op,
-            a=self.a.compile(select_from, joins),
-            b=self.b.compile(select_from, joins))
+            a=self.a.compile(select_from, joins, table_subs),
+            b=self.b.compile(select_from, joins, table_subs))
 
 
 class FilterAnd(FilterLogical):
@@ -503,13 +530,14 @@ class FilterNot(Filter):
         # sub-filter
         return FilterNot(self.a)
 
-    def do_compile(self, select_from, joins):
+    def do_compile(self, select_from, joins, table_subs):
         # Otherwise, just try to negate the statement
         return FilterSQL.combine(
             select_from=select_from,
             joins=joins,
+            table_subs=table_subs,
             op="NOT",
-            a=self.a.compile(select_from, joins),
+            a=self.a.compile(select_from, joins, table_subs),
             is_unary=True)
 
 
@@ -523,13 +551,14 @@ class FilterUID(Filter):
     def __init__(self, uid):
         self.uid = uid
 
-    def do_compile(self, select_from, joins):
+    def do_compile(self, select_from, joins, table_subs):
         return FilterSQL(
             select_from=select_from,
             joins=joins,
             tables={"$posts": "posts"},
             sql="(($posts.cuid = ?) OR ($posts.muid = ?))",
             params=(self.uid, self.uid),
+            table_subs=table_subs,
         )
 
 class FilterAuthor(Filter):
@@ -540,13 +569,14 @@ class FilterAuthor(Filter):
     def __init__(self, uid):
         self.uid = uid
 
-    def do_compile(self, select_from, joins):
+    def do_compile(self, select_from, joins, table_subs):
         return FilterSQL(
             select_from=select_from,
             joins=joins,
             tables={"$posts": "posts"},
             sql="($posts.author = ?)",
             params=(self.uid,),
+            table_subs=table_subs,
         )
 
 
@@ -572,7 +602,7 @@ class FilterDateInterval(Filter):
             return FilterTrue()
         return self
 
-    def do_compile(self, select_from, joins):
+    def do_compile(self, select_from, joins, table_subs):
         # No-op if no minimum and maximum is given
         if (self.min is None) and (self.max is None):
             return FilterSQL(select_from, joins)
@@ -593,7 +623,8 @@ class FilterDateInterval(Filter):
             joins=joins,
             tables={"$posts": "posts"},
             sql=fmt.format(" AND ".join(sql_parts)),
-            params=tuple(params_parts)
+            params=tuple(params_parts),
+            table_subs=table_subs,
         )
 
 class FilterKeyword(Filter):
@@ -604,13 +635,14 @@ class FilterKeyword(Filter):
     def __init__(self, keyword):
         self.keyword = keyword
 
-    def do_compile(self, select_from, joins):
+    def do_compile(self, select_from, joins, table_subs):
         return FilterSQL(
             select_from=select_from,
             joins=joins,
             tables={"$keywords": "keywords"},
             sql="($keywords.keyword = ?)",
             params=(self.keyword,),
+            table_subs=table_subs,
         )
 
 
@@ -625,7 +657,7 @@ class FilterFullText(Filter):
     def do_simplify(self):
         return self if self.match else FilterTrue()
 
-    def do_compile(self, select_from, joins):
+    def do_compile(self, select_from, joins, table_subs):
         def _compile_match_tree(match):
             if isinstance(match, str):
                 return "\"" + match.replace("\"", "").replace("'", "") + "\""
@@ -642,4 +674,5 @@ class FilterFullText(Filter):
             tables={"$fulltext": "fulltext"},
             sql="($fulltext.content MATCH ?)",
             params=(_compile_match_tree(self.match),),
+            table_subs=table_subs
         )
