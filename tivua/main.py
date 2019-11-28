@@ -302,11 +302,12 @@ def main_user(args):
                             user.uid, name, args.role, password))
             elif cmd == "delete":
                 if not api.delete_user(user_name=name, force=args.force):
-                    print("WARNING: all content created by the user will " +
-                          "be deleted.")
-                    print("Specify the --force commandline argument to " +
+                    print("WARNING: This user contributed content. Deleting "
+                          "this user will move the ownership of this content "
+                          "to the \"[deleted]\" user.")
+                    print("Specify the --force commandline argument to "
                           "confirm the deletion of users with posts.")
-                    print("Consider using \"set-role {} inactive\" " +
+                    print("Consider using \"set-role {} inactive\" "
                           "instead.".format(name))
                 else:
                     print("Successfully deleted user \"{}\"".format(name))
