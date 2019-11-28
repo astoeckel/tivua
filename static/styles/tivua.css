@@ -128,7 +128,7 @@ li {
 
 code {
 	font-family: monospace;
-	background-color: rgba(0,0,0,0);
+	background-color: transparent;
 }
 
 a:link,
