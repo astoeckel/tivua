@@ -128,7 +128,7 @@ li {
 
 code {
 	font-family: monospace;
-	background-color: #f0f0f0;
+	background-color: rgba(0,0,0,0);
 }
 
 a:link,
@@ -1012,6 +1012,13 @@ main.cards div.content h3 {
 	font-weight: bold;
 }
 
+main.cards div.content pre {
+	background-color: #f0f0f0; /*pre color background */
+	overflow-x: auto;
+	width: 100%;
+	display: block;
+}
+
 main.cards div.entry > div.content {
 	align-self: stretch;
 	justify-self: start;
@@ -1020,7 +1027,7 @@ main.cards div.entry > div.content {
 	line-height: 1.75;
 
 	overflow: auto;
-	max-width: 100%;
+	width: 100%;
 	box-sizing: border-box;	
 }
 
