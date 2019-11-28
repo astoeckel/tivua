@@ -175,6 +175,30 @@ def create_parser():
         choices=['inactive', 'reader', 'author', 'admin'],
     )
 
+    # "config" command
+    p_config = _mkp(subs, 'config', 'Manages configuration strings')
+    subs_config = p_config.add_subparsers()
+    subs_config.dest = 'config_command'
+    subs_config.required = True
+
+    # "config list" command
+    p_config_list = _mkp(subs_config, 'list', 'Lists all configuration option and their value')
+    
+    # "config get" command
+    p_config_get = _mkp(subs_config, 'get', 'Prints the given option')
+    p_config_get.add_argument(
+        'option',
+        help='The option to print')
+    
+    # "config set" command
+    p_config_set = _mkp(subs_config, 'set', 'Sets the option to a specific value')
+    p_config_set.add_argument(
+        'option',
+        help='The option to set')
+    p_config_set.add_argument(
+        'value',
+        help='The option to set')
+
     return parser
 
 
@@ -322,6 +346,32 @@ def main_user(args):
             print(("Error: The specified user name '{}' is invalid.").format(
                     args.name))
 
+def main_config(args):
+    """
+    Contains the "config" sub-programs.
+    """
+    import tivua.api
+
+    api = _init(args)
+    db_dict = api.db.configuration
+    cmd = args.config_command
+
+    with api:
+        try:
+            if cmd == "list":
+                for key, value in db_dict.items():
+                    print(key, value)
+                
+            elif cmd == "get":
+                print(db_dict[args.option])
+                
+            elif cmd == "set":
+                db_dict[args.option] = args.value
+
+        except KeyError:
+            print("Configuration dictionary does not contain option " + str(args.option))
+
+
 
 def main_export(args):
     """
@@ -373,6 +423,8 @@ def main(argv):
         return main_export(args)
     elif args.command == "user":
         return main_user(args)
+    elif args.command == "config":
+        return main_config(args)
 
 
 if __name__ == "__main__":
