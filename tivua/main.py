@@ -358,19 +358,19 @@ def main_config(args):
     cmd = args.config_command
 
     with api:
-        print("TODO: catch errors")
         try:
             if cmd == "list":
-                print(list(db_dict.items()))
+                for key, value in db_dict.items():
+                    print(key, value)
                 
             elif cmd == "get":
-                print(db_dict.__getitem__(args.option))
+                print(db_dict[args.option])
                 
             elif cmd == "set":
-                db_dict.__setitem__(args.option, args.value)
+                db_dict[args.option] = args.value
 
         except KeyError:
-            print("KeyError: configuration dictionary does not contain option " + str(args.option))
+            print("Configuration dictionary does not contain option " + str(args.option))
 
 
 
