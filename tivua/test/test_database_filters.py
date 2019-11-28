@@ -17,10 +17,14 @@
 import pytest
 from tivua.database_filters import *
 
-def compile_filter(flt, simplify=True):
+def compile_filter(flt, simplify=True, history=False):
     if simplify:
         flt = flt.simplify()
-    sql, params, _ = flt.compile("posts").emit(["pid"])
+    if history:
+        sql, params, _ = flt.compile(
+            "posts", table_subs={"posts": "posts_history"}).emit(["pid"])
+    else:
+        sql, params, _ = flt.compile("posts").emit(["pid"])
     return sql, params
 
 def test_simple_author_filter():
@@ -67,7 +71,6 @@ def test_logical_or_filter():
     sql, params = compile_filter(FilterAuthor(4) | FilterAuthor(5))
     assert sql == "SELECT p.pid FROM posts AS p WHERE ((p.author = ?) OR (p.author = ?))"
     assert params == (4, 5)
-    print(sql, params)
 
 def test_logical_and_filter():
     sql, params = compile_filter(FilterAuthor(4) & FilterUID(5))
@@ -161,23 +164,28 @@ def test_filter_fulltext():
     assert sql == "SELECT p.pid FROM posts AS p WHERE ((p.pid IN (SELECT p.pid FROM posts AS p JOIN fulltext AS f ON (f.rowid = p.pid) WHERE (f.content MATCH ?) GROUP BY p.pid)) OR (p.pid IN (SELECT p.pid FROM posts AS p JOIN keywords AS k ON (k.pid = p.pid) WHERE (k.keyword = ?) GROUP BY p.pid)))"
     assert params == ("\"riser\"", "nengo")
 
+    sql, params = compile_filter(FilterFullText("riser\"'") | (FilterKeyword("nengo") & FilterAuthor(4)))
+    assert sql == "SELECT p.pid FROM posts AS p WHERE ((p.pid IN (SELECT p.pid FROM posts AS p JOIN fulltext AS f ON (f.rowid = p.pid) WHERE (f.content MATCH ?) GROUP BY p.pid)) OR (p.pid IN (SELECT p.pid FROM posts AS p JOIN keywords AS k ON (k.pid = p.pid) WHERE ((k.keyword = ?) AND (p.author = ?)) GROUP BY p.pid)))"
+    assert params == ("\"riser\"", "nengo", 4)
+
     sql, params = compile_filter(FilterFullText("a") & FilterFullText("b") & FilterFullText("c"), simplify=False)
     assert sql == "SELECT p.pid FROM posts AS p JOIN fulltext AS f1 ON (f1.rowid = p.pid) JOIN fulltext AS f2 ON (f2.rowid = p.pid) JOIN fulltext AS f3 ON (f3.rowid = p.pid) WHERE (((f2.content MATCH ?) AND (f3.content MATCH ?)) AND (f1.content MATCH ?)) GROUP BY p.pid"
     assert params == ('"a"', '"b"', '"c"')
 
-def compile_filter_history(flt, simplify=True):
-    if simplify:
-        flt = flt.simplify()
-    flt_compiled = flt.compile("posts")
-    for key, value in flt_compiled.tables.items():
-        if value == "posts":
-            flt_compiled.tables[key] = "posts_history"
-    flt_compiled.select_from="posts_history"
-    sql, params, _ = flt_compiled.emit(["pid"])
-    return sql, params
 
 def test_simple_author_filter_history():
-    sql, params = compile_filter_history(FilterAuthor(4))
-    print(sql)
+    sql, params = compile_filter(FilterAuthor(4), history=True)
     assert sql == "SELECT p.pid FROM posts_history AS p WHERE (p.author = ?)"
     assert params == (4,)
+
+    sql, params = compile_filter(~FilterKeyword("nengo"), history=True)
+    assert sql == "SELECT p.pid FROM posts_history AS p WHERE (NOT (p.pid IN (SELECT p.pid FROM posts_history AS p JOIN keywords AS k ON (k.pid = p.pid) WHERE (k.keyword = ?) GROUP BY p.pid)))"
+    assert params == ("nengo",)
+
+    sql, params = compile_filter(FilterKeyword("nengo") & FilterKeyword("nengo-gui"), history=True)
+    assert sql == "SELECT p.pid FROM posts_history AS p JOIN keywords AS k1 ON (k1.pid = p.pid) JOIN keywords AS k2 ON (k2.pid = p.pid) WHERE ((k1.keyword = ?) AND (k2.keyword = ?)) GROUP BY p.pid"
+    assert params == ("nengo", "nengo-gui")
+
+    sql, params = compile_filter(FilterFullText("riser\"'") | (FilterKeyword("nengo") & FilterAuthor(4)), history=True)
+    assert sql == "SELECT p.pid FROM posts_history AS p WHERE ((p.pid IN (SELECT p.pid FROM posts_history AS p JOIN fulltext AS f ON (f.rowid = p.pid) WHERE (f.content MATCH ?) GROUP BY p.pid)) OR (p.pid IN (SELECT p.pid FROM posts_history AS p JOIN keywords AS k ON (k.pid = p.pid) WHERE ((k.keyword = ?) AND (p.author = ?)) GROUP BY p.pid)))"
+    assert params == ("\"riser\"", "nengo", 4)
