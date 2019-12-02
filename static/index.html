@@ -282,6 +282,201 @@
 			</main>
 		</template>
 
+		<!-- HELP PAGE -->
+		<template id="tmpl_help">
+			<header>
+				<button id="btn_back" class="subtle" title="Back to the main view"><span class="icon"></span></button>
+				<h1>Help</h1>
+			</header>
+
+			<main class="help">
+				<section name="help_markdown_section">
+					<h1>Markdown</h1>
+					<p>Markdown can be used within posts. Here is a quick reference of some helpful markdown expressions.</p>
+					<table>
+						<thead>
+						<tr>
+							<th></th>
+							<th><span>Display</span></th>
+							<th><span>Markdown</span></th>
+							<th></th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr><th colspan="4">Headers</th></tr>
+						<tr>
+							<td></td>
+							<td><span><h1>Header 1</h1></span></td>
+							<td><p># Heading 1 # <br> or <br> ============= (below H1 text)</p></td>
+							<td></td>
+						</tr>
+						<tr>
+							<td></td>
+							<td><span><h2>Heading 2</h2></span></td>
+							<td><p>## Heading 2 ## <br> or <br> --------------- (below H2 text)</p></td>
+							<td></td>
+						</tr>	
+						<tr>
+							<td></td>
+							<td><span><h3>Heading 3</h3></span></td>
+							<td><span>### Heading 3 ###</span></td>
+							<td></td>
+						</tr>
+						<tr>
+							<td></td>
+							<td><span><h4><em>Heading 4</h4></strong></span></td>
+							<td><span>#### Heading 4 ####</span></td>
+							<td></td>
+						</tr>
+						<tr><th colspan="4">Text Effects</th></tr>
+						<tr>
+							<td></td>
+							<td><span><em>Emphasized text</em></span></td>
+							<td><p>_Emphasized text_ <br> or <br> *Emphasized text*</p></td>
+							<td></td>
+						</tr>
+						<tr>
+							<td></td>
+							<td><span><s>Strikethrough text</s></span></td>
+							<td><span>~~Strikethrough text~~</span></td>
+							<td></td>
+						</tr>	
+						<tr>
+							<td></td>
+							<td><span><strong>Strong text</strong></span></td>
+							<td><p>__Strong text__ <br> or <br> **Strong text**</p></td>
+							<td></td>
+						</tr>
+						<tr>
+							<td></td>
+							<td><span><strong><em>Strong emphasized text</em></strong></span></td>
+							<td><p>___Strong emphasized text___ <br> or <br> ***Strong emphasized text***</p></td>
+							<td></td>
+						</tr>
+						<tr>
+							<td></td>
+							<td><span><a href="http://www.google.com/">Link text</a></span></td>
+							<td><span>[Link text](http://www.google.com/ "Link text") and http://www.google.com/ or &lt;http://example.com/&gt;</span></td>
+							<td></td>
+						</tr>
+						<tr>
+							<td></td>
+							<td><span>
+								<blockquote>
+									<p>Blockquote</p>
+								</blockquote>
+							</span></td>
+							<td>> Blockquote</td>
+							<td></td>
+						</tr>
+						<tr><th colspan="4">Lists</th></tr>
+						<tr>
+							<td></td>
+							<td align="center"><span>
+									<ul>
+										<li>First</li>
+										<li>Second</li>
+											<ul>
+												<li>A </li>
+												<li>B</li>
+											</ul>
+										<li>Third</li>
+									</ul>
+							</span></td>
+							<td><span>
+								<p>* First<br>
+								* Second<br>
+								<span style="padding-left:2em">* A</span><br>
+								<span style="padding-left:2em">* B</span><br>
+								* Third</p>
+							</span></td>
+							<td></td>
+						</tr>
+						<tr>
+							<td></td>
+							<td><span style="padding-left:2em">
+								<ol>
+									<li>First</li>
+									<li>Second</li>
+										<ol>
+											<li>A </li>
+											<li>B</li>
+										</ol>
+									<li>Third</li>
+								</ol>
+							</span></td>
+							<td><span>  
+								<p>1. First<br>
+								2. Second<br>
+								<span style="padding-left:2em">1. A</span><br>
+								<span style="padding-left:2em">2. B</span><br>
+								3. Third </p>
+							</span></td>
+							<td></td>
+						</tr>
+						<tr><th colspan="4">Tables</th></tr>
+						<tr>
+							<td></td>
+							<td><span>
+								<table>
+									<thead>
+									<tr>
+										<th><span>First Header</span></th>
+										<th><span>Second Header</span></th>
+									</tr>
+								</thead>
+								<tbody>
+									<tr>
+										<td>Content Cell</td>
+										<td>Content Cell</td>
+									</tr>
+									<tr>
+											<td>Content Cell</td>
+											<td>Content Cell</td>
+										</tr>
+								</tbody>
+								</table>
+							</span></td>
+							<td><span>
+									<p>First Header  | Second Header<br>
+									-------------------- | -------------------- <br>
+									Content Cell  | Content Cell<br>
+									Content Cell  | Content Cell</p>
+							</span></td>
+							<td></td>
+						</tr>
+						<tr><th colspan="4">Lines</th></tr>
+						<tr>
+							<td></td>
+							<td><hr></td>
+							<td>- - - -</td>
+							<td></td>
+						</tr>
+						<tr><th colspan="4">Images</th></tr>
+						<tr>
+							<td></td>
+							<td><img src="https://en.wikipedia.org/wiki/Tivua_Island#/media/File:Tivua_Island,_Mamanucas_Islands,_Fiji,_2011.jpg" alt="Tivua" /></td>
+							<td>![pic alt](https://image_url.jpg "Title is optional")</td>
+							<td></td>
+						</tr>
+						
+					</tbody>
+					</table>
+
+
+				</section>
+				<section name="help_search_section">
+					<h1>Search expressions</h1>
+					<p>To filter over posts made by a particular user type <em>user:username</em> into the serarhcbar OR start typing in the author's name and select the result.</p>
+					<p>To filter over posts with certain keywords type <em>#keyword</em> OR start typing the keyword</p>
+					<p> To search for an exact quote search with quotations, e.g. <em>"an exact pharse"</em>. </p>
+					
+				</section>
+			</main>
+			<!-- <div class="content"></div>-->
+		</template>
+
+
 		<!-- GENERIC DIALOGUE -->
 		<template id="tmpl_dialogue">
 			<div class="dialogue">
@@ -387,6 +582,7 @@
 		<script src="scripts/view/components/searchbox.js"></script>
 		<script src="scripts/view/cards.js"></script>
 		<script src="scripts/view/editor.js"></script>
+		<script src="scripts/view/help.js"></script>
 		<script src="scripts/view/login.js"></script>
 		<script src="scripts/view/menu.js"></script>
 		<script src="scripts/view/preferences.js"></script>

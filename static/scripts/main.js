@@ -101,6 +101,8 @@ this.tivua.main = (function () {
 				return view.user_manager.create;
 			case "preferences":
 				return view.preferences.create;
+			case "help":
+				return view.help.create;
 		}
 		return null;
 	}

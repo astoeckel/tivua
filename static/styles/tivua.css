@@ -1206,7 +1206,7 @@ main.user_manager table td {
 	background-color: white;
 }
 
-main.user_manager table tr:nth-child(2) td {
+main.user_manager table tr:nth-child(even) td {
 	background-color: #fafafa;
 }
 
@@ -1347,6 +1347,133 @@ main.preferences div.buttons {
 	justify-content: flex-end;
 }
 
+
+/******************************************************************************
+ * HELP VIEW                                                                  *
+ ******************************************************************************/
+
+ main.help {
+	overflow: auto;
+	flex-direction: row;
+	align-items: stretch;
+	justify-content: left;
+	padding: 5rem 2rem 0 2rem;
+	background-color: white;
+	min-height: 100%;
+	line-height: 1.5;
+	box-sizing: border-box;
+}
+
+main.help emph {
+	font-weight: bold;
+	background-color: #edd400;
+}
+
+main.help section {
+	max-width: 40rem;
+	margin: 0 auto 2rem auto;
+	padding: 0 0 2rem 0;
+}
+
+main.help section:not(:last-child) {
+	border-bottom: 2px solid #5c3566;
+}
+
+main.help h1 {
+	font-size: 200%;
+	color: #5c3566;
+	margin: 1em 0;
+}
+
+main.help h2 {
+	font-size: 150%;
+	color: #5c3566;
+	margin: 1em 0;
+}
+
+main.help h3 {
+	font-size: 125%;
+	color: #5c3566;
+	margin: 1em 0;
+}
+
+main.help h4 {
+	font-size: 100%;
+	color: #5c3566;
+	margin: 1em 0;
+}
+
+main.help p {
+	margin: 1rem 0;
+}
+
+main.help blockquote {
+	margin: 0 auto;
+  padding: 1em;
+  border-left: 5px solid #999;
+}
+
+main.help blockquote p {
+	color: #555;
+  font-size: 9pt;
+  line-height: 1.4;
+  font-family: 'PT Serif', Cambria, 'Hoefler Text', Utopia, 'Liberation Serif', 'Nimbus Roman No9 L Regular', Times, 'Times New Roman', serif;
+}
+
+main.help label {
+	display: block;
+	padding: 1rem 0;
+}
+
+main.help label > span {
+	position: relative;
+	display: block;
+	font-weight: bold;
+}
+
+main.help div.row {
+	display: flex;
+}
+
+main.help table {
+	flex: 1 0 0;
+	width: 100%;
+}
+
+main.help table th {
+	text-align: center;
+	background-color: #2e3436;
+	font-weight: bold;
+	color: white;
+	text-transform: uppercase;
+	letter-spacing: 0.1em;
+}
+
+main.help table th,
+main.help table td {
+	padding: 1rem;
+	border-bottom: 1px solid #f3f3f3;
+}
+
+main.help table td {
+	text-align: left;
+	background-color: white;
+}
+
+main.help table tr:nth-child(even) td {
+	background-color: #fafafa;
+}
+
+
+main.help table th > span,
+main.help table td > span {
+	box-sizing: border-box;
+	padding: 0.5rem;
+	border: transparent 2px solid;
+}
+
+
+
 /******************************************************************************
  * DIALOGUE                                                                   *
  ******************************************************************************/
@@ -1364,6 +1491,7 @@ div.dialogue h1 {
 	color: #5c3566;
 	font-size: 200%;
 }
+
 
 div.dialogue h1 span {
 	font-size: 200%;
