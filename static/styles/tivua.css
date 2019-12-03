@@ -1,4 +1,4 @@
-/*
+﻿/*
  *  TIVUA -- Shared research blog
  *  Copyright (C) 2019  Andreas Stöckel
  *
@@ -159,6 +159,10 @@ li {
 code {
 	font-family: monospace;
 	background-color: var(--box-highlight-color);
+}
+
+pre code {
+	background-color: transparent;
 }
 
 a:link,
@@ -697,7 +701,6 @@ footer button#btn_page_last .icon::before {
 
 footer #lbl_post {
 	display: block;
-	flex: 0 1 12rem;
 }
 
 /******************************************************************************
@@ -928,10 +931,6 @@ main.cards:not(.continuous) div.card_container {
 	max-width: none;
 }
 
-main.cards:not(.continuous) div.entry > div.content {
-	overflow: auto;
-}
-
 main.cards:not(.continuous) div.entry {
 	max-height: 40rem;
 }
@@ -1024,12 +1023,29 @@ main.cards div.entry > div.meta > button.edit:focus::before {
 	opacity: 1;
 }
 
+main.cards div.content h1, 
+main.cards div.content h2, 
+main.cards div.content h3 {
+	font-weight: bold;
+}
+
+main.cards div.content pre {
+	background-color: #f0f0f0; /*pre color background */
+	overflow-x: auto;
+	width: 100%;
+	display: block;
+}
+
 main.cards div.entry > div.content {
 	align-self: stretch;
 	justify-self: start;
 	flex: 1 1 auto;
 	padding: 1rem 2rem;
 	line-height: 1.75;
+
+	overflow: auto;
+	width: 100%;
+	box-sizing: border-box;	
 }
 
 main.cards div.entry > div.extra {
@@ -1144,7 +1160,7 @@ main.editor > div.row {
 }
 
 main.editor input[type="date"] {
-	flex: 0 0 10rem;
+	flex: 0 0 11.5rem;
 }
 
 main.editor > div.row > input,

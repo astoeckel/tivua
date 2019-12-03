@@ -31,6 +31,17 @@ this.tivua.main = (function () {
 
 	const HISTORY_BLACKLIST = ["logout"];
 
+	/* Map from view name onto page title */
+	const PAGE_TITLES = {
+		"login": "%title_login_page",
+		"logout": "%title_logout_page",
+		"list": "%title_list_page",
+		"edit": "%title_edit_page",
+		"add": "%title_add_page",
+		"users": "%title_users_page",
+		"preferences": "%title_preferences_page",
+	};
+
 	const observer = {
 		"on_login_cas":  () => {
 			return new Promise((resolve, reject) => {
@@ -162,8 +173,15 @@ this.tivua.main = (function () {
 	 * the main view.
 	 */
 	function _switch_view(api, root, view_name, params, add_to_history) {
+		/* Set some parameters to default values */
 		params = (params === undefined) ? {} : params;
 		add_to_history = (add_to_history === undefined) ? true : add_to_history;
+
+		/* If the view name is listed in the PAGE_TITLES dictionary, set it
+		   accordingly */
+		if (view_name in PAGE_TITLES) {
+			document.title = tivua.l10n.translate(PAGE_TITLES[view_name]);
+		}
 
 		// Get the constructor and add the corresponding view to the page
 		const ctor = _get_ctor(view_name, params);
@@ -200,7 +218,7 @@ this.tivua.main = (function () {
 
 						// Remember the current view as such
 						root.current_view = view;
-					}).then(resolve).catch(reject)
+					}).then(resolve).catch(reject);
 				}, 20);
 			});
 		};

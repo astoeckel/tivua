@@ -38,6 +38,7 @@ import re, os, json
 from dataclasses import astuple, asdict
 
 from tivua.database import Transaction, Post, User
+from tivua.database_filters import FilterUID, FilterAuthor
 
 
 class ValidationError(ValueError):
@@ -570,11 +571,11 @@ class API:
                         settings[key] = value
 
             # Serialise the settings to a string
-            settings_str = json.dumps(settings)
+            settings_str = json.dumps(settings, sort_keys=True)
             if len(settings_str) > API.MAX_SETTINGS_LEN:
                 raise ValidationError()
 
-            # Store the old values in the database
+            # Store the merged values in the database
             self.db.settings[uid] = settings_str
             return settings
 
@@ -1021,6 +1022,8 @@ class API:
                Supply either uid or user_name.
         @param user_name is the name of the user that should be deleted. Supply
                either uid or user_name.
+        @param force if true, force the deletion of users who contributed
+               content.
         """
 
         with Transaction(self.db):
@@ -1050,7 +1053,7 @@ class API:
                         post.muid = 0
                     if post.author == user.uid:
                         post.author = 0
-                    self.db.update_post(post, history=histroy)
+                    self.db.update_post(post, history=history)
 
                 return True
 
