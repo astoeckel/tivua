@@ -106,12 +106,51 @@ this.tivua.view.preferences = (function() {
 		_update_error_state(main, field_name, valid);
 	}
 
-	function show_preferences(root, events, session, force_change_password) {
+	function _validate_display_name(main, field_name, inp_display_name, lbl_error) {
+		const l10n = tivua.l10n;
+		const valid = (inp_display_name.value.length > 0) && (inp_display_name.value.length <= 32);
+		if (!valid) {
+			l10n.set_node_text(lbl_error, 'Display name cannot be blank');
+		} else {
+			l10n.set_node_text(lbl_error, '');
+		}
+		inp_display_name.classList.toggle('error', !valid);
+		inp_display_name.classList.toggle('ok', valid);
+		_update_error_state(main, field_name, valid);
+		return valid;
+	}
+
+	function _validate_update_password(main, field_name, inp_password, inp_password_new, inp_password_new_repeat, lbl_error) {
+		const l10n = tivua.l10n;
+		/* Check that the new password is valid */
+		const passw_valid = (inp_password_new.value.length >= 8) && /^\S+$/.test(inp_password_new.value);
+		if (!passw_valid) {
+			l10n.set_node_text(lbl_error, 'Shorter than 8 characters or has whitespace');
+			return false;
+		}
+
+		/* Check that the new and repeated password are the same */
+		if (inp_password_new.value !== inp_password_new_repeat.value) {
+			l10n.set_node_text(lbl_error, 'New password does not match repeated password');
+			return false;
+		}
+
+		l10n.set_node_text(lbl_error, '');
+		return true;
+	}
+
+	function show_preferences(api, root, events, session, force_change_password) {
 		/* Instantiate the editor view DOM nodes */
 		const main = utils.import_template('tmpl_preferences');
 		const sec_force_change_password = main.querySelector('section[name="sec_force_change_password"]');
 		const sec_user_details = main.querySelector('section[name="sec_user_details"]');
 		const sec_password = main.querySelector('section[name="sec_password"]');
+
+		const inp_user_name = main.getElementById('inp_user_name');
+		const inp_display_name = main.getElementById('inp_display_name');
+		const lbl_display_name_error = main.querySelector("label[for='inp_display_name'] span.error");
+		inp_user_name.value = session["user_name"];
+		inp_display_name.value = session["display_name"];
 
 		/* Implement the show/hide password buttons, as well as password
 		   validation */
@@ -141,6 +180,7 @@ this.tivua.view.preferences = (function() {
 		const prg_password_strength = main.getElementById("prg_password_strength");
 		const lbl_password_strength = main.getElementById("lbl_password_strength");
 		const lbl_password_new_error = main.querySelector("label[for='password_new'] span.error");
+		const lbl_password_error = main.querySelector("label[for='password'] span.error");
 		inp_password_new.addEventListener('keyup', () =>
 			_score_password(inp_password_new, prg_password_strength, lbl_password_strength));
 		inp_password_new.addEventListener('change', () =>
@@ -168,6 +208,56 @@ this.tivua.view.preferences = (function() {
 			sec_force_change_password.style.display = 'none';
 		}
 
+		// const btn_save = main.getElementById("btn_save");
+		// There are two save buttons on this page
+		const btn_save_list = main.querySelectorAll("[name=btn_save]");
+
+		const inp_password = main.getElementById("password");
+		const inp_password_new_repeat = main.getElementById("password_new_repeat");
+
+		let validate_display_name = () => _validate_display_name(main, 'display_name', inp_display_name, lbl_display_name_error);
+		let validate_password = () => _validate_update_password(main, 'password_new', inp_password, inp_password_new, inp_password_new_repeat, lbl_password_new_error);
+
+		inp_display_name.addEventListener('change', () => {
+			validate_display_name();
+		});
+
+		for (let btn_save of btn_save_list) {
+			btn_save.addEventListener("click", function () {
+
+				let api_call_display_name = null;
+				let api_call_password = null;
+
+				/* Check if display_name has been changed */
+				if (inp_display_name.value != session.display_name) {
+					if (!validate_display_name()) {
+						return;  /* Errors for validation are shown live, don't need to do anything here */
+					}
+					let settings = {};
+					settings['display_name'] = inp_display_name.value;
+					api_call_display_name = api.post_user(settings);
+				}
+
+				/* If anything is typed into a password field, assume the user wants to update their password */
+				if ((inp_password.value.length > 0) || (inp_password_new.value.length > 0) || (inp_password_new_repeat.value.length > 0)) {
+					if (!validate_password()) {
+						return;  /* Errors for validation are shown live, don't need to do anything here */
+					}
+					api_call_password = api.set_password(session.user_name, inp_password.value, inp_password_new.value);
+				}
+
+				Promise.all([api_call_display_name, api_call_password]).then((data) => {
+					// TODO: currently a refresh is needed to see the updated display name on the main page
+					events.on_back();
+				}).catch((error) => {
+					// TODO: display a correct message depending on the error (should only be a password error)
+					// TODO: make sure the session doesn't get lost when the password fails
+					l10n.set_node_text(lbl_error, 'Password is incorrect');
+				});
+				return;
+			});
+		}
+
 		/* Delete the current content of the root element and replace it with
 		   the body element. */
 		utils.replace_content(root, main);
@@ -185,7 +275,7 @@ this.tivua.view.preferences = (function() {
 			};
 			api.get_session_data().then((data) => {
 				const session = data.session;
-				show_preferences(root, events, session, true);
+				show_preferences(api, root, events, session, force_change_password);
 			});
 			resolve(events);
 		});

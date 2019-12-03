@@ -1118,6 +1118,22 @@ class API:
             # Return the generated password for display
             return password
 
+    def update_user(self, uid, settings, user_name=None):
+        """
+        Updates attributes of a user
+        """
+
+        with Transaction(self.db):
+            user = self.db.get_user(uid=uid, user_name=user_name)
+
+            if user is None:
+                raise NotFoundError()
+
+            for key, value in settings.items():
+                setattr(user, key, value)
+
+            self.db.update_user(user)
+
     ############################################################################
     # Export and import                                                        #
     ############################################################################

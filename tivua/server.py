@@ -430,6 +430,13 @@ def _api_post_settings(api):
     return _internal_wrap_api_handler(_handler, field="settings", api=api)
 
 
+def _api_post_users(api):
+    def _handler(req, query, match, session, body):
+        return api.update_user(session['uid'], body)
+
+    return _internal_wrap_api_handler(_handler, field="users", api=api)
+
+
 def _api_get_posts_list(api):
     def _handler(req, query, match, session, body):
         # Validate the arguments
@@ -735,6 +742,7 @@ def create_server_class(api, args):
         Route("GET", r"^/api/posts$", _api_get_post(api)),
         Route("POST", r"^/api/posts$", _api_post_posts_update(api)),
         Route("GET", r"^/api/users/list$", _api_get_users_list(api)),
+        Route("POST", r"^/api/users$", _api_post_users(api)),
         Route("GET", r"^/api/keywords/list$", _api_get_keywords_list(api)),
 
         # Unkown API requests

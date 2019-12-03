@@ -133,6 +133,10 @@ this.tivua.xhr = (function () {
 		return xhr_fetch_json('GET', 'api/users/list', session);
 	}
 
+	function post_user(session, settings) {
+		return xhr_fetch_json('POST', 'api/users', session, settings);
+	}
+
 	/**************************************************************************
 	 * Export the Public API                                                  *
 	 **************************************************************************/
@@ -154,6 +158,7 @@ this.tivua.xhr = (function () {
 			"get_login_challenge": get_login_challenge,
 			"get_settings": get_settings,
 			"post_settings": post_settings,
+			"post_user": post_user,
 			"post_logout": post_logout,
 			"post_login": post_login,
 		};
