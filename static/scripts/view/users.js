@@ -143,7 +143,6 @@ this.tivua.view.user_manager = (function() {
 
 		/* Insert an editable row for each user */
 		let current_role = null;
-		let last_row = null;
 		for (let user of user_list) {
 			/* Ignore the deleted user */
 			if (user.uid == 0) {
@@ -157,9 +156,6 @@ this.tivua.view.user_manager = (function() {
 				const lbl_caption = tmpl.querySelector('[name=lbl_caption]');
 				l10n.set_node_text(lbl_caption, "%header_users_role_" + user.role);
 				tbody.appendChild(tmpl);
-				if (last_row) {
-					last_row.classList.add('last_in_group');
-				}
 			}
 
 			/* Fetch the individual row elements */
