@@ -539,9 +539,25 @@ def _api_get_post(api):
 
 def _api_get_users_list(api):
     def _handler(req, query, match, session, body):
-        return api.get_user_list()
+        is_admin = Perms.lookup_role_permissions(session["role"]) & Perms.CAN_ADMIN
+        return api.get_user_list(include_credentials=is_admin)
 
     return _internal_wrap_api_handler(_handler, field="users", api=api)
+
+
+def _api_reset_password(api):
+    def _handler(req, query, match, session, body):
+        # Validate the arguments
+        try:
+            uid = int(body["uid"])
+        except:
+            raise ValidationError()
+
+        # Try to reset the password
+        return api.reset_user_password(uid=uid)
+
+    return _internal_wrap_api_handler(_handler, field="password", api=api,
+                                      perms=Perms.CAN_ADMIN)
 
 
 def _api_get_keywords_list(api):
@@ -735,6 +751,7 @@ def create_server_class(api, args):
         Route("GET", r"^/api/posts$", _api_get_post(api)),
         Route("POST", r"^/api/posts$", _api_post_posts_update(api)),
         Route("GET", r"^/api/users/list$", _api_get_users_list(api)),
+        Route("POST", r"^/api/users/reset_password$", _api_reset_password(api)),
         Route("GET", r"^/api/keywords/list$", _api_get_keywords_list(api)),
 
         # Unkown API requests

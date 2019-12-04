@@ -196,6 +196,20 @@ this.tivua.l10n = (function () {
 				"Logout successful",
 			"%logout_message":
 				"You have been successfully logged out. You will now be redirected to the homepage.",
+
+			// User manager
+			"%lbl_users_role_inactive": "Inactive",
+			"%lbl_users_role_reader": "Reader",
+			"%lbl_users_role_author": "Author",
+			"%lbl_users_role_admin": "Admin",
+
+			"%header_users_role_inactive": "Inactive Users",
+			"%header_users_role_reader": "Readers",
+			"%header_users_role_author": "Authors",
+			"%header_users_role_admin": "Administrators",
+
+			"%lbl_users_auth_method_password": "Password",
+			"%lbl_users_auth_method_cas": "CAS",
 		},
 		"de-DE": {
 			// Language metadata

@@ -133,6 +133,12 @@ this.tivua.xhr = (function () {
 		return xhr_fetch_json('GET', 'api/users/list', session);
 	}
 
+	function reset_password(session, uid) {
+		return xhr_fetch_json('POST', 'api/users/reset_password', session, {
+			"uid": uid
+		});
+	}
+
 	/**************************************************************************
 	 * Export the Public API                                                  *
 	 **************************************************************************/
@@ -154,6 +160,7 @@ this.tivua.xhr = (function () {
 			"get_login_challenge": get_login_challenge,
 			"get_settings": get_settings,
 			"post_settings": post_settings,
+			"reset_password": reset_password,
 			"post_logout": post_logout,
 			"post_login": post_login,
 		};

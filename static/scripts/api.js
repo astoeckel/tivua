@@ -309,6 +309,16 @@ this.tivua.api = (function (window) {
 	}
 
 	/**************************************************************************
+	 * USER SETTINGS                                                          *
+	 **************************************************************************/
+
+	function reset_password(uid) {
+		return _err(get_sid().then(sid => {
+			return xhr.reset_password(sid, uid | 0);
+		}));
+	}
+
+	/**************************************************************************
 	 * SESSION MANAGEMENT                                                     *
 	 **************************************************************************/
 
@@ -460,6 +470,7 @@ this.tivua.api = (function (window) {
 		"get_post_list": get_post_list,
 		"get_settings": get_settings,
 		"post_settings": post_settings,
+		"reset_password": reset_password,
 		"post_logout": post_logout,
 		"post_login": post_login,
 		"on_access_denied": null,
