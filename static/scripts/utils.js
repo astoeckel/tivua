@@ -115,30 +115,69 @@ this.tivua.utils = (function (window) {
 		root.appendChild(elem);
 	}
 
-	// See https://stackoverflow.com/questions/14573223/set-cookie-and-get-cookie-with-javascript
-	function set_cookie(name, value, days=null) {
-		let expires = "";
-		if (days) {
-			let date = new Date();
-			date.setTime(date.getTime() + (days*24*60*60*1000));
-			expires = "; expires=" + date.toUTCString();
+	/**
+	 * Checks the availability of the localStorage object.
+	 *
+	 * https://developer.mozilla.org/en-US/docs/Web/API/Web_Storage_API/Using_the_Web_Storage_API
+	 */
+	function _local_storage_available(type) {
+		var storage;
+		try {
+			storage = window[type];
+			var x = '__storage_test__';
+			storage.setItem(x, x);
+			storage.removeItem(x);
+			return true;
 		}
-		document.cookie = name + "=" + (encodeURIComponent(value) || "")  + expires + "; path=/";
+		catch(e) {
+			return e instanceof DOMException && (
+				// everything except Firefox
+				e.code === 22 ||
+				// Firefox
+				e.code === 1014 ||
+				// test name field too, because code might not be present
+				// everything except Firefox
+				e.name === 'QuotaExceededError' ||
+				// Firefox
+				e.name === 'NS_ERROR_DOM_QUOTA_REACHED') &&
+				// acknowledge QuotaExceededError only if there's something already stored
+				(storage && storage.length !== 0);
+		}
+	}
+
+	function set_cookie(name, value, days=null) {
+		if (_local_storage_available("localStorage")) {
+			window.localStorage.setItem(name, value);
+		} else {
+			// See https://stackoverflow.com/questions/14573223/set-cookie-and-get-cookie-with-javascript
+			let expires = "";
+			if (days) {
+				let date = new Date();
+				date.setTime(date.getTime() + (days*24*60*60*1000));
+				expires = "; expires=" + date.toUTCString();
+			}			
+			document.cookie = name + "=" + (encodeURIComponent(value) || "")  + expires + "; path=/";
+		}
 	}
 
 	function get_cookie(name) {
-		let nameEQ = name + "=";
-		let ca = document.cookie.split(';');
-		for (let i=0; i < ca.length; i++) {
-			let c = ca[i];
-			while (c.charAt(0)==' ') {
-				c = c.substring(1,c.length);
-			}
-			if (c.indexOf(nameEQ) == 0) {
+		if (_local_storage_available("localStorage")) {
+			return window.localStorage.getItem(name);
+		} else {
+			// See https://stackoverflow.com/questions/14573223/set-cookie-and-get-cookie-with-javascript
+			let nameEQ = name + "=";
+			let ca = document.cookie.split(';');
+			for (let i=0; i < ca.length; i++) {
+				let c = ca[i];
+				while (c.charAt(0)==' ') {
+					c = c.substring(1,c.length);
+				}
+				if (c.indexOf(nameEQ) == 0) {
 					return decodeURIComponent(c.substring(nameEQ.length, c.length));
+				}
 			}
+			return null;
 		}
-		return null;
 	}
 
 	function format_date(timestamp, sep) {

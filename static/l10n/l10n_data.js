@@ -70,6 +70,22 @@ this.tivua.l10n = (function () {
 			"%msg_cards_no_results":
 				"Your search did no match any posts.",
 
+			// Page Titles
+			"%title_login_page":
+				"Tivua - Login",
+			"%title_logout_page":
+				"Tivua - Logout",
+			"%title_list_page":
+				"Tivua",
+			"%title_add_page":
+				"Tivua - Add Entry",
+			"%title_edit_page":
+				"Tivua - Edit Entry",
+			"%title_users_page":
+				"Tivua - Manage Users",
+			"%title_preferences_page":
+				"Tivua - Preferences",
+
 			// Menu
 			"%tooltip_menu":
 				"Displays the main menu",

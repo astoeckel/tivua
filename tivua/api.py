@@ -38,6 +38,7 @@ import re, os, json
 from dataclasses import astuple, asdict
 
 from tivua.database import Transaction, Post, User
+from tivua.database_filters import FilterUID, FilterAuthor
 
 
 class ValidationError(ValueError):
@@ -1021,6 +1022,8 @@ class API:
                Supply either uid or user_name.
         @param user_name is the name of the user that should be deleted. Supply
                either uid or user_name.
+        @param force if true, force the deletion of users who contributed
+               content.
         """
 
         with Transaction(self.db):
@@ -1050,7 +1053,7 @@ class API:
                         post.muid = 0
                     if post.author == user.uid:
                         post.author = 0
-                    self.db.update_post(post, history=histroy)
+                    self.db.update_post(post, history=history)
 
                 return True
 
