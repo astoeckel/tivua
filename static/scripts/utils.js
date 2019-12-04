@@ -400,6 +400,39 @@ this.tivua.utils = (function (window) {
 		return _highlight(node, re_link, re_text);
 	}
 
+	/* Adapted from https://stackoverflow.com/a/30810322 */
+	function copy_to_clipboard(str) {
+		/* Try to use the modern clipboard api */
+		if (navigator.clipboard) {
+			return new Promise((resolve, _) => {
+				navigator.clipboard.writeText(str)
+					.then(() => resolve(true))
+					.catch(() => resolve(false));
+			});
+		}
+
+		/* Otherwise fallback to the old synchronous API */
+
+		/* Create a textarea element and insert the text */
+		let textarea = document.createElement("textarea");
+		textarea.value = str;
+		textarea.style.position = "fixed";  //avoid scrolling to bottom
+		document.body.appendChild(textarea);
+		textarea.focus();
+		textarea.select();
+
+		/* Try to copy the text to the clipboard and return a promise */
+		return new Promise((resolve, _) => {
+			try {
+				resolve(!!document.execCommand('copy'));
+			} catch (err) {
+				resolve(false);
+			}
+		}).finally(() => {
+			document.body.removeChild(textarea);
+		});
+	}
+
 	return {
 		'clear': clear,
 		'clean_whitespace': clean_whitespace,
@@ -416,5 +449,6 @@ this.tivua.utils = (function (window) {
 		'exec': exec,
 		'remove_event_listeners': remove_event_listeners,
 		'highlight': highlight,
+		'copy_to_clipboard': copy_to_clipboard,
 	};
 })(this);

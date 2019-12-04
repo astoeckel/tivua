@@ -315,7 +315,7 @@ this.tivua.api = (function (window) {
 
 	function update_user(settings) {
 		return _err(get_sid().then(sid => {
-			return xhr.post_user(sid, settings).then((data) => {
+			return xhr.update_user(sid, settings).then((data) => {
 				// Update the session data cache if the current user was updated
 				if (sid in cache.session_data) {
 					const user = data.user;
@@ -345,6 +345,16 @@ this.tivua.api = (function (window) {
 					}
 				}
 			});
+		}));
+	}
+
+	/**************************************************************************
+	 * USER SETTINGS                                                          *
+	 **************************************************************************/
+
+	function reset_password(uid) {
+		return _err(get_sid().then(sid => {
+			return xhr.reset_password(sid, uid | 0);
 		}));
 	}
 
@@ -548,6 +558,7 @@ this.tivua.api = (function (window) {
 		"get_post_list": get_post_list,
 		"get_settings": get_settings,
 		"post_settings": post_settings,
+		"reset_password": reset_password,
 		"post_logout": post_logout,
 		"post_login": post_login,
 		"check_password": check_password,
