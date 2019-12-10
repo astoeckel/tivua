@@ -505,12 +505,19 @@ class Database:
                          LIMIT ? OFFSET ?""".format(table)
                 params = (limit, start)
             else:
-                # TODO: Filtering the history table is not implemented yet
-                if history:
-                    raise NotImplementedError()
-
                 # Fetch the keys we would like to read
                 keys = list(Post.__dataclass_fields__.keys())
+
+                # When selecting from the post history, substitute the able
+                # name "posts" with "posts_history". Note: This will not yield
+                # the correct results in conjunction with keyword filters, but
+                # that is not a use-case we should run into here.
+                if history:
+                    flt_compiled = filter.compile(table_subs={
+                        "posts": "posts_history"
+                    })
+                else:
+                    flt_compiled = filter.compile()
 
                 # Compile the filter and extract the SQL and parameters
                 flt_sql, flt_params, flt_alias = filter.compile().emit(keys)

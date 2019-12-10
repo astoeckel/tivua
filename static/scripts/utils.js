@@ -115,30 +115,69 @@ this.tivua.utils = (function (window) {
 		root.appendChild(elem);
 	}
 
-	// See https://stackoverflow.com/questions/14573223/set-cookie-and-get-cookie-with-javascript
-	function set_cookie(name, value, days=null) {
-		let expires = "";
-		if (days) {
-			let date = new Date();
-			date.setTime(date.getTime() + (days*24*60*60*1000));
-			expires = "; expires=" + date.toUTCString();
+	/**
+	 * Checks the availability of the localStorage object.
+	 *
+	 * https://developer.mozilla.org/en-US/docs/Web/API/Web_Storage_API/Using_the_Web_Storage_API
+	 */
+	function _local_storage_available(type) {
+		var storage;
+		try {
+			storage = window[type];
+			var x = '__storage_test__';
+			storage.setItem(x, x);
+			storage.removeItem(x);
+			return true;
 		}
-		document.cookie = name + "=" + (encodeURIComponent(value) || "")  + expires + "; path=/";
+		catch(e) {
+			return e instanceof DOMException && (
+				// everything except Firefox
+				e.code === 22 ||
+				// Firefox
+				e.code === 1014 ||
+				// test name field too, because code might not be present
+				// everything except Firefox
+				e.name === 'QuotaExceededError' ||
+				// Firefox
+				e.name === 'NS_ERROR_DOM_QUOTA_REACHED') &&
+				// acknowledge QuotaExceededError only if there's something already stored
+				(storage && storage.length !== 0);
+		}
+	}
+
+	function set_cookie(name, value, days=null) {
+		if (_local_storage_available("localStorage")) {
+			window.localStorage.setItem(name, value);
+		} else {
+			// See https://stackoverflow.com/questions/14573223/set-cookie-and-get-cookie-with-javascript
+			let expires = "";
+			if (days) {
+				let date = new Date();
+				date.setTime(date.getTime() + (days*24*60*60*1000));
+				expires = "; expires=" + date.toUTCString();
+			}			
+			document.cookie = name + "=" + (encodeURIComponent(value) || "")  + expires + "; path=/";
+		}
 	}
 
 	function get_cookie(name) {
-		let nameEQ = name + "=";
-		let ca = document.cookie.split(';');
-		for (let i=0; i < ca.length; i++) {
-			let c = ca[i];
-			while (c.charAt(0)==' ') {
-				c = c.substring(1,c.length);
-			}
-			if (c.indexOf(nameEQ) == 0) {
+		if (_local_storage_available("localStorage")) {
+			return window.localStorage.getItem(name);
+		} else {
+			// See https://stackoverflow.com/questions/14573223/set-cookie-and-get-cookie-with-javascript
+			let nameEQ = name + "=";
+			let ca = document.cookie.split(';');
+			for (let i=0; i < ca.length; i++) {
+				let c = ca[i];
+				while (c.charAt(0)==' ') {
+					c = c.substring(1,c.length);
+				}
+				if (c.indexOf(nameEQ) == 0) {
 					return decodeURIComponent(c.substring(nameEQ.length, c.length));
+				}
 			}
+			return null;
 		}
-		return null;
 	}
 
 	function format_date(timestamp, sep) {
@@ -308,13 +347,24 @@ this.tivua.utils = (function (window) {
 	function highlight(node, terms, whole_word) {
 		/* Internally used recursive function actually performing the
 		   highlighting */
-		function _highlight(node, re) {
+		function _highlight(node, re_link, re_text) {
 			if (node.nodeType == document.ELEMENT_NODE) {
 				/* Descend into element nodes and highlight all their
 				   children */
 				let child = node.firstChild;
 				while (child) {
-					child = _highlight(child, re).nextSibling;
+					child = _highlight(child, re_link, re_text).nextSibling;
+				}
+				for (let attr of node.attributes) {
+					if (attr.name != 'href') {
+						continue;
+					}
+					if (attr.value.match(re_link)){
+						let mark = document.createElement("mark");
+						node.parentNode.insertBefore(mark, node);
+						mark.appendChild(node);
+						return mark;
+					}
 				}
 				return node;
 			} else if (node.nodeType == document.TEXT_NODE) {
@@ -331,7 +381,7 @@ this.tivua.utils = (function (window) {
 				   possible, splitting the text into a prefix, overlap, and
 				   suffix */
 				while (text) {
-					let match = text.match(re);
+					let match = text.match(re_text);
 					if (!match) {
 						/* No further matches, insert the rest of the text */
 						last_child = document.createTextNode(text);
@@ -378,17 +428,16 @@ this.tivua.utils = (function (window) {
 
 		/* If "whole_word" is true, match any non-white space cahracters behind
 		   a match */
-		let re = null;
+		let re_link = null, re_text = null;
+		re_link = re_text = new RegExp("(" + terms.join('|') + ")", "i");
 		if (whole_word) {
 			terms = terms.map(x => x + "[^ ,.:!?'\"/_()-]*");
-			re = new RegExp("(^|[ ():-])(" + terms.join('|') + ")", "i");
-		} else {
-			re = new RegExp("(" + terms.join('|') + ")", "i");
-		}
+			re_text = new RegExp("(^|[ ():-])(" + terms.join('|') + ")", "i");
+		} 
 
 		/* Create the actual regular expression and recursivly highlight the
 		   text */
-		return _highlight(node, re);
+		return _highlight(node, re_link, re_text);
 	}
 
 	return {

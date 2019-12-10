@@ -17,6 +17,7 @@
 import pytest
 
 from tivua.api import *
+from tivua.database import Database
 
 import logging
 logging.basicConfig(format='[%(levelname)s] %(message)s', level=logging.DEBUG)
@@ -108,3 +109,75 @@ def test_coerce_user():
     with pytest.raises(ValidationError):
         API.coerce_user({"name": "foo bar"})
 
+
+def test_delete_user():
+    # Create an API instance
+    with API(Database()) as api:
+        # Create a user
+        _, user = api.create_user("astoecke")
+        assert user.uid == 2 # First user created after the "admin" user
+
+        # List all users
+        users = api.get_user_list()
+        assert(len(users) == 3)
+
+        # Create a few new posts for the user
+        post = api.create_post({
+            "cuid": user.uid,
+            "content": "Foo",
+            "date": 12354678,
+        })
+        assert post["pid"] == 1
+        assert post["cuid"] == 2
+        assert post["muid"] == 2
+        assert post["author"] == 2
+
+        post = api.create_post({
+            "cuid": user.uid,
+            "muid": 1,
+            "author": 1,
+            "content": "Foo",
+            "date": 12354678,
+        })
+        assert post["pid"] == 2
+        assert post["cuid"] == 2
+        assert post["muid"] == 1
+        assert post["author"] == 1
+
+        post = api.create_post({
+            "cuid": 1,
+            "muid": 1,
+            "author": user.uid,
+            "content": "Foo",
+            "date": 12354678,
+        })
+        assert post["pid"] == 3
+        assert post["cuid"] == 1
+        assert post["muid"] == 1
+        assert post["author"] == 2
+
+        posts = api.get_post_list(start=0, limit=-1)
+        assert(len(posts) == 3)
+
+        # Delete the user
+        api.delete_user(user.uid, force=True)
+        users = api.get_user_list()
+        print(users)
+        assert(len(users) == 2)
+
+        # After deleting the user, all references to the user should no longer
+        # exist
+        posts = api.get_post_list(start=0, limit=-1)
+        assert(len(posts) == 3)
+        assert posts[0]["pid"] == 1
+        assert posts[0]["cuid"] == 0
+        assert posts[0]["muid"] == 0
+        assert posts[0]["author"] == 0
+        assert posts[1]["pid"] == 2
+        assert posts[1]["cuid"] == 0
+        assert posts[1]["muid"] == 1
+        assert posts[1]["author"] == 1
+        assert posts[2]["pid"] == 3
+        assert posts[2]["cuid"] == 1
+        assert posts[2]["muid"] == 1
+        assert posts[2]["author"] == 0

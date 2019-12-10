@@ -175,6 +175,33 @@ def create_parser():
         choices=['inactive', 'reader', 'author', 'admin'],
     )
 
+    # "user list" command
+    p_user_list = _mkp(subs_user, 'list', 'Lists users')
+
+    # "config" command
+    p_config = _mkp(subs, 'config', 'Manages configuration strings')
+    subs_config = p_config.add_subparsers()
+    subs_config.dest = 'config_command'
+    subs_config.required = True
+
+    # "config list" command
+    p_config_list = _mkp(subs_config, 'list', 'Lists all configuration option and their value')
+
+    # "config get" command
+    p_config_get = _mkp(subs_config, 'get', 'Prints the given option')
+    p_config_get.add_argument(
+        'option',
+        help='The option to print')
+
+    # "config set" command
+    p_config_set = _mkp(subs_config, 'set', 'Sets the option to a specific value')
+    p_config_set.add_argument(
+        'option',
+        help='The option to set')
+    p_config_set.add_argument(
+        'value',
+        help='The option to set')
+
     return parser
 
 
@@ -282,12 +309,16 @@ def main_user(args):
     import tivua.api
 
     api = _init(args)
-    cmd, name = args.user_command, args.name
+    cmd = args.user_command
     with api:
         try:
+            if cmd == "list":
+                print(api.get_user_list())
+            else:
+                name = args.name 
             if cmd == "add":
                 password, user = api.create_user(
-                    name=name,
+                    user_name=name,
                     role=args.role,
                     display_name=args.display_name)
                 print(("Successfully created user #{} \"{}\" with role \"{}\". " +
@@ -295,14 +326,15 @@ def main_user(args):
                             user.uid, name, args.role, password))
             elif cmd == "delete":
                 if not api.delete_user(user_name=name, force=args.force):
-                    print("WARNING: all content created by the user will " +
-                          "be deleted.")
-                    print("Specify the --force commandline argument to " +
+                    print("WARNING: This user contributed content. Deleting "
+                          "this user will move the ownership of this content "
+                          "to the \"[deleted]\" user.")
+                    print("Specify the --force commandline argument to "
                           "confirm the deletion of users with posts.")
-                    print("Consider using \"set-role {} inactive\" " +
+                    print("Consider using \"set-role {} inactive\" "
                           "instead.".format(name))
                 else:
-                    print("Successfully deleted user \"{}\"")
+                    print("Successfully deleted user \"{}\"".format(name))
             elif cmd == "reset-password":
                 password = api.reset_user_password(user_name=name)
                 print(("Successfully created a new password for user \"{}\". " +
@@ -321,6 +353,32 @@ def main_user(args):
         except tivua.api.ValidationError:
             print(("Error: The specified user name '{}' is invalid.").format(
                     args.name))
+
+def main_config(args):
+    """
+    Contains the "config" sub-programs.
+    """
+    import tivua.api
+
+    api = _init(args)
+    db_dict = api.db.configuration
+    cmd = args.config_command
+
+    with api:
+        try:
+            if cmd == "list":
+                for key, value in db_dict.items():
+                    print(key, value)
+                
+            elif cmd == "get":
+                print(db_dict[args.option])
+                
+            elif cmd == "set":
+                db_dict[args.option] = args.value
+
+        except KeyError:
+            print("Configuration dictionary does not contain option " + str(args.option))
+
 
 
 def main_export(args):
@@ -373,6 +431,8 @@ def main(argv):
         return main_export(args)
     elif args.command == "user":
         return main_user(args)
+    elif args.command == "config":
+        return main_config(args)
 
 
 if __name__ == "__main__":
