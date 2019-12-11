@@ -181,6 +181,23 @@ this.tivua.main = (function () {
 	 * the main view.
 	 */
 	function _switch_view(api, session, root, view_name, params, add_to_history) {
+		// Check whether the user must reset their password. If yes,
+		// force-direct them to the preferences view
+		if (session && session.reset_password &&
+		    ["preferences", "logout", "login"].indexOf(view_name) == -1) {
+			return _switch_view(api, session, root, "preferences", {}, false).then(
+				events => {
+					// Go to the originally requested location once the
+					// preferences view completes
+					events.on_back = () => {
+						return _switch_view(api, session, root, view_name, params,
+											add_to_history);
+					};
+					return events;
+			});
+		}
+
+		// Set some parameters to default values
 		params = (params === undefined) ? {} : params;
 		add_to_history = (add_to_history === undefined) ? true : add_to_history;
 
@@ -224,7 +241,10 @@ this.tivua.main = (function () {
 
 						// Remember the current view as such
 						root.current_view = view;
-					}).then(resolve).catch(reject);
+
+						// Return the newly constructed view
+						resolve(view);
+					}).catch(reject);
 				}, 20);
 			});
 		};
