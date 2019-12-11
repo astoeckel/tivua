@@ -123,7 +123,7 @@ class Perms:
 
     @staticmethod
     def role_has_permission(role, permission):
-        return Perms.lookup_role_permissions(role) & permission
+        return (Perms.lookup_role_permissions(role) & permission) == permission
 
 
 class API:
