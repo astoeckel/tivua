@@ -375,7 +375,7 @@ def _api_get_configuration(api):
     def _handler(req, query, match, session, body):
         return api.get_configuration_object()
 
-    return _internal_wrap_api_handler(_handler, perms=Perms.NONE)
+    return _internal_wrap_api_handler(_handler, field="configuration", perms=Perms.NONE)
 
 
 def _api_get_session(api):
