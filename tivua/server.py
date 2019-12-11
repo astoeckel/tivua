@@ -293,8 +293,7 @@ def _internal_wrap_api_handler(cback,
                     return _api_error(401, "%server_error_unauthorized")(req)
 
                 # Make sure the user has the required permissions
-                if not (Perms.lookup_role_permissions(session["role"]) &
-                        perms):
+                if not (Perms.role_has_permission(session["role"], perms)):
                     return _api_error(401, "%server_error_unauthorized")(req)
 
             # If this request is a POST, check for the Content-Length header and
@@ -430,11 +429,48 @@ def _api_post_settings(api):
     return _internal_wrap_api_handler(_handler, field="settings", api=api)
 
 
-def _api_post_users(api):
+def _api_post_users_update(api):
     def _handler(req, query, match, session, body):
-        return api.update_user(session['uid'], body)
+        # Per default, we update the user making the request
+        uid = session["uid"]
 
-    return _internal_wrap_api_handler(_handler, field="users", api=api)
+        # Determine which attributes can be updated by this user
+        whitelist = set(("display_name", "password"))
+        if Perms.role_has_permission(session['role'], Perms.CAN_ADMIN):
+            # Allow a few more settings that can be updated
+            whitelist |= set(("name", "auth_method", "role"))
+
+            # If a uid is given the admin is updating a user (potentially
+            # someone who is not himself). Set the UID to the given uid
+            if "uid" in body:
+                # Make sure the UID is valid
+                try:
+                    uid = int(body["uid"])
+                    if uid <= 0:
+                        raise ValidationError()
+                except:
+                    raise ValidationError()
+
+                # Remove the key from the other properties
+                del body["uid"]
+
+        # Make sure the user is adhering to the update whitelist; issuse an
+        # authentification error if the client is trying to tinker with an
+        # attribute beyond it's control
+        if not isinstance(body, dict):
+            raise ValidationError()
+        for key, value in body.items():
+            if not (key in whitelist):
+                raise AuthentificationError()
+            if (not isinstance(value, int)) and (not isinstance(value, str)):
+                raise ValidationError()
+
+        # Update the user and send the updated user record back
+        user = api.update_user(body, uid=uid)
+        del user["password"]
+        return user
+
+    return _internal_wrap_api_handler(_handler, field="user", api=api)
 
 
 def _api_get_posts_list(api):
@@ -742,7 +778,7 @@ def create_server_class(api, args):
         Route("GET", r"^/api/posts$", _api_get_post(api)),
         Route("POST", r"^/api/posts$", _api_post_posts_update(api)),
         Route("GET", r"^/api/users/list$", _api_get_users_list(api)),
-        Route("POST", r"^/api/users$", _api_post_users(api)),
+        Route("POST", r"^/api/users$", _api_post_users_update(api)),
         Route("GET", r"^/api/keywords/list$", _api_get_keywords_list(api)),
 
         # Unkown API requests

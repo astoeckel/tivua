@@ -120,6 +120,10 @@ class Perms:
             return Perms.NONE
         return Perms.USER_ROLES[role]
 
+    @staticmethod
+    def role_has_permission(role, permission):
+        return Perms.lookup_role_permissions(role) & permission
+
 
 class API:
     ############################################################################
