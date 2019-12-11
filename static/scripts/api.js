@@ -78,7 +78,6 @@ this.tivua.api = (function (window) {
 		function handle(data, resolve, reject) {
 			if (data && ("status" in data) && (data["status"] === "error")) {
 				if ((data["what"] === "%server_error_unauthorized")) {
-					utils.set_cookie("sid", "");
 					if (tivua.api.on_access_denied) {
 						tivua.api.on_access_denied();
 					}
@@ -314,86 +313,39 @@ this.tivua.api = (function (window) {
 		}));
 	}
 
-	function post_user(settings) {
+	function update_user(settings) {
 		return _err(get_sid().then(sid => {
-			return xhr.post_user(sid, settings);
+			return xhr.post_user(sid, settings).then((data) => {
+				// Update the session data cache if the current user was updated
+				if (sid in cache.session_data) {
+					const user = data.user;
+					const session = cache.session_data[sid];
+					if (cache.session_data[sid].uid === user.uid) {
+						for (let key in user) {
+							if (key in session) {
+								session[key] = user[key];
+								console.log("Updated session ", key, user[key]);
+							}
+						}
+					}
+				}
+
+				// Update data in the users list
+				if (sid in cache.users) {
+					const user = data.user;
+					const user_list = cache.users[sid];
+					if (user.uid in user_list) {
+						const user_list_user = user_list[user.uid];
+						for (let key in user) {
+							if (key in user_list_user) {
+								user_list_user[key] = user[key];
+								console.log("Updated user list user ", key, user[key]);
+							}
+						}
+					}
+				}
+			});
 		}));
-	}
-
-	function set_password(username, password, new_password) {
-		// Backup the OAC handler, an "access denied" error here should
-		// not result in the login dialogue to popup
-		const oac_handler = tivua.api.on_access_denied;
-		tivua.api.on_access_denied = null;
-
-		// Use the same salt for checking the old password and salting the new password
-		let salt;
-
-		return _err(get_sid().then(() => {
-			return xhr.get_login_challenge();
-		}).then(data => {
-			return new Promise((resolve, reject) => {
-				// Make sure the given salt and challenge have the right format
-				const re = /^[0-9a-f]{64}$/;
-				let valid = ("salt" in data) && ("challenge" in data);
-				valid = valid && /^[0-9a-f]{64}$/.test(data["salt"]);
-				valid = valid && re.test(data["salt"]);
-				valid = valid && re.test(data["challenge"]);
-				if (!valid) {
-					reject({
-						"status": "error",
-						"what": "%invalid_server_response"
-					});
-					return;
-				}
-
-				// Convert the given salt and challenge to a bit sequence
-				salt = sjcl.codec.hex.toBits(data["salt"]);
-				const challenge = sjcl.codec.hex.toBits(data["challenge"]);
-
-				// Hash the password with the salt and the challenge
-				const pbkdf2_count = 10000;
-				let response;
-				response = sjcl.misc.pbkdf2(password, salt, pbkdf2_count);
-				response = sjcl.misc.pbkdf2(response, challenge, pbkdf2_count);
-
-				// Post the login attempt with the hashed password
-				// TODO: keep the session even if the password fails
-				return _err(xhr.post_login(
-					username.toLowerCase(),
-					sjcl.codec.hex.fromBits(challenge),
-					sjcl.codec.hex.fromBits(response)
-				)).then(resolve).catch(reject);
-			});
-		}).then(data => {
-			return new Promise((resolve, reject) => {
-				// The _err call above already handled errors, so if we get
-				// here, the status should be "success".
-				if (data["status"] === "success") {
-
-					const pbkdf2_count = 10000;
-					let salted_new_password = sjcl.misc.pbkdf2(new_password, salt, pbkdf2_count);
-
-					let settings = {};
-					const sid = data["session"]["sid"];
-					settings['password'] = sjcl.codec.hex.fromBits(salted_new_password);
-
-					resolve(data);
-
-					// Update the password
-					return xhr.post_user(sid, settings);
-
-				} else {
-					reject({
-						"status": "error",
-						"what": "%invalid_server_response"
-					});
-				}
-			});
-		})).finally(() => {
-			// Restore the OAC handler
-			tivua.api.on_access_denied = oac_handler;
-		});
 	}
 
 	/**************************************************************************
@@ -481,9 +433,8 @@ this.tivua.api = (function (window) {
 				// Make sure the given salt and challenge have the right format
 				const re = /^[0-9a-f]{64}$/;
 				let valid = ("salt" in data) && ("challenge" in data);
-				valid = valid && /^[0-9a-f]{64}$/.test(data["salt"]);
-				valid = valid && re.test(data["salt"]);
-				valid = valid && re.test(data["challenge"]);
+				valid = valid && re.test(data.salt);
+				valid = valid && re.test(data.challenge);
 				if (!valid) {
 					reject({
 						"status": "error",
@@ -497,10 +448,9 @@ this.tivua.api = (function (window) {
 				const challenge = sjcl.codec.hex.toBits(data["challenge"]);
 
 				// Hash the password with the salt and the challenge
-				const pbkdf2_count = 10000;
 				let response;
-				response = sjcl.misc.pbkdf2(password, salt, pbkdf2_count);
-				response = sjcl.misc.pbkdf2(response, challenge, pbkdf2_count);
+				response = sjcl.misc.pbkdf2(password, salt, PBKDF2_COUNT);
+				response = sjcl.misc.pbkdf2(response, challenge, PBKDF2_COUNT);
 
 				// Post the login attempt with the hashed password
 				return _err(xhr.post_login(
@@ -508,6 +458,37 @@ this.tivua.api = (function (window) {
 					sjcl.codec.hex.fromBits(challenge),
 					sjcl.codec.hex.fromBits(response)
 				)).then(resolve).catch(reject);
+			});
+		});
+	}
+
+	/**
+	 * Checks whether the given password is correct by opening and closing a
+	 * temporary session.
+	 */
+	function check_password(username, password) {
+		// Backup the OAC handler, an "access denied" error here should
+		// not result in the login dialogue to popup
+		const oac_handler = tivua.api.on_access_denied;
+		tivua.api.on_access_denied = null;
+
+		// Try to login using the given username/password combination. On
+		// success, this will create a new session which we close immediately.
+		return new Promise((resolve, reject) => {
+			_post_login_internal(username, password).then(data => {
+				return xhr.post_logout(data.session.sid).then(() => {
+					resolve(true);
+				});
+			}).catch(err => {
+				// If the error is "unauthorized", we know that the given
+				// password is not correct
+				if (err && err.what === "%server_error_unauthorized") {
+					resolve(false);
+				}
+				reject(err);
+			}).finally(() => {
+				// Restore the OAC handler
+				tivua.api.on_access_denied = oac_handler;
 			});
 		});
 	}
@@ -530,8 +511,9 @@ this.tivua.api = (function (window) {
 		return _err(post_logout().then(() => {
 			return _post_login_internal(username, password).then(data => {
 				return new Promise((resolve, reject) => {
-					// The _err call above already handled errors, so if we get
-					// here, the status should be "success".
+					// The _err call in _post_login_internal already handled
+					// errors, so if we get here, the status should be
+					// "success".
 					if (data["status"] === "success") {
 						const sid = data["session"]["sid"];
 						cache["session_data"][sid] = data["session"];
@@ -566,11 +548,11 @@ this.tivua.api = (function (window) {
 		"get_post_list": get_post_list,
 		"get_settings": get_settings,
 		"post_settings": post_settings,
-		"post_user": post_user,
-		"set_password": set_password,
 		"post_logout": post_logout,
 		"post_login": post_login,
+		"check_password": check_password,
 		"encrypt_password": encrypt_password,
+		"update_user": update_user,
 		"on_access_denied": null,
 	};
 })(this);
