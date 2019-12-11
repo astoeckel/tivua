@@ -1125,21 +1125,40 @@ class API:
             # Return the generated password for display
             return password
 
-    def update_user(self, uid, settings, user_name=None):
+    def update_user(self, properties, uid=None, user_name=None):
         """
-        Updates attributes of a user
+        Updates attributes of a user by merging the given properties into an
+        existing user structure.
         """
 
         with Transaction(self.db):
+            # Try to fetch the user, either by user name or uid
             user = self.db.get_user(uid=uid, user_name=user_name)
-
             if user is None:
                 raise NotFoundError()
 
-            for key, value in settings.items():
-                setattr(user, key, value)
+            # Make sure the settings we're trying to update actually exist, and,
+            # in case they do, update the corresponding value
+            for key, value in properties.items():
+                # If we're updating the password to a new password and the new
+                # password is actually different from the current password,
+                # then reset the "reset_password" flag
+                if ((key == "password")
+                        and (value.lower() != user.password.lower())):
+                    user.reset_password = False
 
-            self.db.update_user(user)
+                # Update all other properties
+                if hasattr(user, key):
+                    setattr(user, key, value)
+                else:
+                    raise ValidationError()
+
+            # Coerce the updated user to make sure all new settings adhere to
+            # the rules
+            user_new = API.coerce_user(asdict(user))
+            self.db.update_user(user_new)
+
+            return asdict(user_new)
 
     ############################################################################
     # Export and import                                                        #
