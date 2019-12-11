@@ -16,16 +16,17 @@
 """
 @file api.py
 
-Contains the bussiness logic of Tivua -- receives raw, unvalidated calls from
-the HTTP server or the CLI applications and translates them into corresponding
-database calls.
+Contains the bussiness logic of Tivua -- receives calls from the HTTP server or
+the CLI applications and translates them into corresponding database calls.
+The API layer validates calls for correctness, but does not check for
+permissions, this has to be done by the caller.
 
 @author Andreas Stöckel
 """
 
 ################################################################################
 # LOGGING                                                                      #
-###############################################################################
+################################################################################
 
 import logging
 logger = logging.getLogger(__name__)
@@ -202,7 +203,7 @@ class API:
 
         # Print a log message
         if admin_user:
-            admin_user.password=password_hash
+            admin_user.password = password_hash
             admin_user.reset_password = True
             logger.warning(
                 "Reset password for user account \"%s\"; new password is \"%s\"",
@@ -214,13 +215,12 @@ class API:
 
         # Create a new user if no user exists
         if not admin_user:
-            admin_user = User(
-                name='admin',
-                display_name='Admin',
-                role='admin',
-                auth_method='password',
-                password=password_hash,
-                reset_password=True)
+            admin_user = User(name='admin',
+                              display_name='Admin',
+                              role='admin',
+                              auth_method='password',
+                              password=password_hash,
+                              reset_password=True)
 
         # Update/create the user
         if admin_user.uid is None:
@@ -279,9 +279,9 @@ class API:
                 "login_methods": {
                     "username_password":
                     c["login_method_username_password"] == "1",
-                    "cas":
-                    c["login_method_cas"] == "1",
-                }
+                    "cas": c["login_method_cas"] == "1",
+                },
+                "salt": c["salt"],
             }
 
     ############################################################################
@@ -924,8 +924,8 @@ class API:
         if u.display_name:
             u.display_name = u.display_name.strip()
 
-            # Make sure the display name is not longer than the given display
-            # name
+            # Make sure the display name is not longer than the maximum display
+            # name length
             if len(u.display_name) > API.MAX_DISPLAY_NAME_LEN:
                 raise ValidationError("%server_error_invalid_display_name")
 
