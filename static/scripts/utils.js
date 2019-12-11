@@ -38,29 +38,6 @@ this.tivua.utils = (function (window) {
 	}
 
 	/**
-	 * Normalises the given string into an ASCII search string.
-	 */
-	function to_normalised_ascii_string(str) {
-		// TODO: Use proper Unicode transliteration
-		const map = {
-			"ä": "a",
-			"ö": "o",
-			"ü": "u",
-			"ß": "s",
-			"é": "e",
-			"è": "e",
-			"ì": "i",
-			"í": "i",
-			"ú": "u",
-			"ù": "u"
-		};
-		return str.toLowerCase().replace(
-			/[^a-z0-9]/g,
-			function(x) { return map[x] || ''; }
-		);
-	}
-
-	/**
 	 * Deletes all child nodes of the given DOM element.
 	 */
 	function clear(elem) {
@@ -311,23 +288,6 @@ this.tivua.utils = (function (window) {
 		return () => execute_action(action);
 	}
 
-	function binary_search(A, x, pred) {
-		let lower = 0;
-		let upper = A.length - 1;
-		while (lower <= upper) {
-			const k = lower + ((upper - lower) >> 1);
-			const res = pred(x, A[k]);
-			if (res > 0) {
-				lower = k + 1;
-			} else if (res < 0) {
-				upper = k - 1;
-			} else {
-				return k;
-			}
-		}
-		return -1;
-	}
-
 	function remove_event_listeners(node) {
 		const clone = node.cloneNode(true);
 		node.parentNode.replaceChild(clone, node);
@@ -447,7 +407,6 @@ this.tivua.utils = (function (window) {
 		'replace_content': replace_content,
 		'get_cookie': get_cookie,
 		'set_cookie': set_cookie,
-		'to_normalised_ascii_string': to_normalised_ascii_string,
 		'format_date': format_date,
 		'format_local_date': format_local_date,
 		'local_time_as_utc_date': local_time_as_utc_date,
@@ -455,7 +414,6 @@ this.tivua.utils = (function (window) {
 		'get_now_as_utc_date': get_now_as_utc_date,
 		'execute_action': execute_action,
 		'exec': exec,
-		'binary_search': binary_search,
 		'remove_event_listeners': remove_event_listeners,
 		'highlight': highlight,
 	};
