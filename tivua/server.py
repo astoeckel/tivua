@@ -395,13 +395,13 @@ def _api_get_login_challenge(api):
 def _api_post_login(api):
     def _handler(req, query, match, session, body):
         # Validate the request
-        if not (body and ('user_name' in body) and ('challenge' in body) and
+        if not (body and ('name' in body) and ('challenge' in body) and
                 ('response' in body)):
             raise ValidationError()
 
         # Try to login using a username password combination
         return api.login_method_username_password(
-            body['user_name'], body['challenge'], body['response'])
+            body['name'], body['challenge'], body['response'])
 
     return _internal_wrap_api_handler(
         _handler, field='session', perms=Perms.NONE)

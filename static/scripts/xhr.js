@@ -69,9 +69,9 @@ this.tivua.xhr = (function () {
 		return xhr_fetch_json('POST', 'api/session/logout', session);
 	}
 
-	function post_login(user_name, challenge, response) {
+	function post_login(username, challenge, response) {
 		return xhr_fetch_json('POST', 'api/session/login', null, {
-			"user_name": user_name,
+			"name": username,
 			"challenge": challenge,
 			"response": response
 		});
