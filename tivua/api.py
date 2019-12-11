@@ -13,6 +13,7 @@
 #
 #   You should have received a copy of the GNU Affero General Public License
 #   along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 """
 @file api.py
 
@@ -499,7 +500,7 @@ class API:
             {
                 "sid": <the session id>,
                 "uid": <the numerical user id>,
-                "user_name": <the canonical user name>,
+                "name": <the canonical user name>,
                 "display_name": <the user-defined display name>,
                 "role": <the user role string>,
                 "reset_password": <true if the user must reset the password>,
@@ -528,7 +529,7 @@ class API:
             return {
                 "sid": sid,
                 "uid": uid,
-                "user_name": user.name,
+                "name": user.name,
                 "display_name": user.display_name,
                 "role": user.role,
                 "reset_password": user.reset_password,
@@ -1269,4 +1270,3 @@ class API:
 
             # Rebuild the keywords table
             self._rebuild_keywords()
-
