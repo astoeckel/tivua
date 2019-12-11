@@ -473,6 +473,32 @@ def _api_post_users_update(api):
     return _internal_wrap_api_handler(_handler, field="user", api=api)
 
 
+def _api_post_users_delete(api):
+    def _handler(req, query, match, session, body):
+        # Validate the request
+        try:
+            uid = int(body["uid"])
+            force = bool(body["force"])
+        except:
+            raise ValidationError()
+
+        if uid <= 0:
+            raise ValidationError()
+
+        # Try to delete the user
+        if not api.delete_user(uid=uid, force=force):
+            return {
+                "force_required": True,
+                "confirmed": False,
+            }
+        else:
+            return {
+                "confirmed": True,
+            }
+
+    return _internal_wrap_api_handler(_handler, api=api, perms=Perms.CAN_ADMIN)
+
+
 def _api_get_posts_list(api):
     def _handler(req, query, match, session, body):
         # Validate the arguments

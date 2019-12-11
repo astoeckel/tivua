@@ -1045,7 +1045,7 @@ class API:
                 filter = FilterUID(user.uid) | FilterAuthor(user.uid)
                 user_posts = self.db.list_posts(history=history, filter=filter)
 
-                # Abort if we found any posts, and the "force" string is not set
+                # Abort if we found any posts, and "force" is not set
                 if len(user_posts) > 0 and not force:
                     return False
 

@@ -324,7 +324,6 @@ this.tivua.api = (function (window) {
 						for (let key in user) {
 							if (key in session) {
 								session[key] = user[key];
-								console.log("Updated session ", key, user[key]);
 							}
 						}
 					}
@@ -339,11 +338,25 @@ this.tivua.api = (function (window) {
 						for (let key in user) {
 							if (key in user_list_user) {
 								user_list_user[key] = user[key];
-								console.log("Updated user list user ", key, user[key]);
 							}
 						}
 					}
 				}
+
+				return data;
+			});
+		}));
+	}
+
+	function delete_user(uid, force) {
+		return _err(get_sid().then(sid => {
+			return xhr.delete_user(sid, uid, force).then((data) => {
+				if (data.confirmed) {
+					if (sid in cache.users && uid in cache.users[sid]) {
+						delete cache.users[sid][uid];
+					}
+				}
+				return data;
 			});
 		}));
 	}
@@ -564,6 +577,7 @@ this.tivua.api = (function (window) {
 		"check_password": check_password,
 		"encrypt_password": encrypt_password,
 		"update_user": update_user,
+		"delete_user": delete_user,
 		"on_access_denied": null,
 	};
 })(this);

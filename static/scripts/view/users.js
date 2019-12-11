@@ -42,97 +42,210 @@ this.tivua.view.user_manager = (function() {
 	const utils = tivua.utils;
 	const colors = tivua.colors;
 	const view = tivua.view;
+	const l10n = tivua.l10n;
 
-	function show_user_manager(api, root, events, users, session) {
-		const l10n = tivua.l10n;
+	/**
+	 * Copies the content of the span next to the clicked button into the
+	 * clipboard.
+	 */
+	function _copy_to_clipboard(event) {
+		// Fetch the span containing the text we want to copy as well as the
+		// button that was clicked.
+		const td = event.target.closest('td');
+		const span = td.querySelector('span');
+		const btn = event.target.closest('button');
 
-		function _copy_to_clipboard(event) {
-			/* Fetch the span containing the text we want to copy as well as the
-			   button that was clicked */
-			const td = event.target.closest('td');
-			const span = td.querySelector('span');
-			const btn = event.target.closest('button');
+		// Try to copy the span text to the clipboard, give some feedback
+		utils.copy_to_clipboard(span.innerText)
+			.then((ok) => {
+				for (let btn of document.querySelectorAll("button.clipboard")) {
+					btn.classList.toggle('success', false);
+					btn.classList.toggle('error', false);
+				}
+				btn.classList.toggle('success', ok);
+				btn.classList.toggle('error', !ok);
+			});
+	}
 
-			/* Try to copy the span text to the clipboard, give some feedback */
-			utils.copy_to_clipboard(span.innerText)
-				.then((ok) => {
-					for (let btn of document.querySelectorAll("button.clipboard")) {
-						btn.classList.toggle('success', false);
-						btn.classList.toggle('error', false);
-					}
-					btn.classList.toggle('success', ok);
-					btn.classList.toggle('error', !ok);
-				});
-		}
+	function _reset_password(event, api, root, users, session) {
+		// Fetch the tr this node belongs to
+		const tr = event.target.closest('tr');
+		const td = event.target.closest('td');
+		const uid = parseInt(tr.getAttribute('data-uid'));
+		const user = users[uid];
 
-		function _reset_password(event) {
-			/* Fetch the tr this node belongs to */
-			const tr = event.target.closest('tr');
-			const td = event.target.closest('td');
-			const uid = parseInt(tr.getAttribute('data-uid'));
-			const user = users[uid];
+		// Show a dialogue asking for confirmation
+		const title = l10n.translate("Confirm password reset");
+		const msg = l10n.translate("Are you sure you want to reset the password for user \"{name}\" ({id})?\n\nThis user will no longer be able to log into Tivua until you send them the newly generated password, which will be displayed once you confirm this message.\n\nNote: This action will not end a user's active sessions. Set their role to \"Inactive\" to prevent them from accessing Tivua.")
+			.replace("{name}", user.display_name)
+			.replace("{id}", user.name);
+		const dialogue = [null];
+		dialogue[0] = view.utils.show_dialogue(
+			root,
+			title,
+			msg, [{
+				"type": "button",
+				"icon": "confirm",
+				"caption": "Yes, reset password",
+				"callback": () => {
+					const div_overlay = view.utils.show_loading_overlay(root);
+					api.reset_password(uid).then((data) => {
+						// Display the user's newly generated password and
+						// show a 'copy to clipboard' button
+						const tmpl = utils.import_template('tmpl_user_manager_view_password_reset');
+						const lbl_password = tmpl.querySelector('span');
+						const btn_clipboard = tmpl.querySelector('button.clipboard');
+						const btn_email = tmpl.querySelector('button.email');
+						lbl_password.innerText = data.password;
+						btn_clipboard.addEventListener('click', _copy_to_clipboard);
+						btn_email.addEventListener('click', () => {
+							const url = window.location.toString().split("#")[0];
+							const subject = l10n.translate('New password for the Tivua instance at {url}')
+								.replace("{url}", url);
+							const body = l10n.translate('Hi {name},\n\nyour Tivua password has been reset. Find a new temporary password below. You will be prompted to set a new password the first time you log in; please do so as soon as possible.\n\nURL:      {url}\nLogin:    {user}\nPassword: {password}\n\nLet me know in case you have any questions!\n\nBest,\n{current_user}\n')
+								.replace("{name}", user.display_name.split(" ")[0])
+								.replace("{url}", url)
+								.replace("{user}", user.name)
+								.replace("{password}", data.password)
+								.replace("{current_user}", session.display_name.split(" ")[0]);
+							location.href = "mailto:" + '?&subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
+						});
 
-			const title = l10n.translate("Confirm password reset");
-			const msg = l10n.translate("Are you sure you want to reset the password for user \"{name}\" ({id})?\n\nThis user will no longer be able to log into Tivua until you send them the newly generated password, which will be displayed once you confirm this message.\n\nNote: This action will not end a user's active sessions. Set their role to \"Inactive\" to prevent them from accessing Tivua.")
+						// Show the buttons
+						utils.replace_content(td, tmpl);
+					}).finally(() => {
+						// Close the overlay
+						div_overlay.close();
+						dialogue[0].close();
+					}).catch((e) => {
+						view.show_error_dialogue(root, e);
+					});
+				},
+			}, {
+				"type": "button",
+				"icon": "cancel",
+				"role": "cancel",
+				"caption": "Cancel",
+				"callback": () => { dialogue[0].close(); },
+			}]);
+	}
+
+	/**
+	 * Deletes a user from Tivua.
+	 */
+	function _delete_user(event, api, root, users, session, force) {
+		// Default "force" to false
+		force = (force === undefined) ? false : !!force;
+
+		// Fetch the tr this node belongs to
+		const tr = event.target.closest('tr');
+		const uid = parseInt(tr.getAttribute('data-uid'));
+		const user = users[uid];
+
+		// Show a dialogue asking for confirmation
+		let title = "";
+		let msg = "";
+		if (force) {
+			title = l10n.translate("Confirm user deletion. Again.");
+			msg = l10n.translate("The user \"{name}\" ({id}) contributed content, which will be owned by the special \"[deleted]\" user after the deletion.\n\nAre you REALLY sure you want to delete this user?\n\nThis action cannot be undone. Consider marking the user as \"Inactive\" instead.")
 				.replace("{name}", user.display_name)
 				.replace("{id}", user.name);
-			const dialogue = [null];
-			dialogue[0] = view.utils.show_dialogue(
-				root,
-				title,
-				msg, [{
-					"type": "button",
-					"icon": "confirm",
-					"caption": "Yes, reset password",
-					"callback": () => {
-						const div_overlay = view.utils.show_loading_overlay(root);
-						api.reset_password(uid).then((data) => {
-							/* Display the user's newly generated password and
-							   show a 'copy to clipboard' button */
-							const tmpl = utils.import_template('tmpl_user_manager_view_password_reset');
-							const lbl_password = tmpl.querySelector('span');
-							const btn_clipboard = tmpl.querySelector('button.clipboard');
-							const btn_email = tmpl.querySelector('button.email');
-							lbl_password.innerText = data.password;
-							btn_clipboard.addEventListener('click', _copy_to_clipboard);
-							btn_email.addEventListener('click', () => {
-								const url = window.location.toString().split("#")[0];
-								const subject = l10n.translate('New password for the Tivua instance at {url}')
-									.replace("{url}", url);
-								const body = l10n.translate('Hi {name},\n\nyour Tivua password has been reset. Find a new temporary password below. You will be prompted to set a new password the first time you log in; please do so as soon as possible.\n\nURL:      {url}\nLogin:    {user}\nPassword: {password}\n\nLet me know in case you have any questions!\n\nBest,\n{current_user}\n')
-									.replace("{name}", user.display_name.split(" ")[0])
-									.replace("{url}", url)
-									.replace("{user}", user.name)
-									.replace("{password}", data.password)
-									.replace("{current_user}", session.display_name.split(" ")[0]);
-								location.href = "mailto:" + '?&subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
-							});
+		} else {
+			title = l10n.translate("Confirm user deletion");
+			msg = l10n.translate("Are you sure you want to delete the user \"{name}\" ({id})?\n\nThis action cannot be undone. Consider marking the user as \"Inactive\" instead.")
+				.replace("{name}", user.display_name)
+				.replace("{id}", user.name);
+		}
+		const dialogue = [null];
+		dialogue[0] = view.utils.show_dialogue(
+			root,
+			title,
+			msg, [
+			{
+				"type": "button",
+				"icon": "delete",
+				"caption": "Yes, delete user",
+				"callback": () => {
+					const div_overlay = view.utils.show_loading_overlay(root);
+					api.delete_user(uid, force).then((data) => {
+						// Deletion may require the "force" flag to be set. In
+						// this case just open this dialogue again with "force"
+						// set to true.
+						if (data.force_required) {
+							_delete_user(event, api, root, users, session, true);
+						} else if (data.confirmed) {
+							// The user has been deleted. Just rebuild the user
+							// manager.
+							show_user_manager(api, root, users, session);
+						}
+					}).finally(() => {
+						// Close the overlay
+						div_overlay.close();
+						dialogue[0].close();
+					}).catch((e) => {
+						view.utils.show_error_dialogue(root, e);
+					});
+				},
+			}, {
+				"type": "button",
+				"icon": "cancel",
+				"role": "cancel",
+				"caption": "Cancel",
+				"callback": () => { dialogue[0].close(); },
+			}]);
+	}
 
-							/* Show the buttons */
-							utils.replace_content(td, tmpl);
+	function _create_user_row(api, root, users, session, user) {
+		// Fetch the individual row elements
+		const tmpl = utils.import_template('tmpl_user_manager_view_row');
+		const tr = tmpl.querySelector('tr');
 
-							/* Close the overlay */
-							div_overlay.close();
-							dialogue[0].close();
-						});
-					},
-				}, {
-					"type": "button",
-					"icon": "cancel",
-					"role": "cancel",
-					"caption": "Cancel",
-					"callback": () => { dialogue[0].close(); },
-				}]);
+		// Mark this row as belonging to the current user
+		tr.setAttribute('data-uid', user.uid);
+
+		// Update the row data
+		const span_colorcircle = tr.querySelector('.colorcircle');
+		const lbl_name = tr.querySelector('[name=lbl_name]');
+		const lbl_display_name = tr.querySelector('[name=lbl_display_name]');
+		const sel_role = tr.querySelector('[name=sel_role] option');
+		const sel_auth_method = tr.querySelector('[name=sel_auth_method] option');
+		span_colorcircle.style.backgroundColor = colors.author_id_to_color(user.uid);
+		lbl_name.innerText = user.name;
+		lbl_display_name.innerText = user.display_name;
+		l10n.set_node_text(sel_role, "%lbl_users_role_" + user.role);
+		l10n.set_node_text(sel_auth_method, "%lbl_users_auth_method_" + user.auth_method);
+
+		// Hook up events
+		const btn_clipboard = tr.querySelector('button.clipboard');
+		const btn_reset_password = tr.querySelector('button.reset');
+		const btn_delete = tr.querySelector('button.delete');
+		btn_reset_password.addEventListener('click', (event) => {
+			_reset_password(event, api, root, users, session);
+		});
+		btn_clipboard.addEventListener('click', (event) => {
+			_copy_to_clipboard(event);
+		});
+		btn_delete.addEventListener('click', (event) => {
+			_delete_user(event, api, root, users, session);
+		});
+
+		// The current user should not be able to delete themselves
+		if (session.uid == user.uid) {
+			btn_delete.style.visibility = "hidden";
 		}
 
-		/* Instantiate the editor view DOM nodes */
+		return tmpl;
+	}
+
+	function show_user_manager(api, root, users, session) {
+		// Instantiate the editor view DOM nodes
 		const main = utils.import_template('tmpl_user_manager_view');
 		const tbody = main.querySelector('tbody');
 
-		/* Setup the back button */
+		// Setup the back button
 		tivua.view.utils.setup_back_button(main.getElementById("btn_back"));
 
-		/* Sort the users by role and then by name */
+		// Sort the users by role and then by name
 		let user_list = Object.values(users).sort((a, b) => {
 			if (a.role != b.role) {
 				return ROLE_SORT_ORDER[a.role] - ROLE_SORT_ORDER[b.role];
@@ -141,15 +254,15 @@ this.tivua.view.user_manager = (function() {
 			//return colors.author_id_to_hue(a.uid) - colors.author_id_to_hue(b.uid);
 		});
 
-		/* Insert an editable row for each user */
+		// Insert an editable row for each user
 		let current_role = null;
 		for (let user of user_list) {
-			/* Ignore the deleted user */
+			// Ignore the special deleted user
 			if (user.uid == 0) {
 				continue;
 			}
 
-			/* Insert headers for each role */
+			// Insert headers for each role
 			if (current_role !== user.role) {
 				current_role = user.role;
 				const tmpl = utils.import_template('tmpl_user_manager_view_sep');
@@ -158,35 +271,12 @@ this.tivua.view.user_manager = (function() {
 				tbody.appendChild(tmpl);
 			}
 
-			/* Fetch the individual row elements */
-			const tmpl = utils.import_template('tmpl_user_manager_view_row');
-			const tr = tmpl.querySelector('tr');
-			const span_colorcircle = tr.querySelector('.colorcircle');
-			const lbl_name = tr.querySelector('[name=lbl_name]');
-			const lbl_display_name = tr.querySelector('[name=lbl_display_name]');
-			const sel_role = tr.querySelector('[name=sel_role] option');
-			const sel_auth_method = tr.querySelector('[name=sel_auth_method] option');
-			const btn_clipboard = tr.querySelector('button.clipboard');
-			const btn_reset_password = tr.querySelector('button.reset');
-
-			/* Update the row data */
-			span_colorcircle.style.backgroundColor = colors.author_id_to_color(user.uid);
-			lbl_name.innerText = user.name;
-			lbl_display_name.innerText = user.display_name;
-			l10n.set_node_text(sel_role, "%lbl_users_role_" + user.role);
-			l10n.set_node_text(sel_auth_method, "%lbl_users_auth_method_" + user.auth_method);
-
-			/* Hookup events */
-			btn_reset_password.addEventListener('click', _reset_password);
-			btn_clipboard.addEventListener('click', _copy_to_clipboard);
-
-			console.log(tr, user.name, user.uid);
-			tr.setAttribute('data-uid', user.uid);
-			tbody.appendChild(tmpl);
+			// Append the row to the table
+			tbody.appendChild(_create_user_row(api, root, users, session, user));
 		}
 
-		/* Delete the current content of the root element and replace it with
-		   the body element. */
+		// Delete the current content of the root element and replace it with
+		// the body element.
 		utils.replace_content(root, main);
 	}
 
@@ -198,9 +288,8 @@ this.tivua.view.user_manager = (function() {
 		return Promise.all(promises).then((data) => {
 			const users = data[0].users;
 			const session = data[1].session;
-			const events = {};
-			show_user_manager(api, root, events, users, session);
-			return events;
+			show_user_manager(api, root, users, session);
+			return {};
 		});
 	}
 
