@@ -271,7 +271,7 @@ this.tivua.utils = (function (window) {
 
 		if (("uri" in action) && action["uri"]) {
 			if (action["uri"].charAt(0) == '#') {
-				tivua.main.switch_to_fragment(action.uri);
+				tivua.main.route(action.uri);
 			} else if (action["uri"] == "/") {
 				const loc = window.location.toString();
 				const hi = loc.indexOf("#")

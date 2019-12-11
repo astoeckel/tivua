@@ -74,7 +74,7 @@ this.tivua.main = (function () {
 			if (filter) {
 				params.push("filter=" + encodeURIComponent(filter.trim()));
 			}
-			switch_to_fragment(params.join(","));
+			route(params.join(","));
 		},
 	};
 
@@ -110,8 +110,7 @@ this.tivua.main = (function () {
 				return (api, root) => view.cards.create(api, root, start, filter);
 			}
 			case "edit":
-				return (api, root) => view.editor.create(
-					api, root, params["id"]);
+				return (api, root) => view.editor.create(api, root, params.id);
 			case "add":
 				return view.editor.create;
 			case "users":
@@ -146,7 +145,7 @@ this.tivua.main = (function () {
 		// ignore additional commas.
 		const frags = frag.substr(1).split(",");
 		const view_name = frags[0];
-		const params = {}
+		const params = {};
 		for (let i = 1; i < frags.length; i++) {
 			const [key, value] = frags[i].split("=", 2);
 			if (key == 'filter') {
@@ -169,10 +168,10 @@ this.tivua.main = (function () {
 		add_to_history = (add_to_history === undefined) ? false : add_to_history;
 		let [view_name, params] = _decode_fragment(frag);
 		if (view_name) {
-			_switch_view(api, root, view_name, params, add_to_history).catch(e => {
-				tivua.view.utils.show_error_dialogue(root, e);
-				const msg = e.what ? e.what : e.toString();
-			});
+			_switch_view(api, session, root, view_name, params, add_to_history)
+				.catch((e) => {
+					view.utils.show_error_dialogue(root, e);
+				});
 		}
 	}
 
@@ -181,8 +180,7 @@ this.tivua.main = (function () {
 	 * Views implemented at the moment are the login view, the editor view and
 	 * the main view.
 	 */
-	function _switch_view(api, root, view_name, params, add_to_history) {
-		/* Set some parameters to default values */
+	function _switch_view(api, session, root, view_name, params, add_to_history) {
 		params = (params === undefined) ? {} : params;
 		add_to_history = (add_to_history === undefined) ? true : add_to_history;
 
@@ -201,7 +199,6 @@ this.tivua.main = (function () {
 			}));
 		}
 		if (add_to_history && !(view_name in HISTORY_BLACKLIST)) {
-			/*const [old_view_name, _] = _decode_fragment(window.location.hash);*/
 			const frag = _encode_fragment(view_name, params);
 			if (root.current_view/* && (old_view_name != view_name)*/) {
 				window.history.pushState(null, "", frag);
@@ -242,7 +239,7 @@ this.tivua.main = (function () {
 			const view = root.current_view;
 			for (let key in observer) {
 				if (key in view) {
-					view[key] = () => {return null;}
+					view[key] = () => { return null; }
 				}
 			}
 		}
@@ -256,41 +253,48 @@ this.tivua.main = (function () {
 		}
 	}
 
-	function init() {
-		// Register the "hashchange" envent
-		window.addEventListener("hashchange", function () {
-			_switch_to_fragment(api, root, window.location.hash);
-		});
+	/**
+	 * Main router orchestrating the switch between individual views.
+	 */
+	function route(fragment) {
+		// Either use the provided location hash or the one we're currently
+		// navigating to
+		fragment = fragment || window.location.hash;
 
-		// Determine whether we're currently logged in -- depending on the
-		// result of this API call we'll either display the login view or the
-		// main view.
 		api.get_session_data()
 			.then(session => {
-				if (window.location.hash) {
-					_switch_to_fragment(api, root, window.location.hash);
+				session = session.session; // Fetch the actual session data
+				if (fragment) {
+					_switch_to_fragment(api, session, root, fragment);
 				} else {
-					return _switch_view(api, root, "list");
+					return _switch_view(api, session, root, "list", {}, true);
 				}
 			}).catch(() => {
-				return _switch_view(api, root, "login");
+				return _switch_view(api, null, root, "login");
 			}).finally(() => {
-				// After we've shown the login screen for the first time, link
-				// "access denied" messages to the login view
+				// After we've shown the login screen for the first time,
+				// link "access denied" messages to the login view
 				tivua.api.on_access_denied = () => {
-					_switch_view(api, root, "login");
+					_switch_view(api, null, root, "login");
 				};
 			});
 	}
 
-	function switch_to_fragment(fragment) {
-		_switch_to_fragment(api, root, fragment, true);
+	/**
+	 * This is the Tivua main entry point.
+	 */
+	function main() {
+		// Connect the "hashchange" event to the router
+		window.addEventListener("hashchange", () => route());
+
+		// Execute the router for the first time
+		route();
 	}
 
-	return {
-		'init': init,
-		'switch_to_fragment': switch_to_fragment,
+return {
+		'main': main,
+		'route': route,
 	};
 })();
 
-window.addEventListener('load', tivua.main.init);
+window.addEventListener('load', tivua.main.main);
