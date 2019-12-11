@@ -31,7 +31,7 @@ this.tivua.main = (function () {
 
 	const HISTORY_BLACKLIST = ["logout"];
 
-	/* Map from view name onto page title */
+	// Map from view name onto page title
 	const PAGE_TITLES = {
 		"login": "%title_login_page",
 		"logout": "%title_logout_page",
@@ -42,8 +42,10 @@ this.tivua.main = (function () {
 		"preferences": "%title_preferences_page",
 	};
 
+	// The observer map describes actions that are being taken whenever a view
+	// issues a certain event
 	const observer = {
-		"on_login_cas":  () => {
+		"on_login_cas": () => {
 			return new Promise((resolve, reject) => {
 				window.setTimeout(() => {
 					resolve();
@@ -52,14 +54,14 @@ this.tivua.main = (function () {
 		},
 		"on_login_username_password": (username, password) => {
 			return api.post_login(username, password).then(() => {
-				return _switch_view(api, root, "list");
+				route("#list");
 			});
 		},
 		"on_edit": (id) => {
-			return _switch_view(api, root, "edit", {"id": id});
+			route(`#edit,id={id}`);
 		},
 		"on_add": () => {
-			return _switch_view(api, root, "add", null);
+			route("#add");
 		},
 		"on_back": () => {
 			window.history.back();
@@ -76,6 +78,10 @@ this.tivua.main = (function () {
 		},
 	};
 
+	/**
+	 * Returns a constructor that creates a view instance for a given view with
+	 * parameters.
+	 */
 	function _get_ctor(view_name, params) {
 		if (params === null) {
 			params = {};
@@ -156,7 +162,10 @@ this.tivua.main = (function () {
 		return [view_name, params];
 	}
 
-	function _switch_to_fragment(api, root, frag, add_to_history) {
+	/**
+	 * Parses the given fragment and navigates to the corresponding view.
+	 */
+	function _switch_to_fragment(api, session, root, frag, add_to_history) {
 		add_to_history = (add_to_history === undefined) ? false : add_to_history;
 		let [view_name, params] = _decode_fragment(frag);
 		if (view_name) {
@@ -177,8 +186,8 @@ this.tivua.main = (function () {
 		params = (params === undefined) ? {} : params;
 		add_to_history = (add_to_history === undefined) ? true : add_to_history;
 
-		/* If the view name is listed in the PAGE_TITLES dictionary, set it
-		   accordingly */
+		// If the view name is listed in the PAGE_TITLES dictionary, set it
+		// accordingly
 		if (view_name in PAGE_TITLES) {
 			document.title = tivua.l10n.translate(PAGE_TITLES[view_name]);
 		}
