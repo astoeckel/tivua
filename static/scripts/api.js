@@ -33,6 +33,8 @@ this.tivua = this.tivua || {};
 this.tivua.api = (function (window) {
 	"use strict";
 
+	const PBKDF2_COUNT = 10000;
+
 	// Module aliases
 	const utils = tivua.utils;
 	const xhr = tivua.xhr;
@@ -459,6 +461,20 @@ this.tivua.api = (function (window) {
 		});
 	}
 
+	/**
+	 * Fetches the password salt from the server and hashes the given password.
+	 */
+	function encrypt_password(password) {
+		return _err(get_configuration().then(data => {
+			const salt = sjcl.codec.hex.toBits(data.configuration.salt);
+			const hashed = sjcl.misc.pbkdf2(password, salt, PBKDF2_COUNT);
+			return {
+				"status": "success",
+				"password": sjcl.codec.hex.fromBits(hashed)
+			};
+		}));
+	}
+
 	function _post_login_internal(username, password) {
 		return xhr.get_login_challenge().then(data => {
 			return new Promise((resolve, reject) => {
@@ -554,6 +570,7 @@ this.tivua.api = (function (window) {
 		"set_password": set_password,
 		"post_logout": post_logout,
 		"post_login": post_login,
+		"encrypt_password": encrypt_password,
 		"on_access_denied": null,
 	};
 })(this);
