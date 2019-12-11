@@ -44,6 +44,7 @@ this.tivua.api = (function (window) {
 		cache["users"] = {};
 		cache["session_data"] = {};
 		cache["settings"] = {};
+		cache["configuration"] = {};
 	}
 	_reset_cache();
 
@@ -112,7 +113,10 @@ this.tivua.api = (function (window) {
 	 * configuration. This includes available login methods.
 	 */
 	function get_configuration() {
-		return _err(xhr.get_configuration());
+		return _err(new Promise((resolve) => resolve()).then(() => {
+			return _cached("<no_session>", "configuration",
+				xhr.get_configuration);
+		}));
 	}
 
 	/**
