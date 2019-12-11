@@ -13,19 +13,21 @@
 #
 #   You should have received a copy of the GNU Affero General Public License
 #   along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 """
 @file api.py
 
-Contains the bussiness logic of Tivua -- receives raw, unvalidated calls from
-the HTTP server or the CLI applications and translates them into corresponding
-database calls.
+Contains the bussiness logic of Tivua -- receives calls from the HTTP server or
+the CLI applications and translates them into corresponding database calls.
+The API layer validates calls for correctness, but does not check for
+permissions, this has to be done by the caller.
 
 @author Andreas Stöckel
 """
 
 ################################################################################
 # LOGGING                                                                      #
-###############################################################################
+################################################################################
 
 import logging
 logger = logging.getLogger(__name__)
@@ -119,6 +121,10 @@ class Perms:
             return Perms.NONE
         return Perms.USER_ROLES[role]
 
+    @staticmethod
+    def role_has_permission(role, permission):
+        return Perms.lookup_role_permissions(role) & permission
+
 
 class API:
     ############################################################################
@@ -202,7 +208,7 @@ class API:
 
         # Print a log message
         if admin_user:
-            admin_user.password=password_hash
+            admin_user.password = password_hash
             admin_user.reset_password = True
             logger.warning(
                 "Reset password for user account \"%s\"; new password is \"%s\"",
@@ -214,13 +220,12 @@ class API:
 
         # Create a new user if no user exists
         if not admin_user:
-            admin_user = User(
-                name='admin',
-                display_name='Admin',
-                role='admin',
-                auth_method='password',
-                password=password_hash,
-                reset_password=True)
+            admin_user = User(name='admin',
+                              display_name='Admin',
+                              role='admin',
+                              auth_method='password',
+                              password=password_hash,
+                              reset_password=True)
 
         # Update/create the user
         if admin_user.uid is None:
@@ -279,9 +284,9 @@ class API:
                 "login_methods": {
                     "username_password":
                     c["login_method_username_password"] == "1",
-                    "cas":
-                    c["login_method_cas"] == "1",
-                }
+                    "cas": c["login_method_cas"] == "1",
+                },
+                "salt": c["salt"],
             }
 
     ############################################################################
@@ -495,7 +500,7 @@ class API:
             {
                 "sid": <the session id>,
                 "uid": <the numerical user id>,
-                "user_name": <the canonical user name>,
+                "name": <the canonical user name>,
                 "display_name": <the user-defined display name>,
                 "role": <the user role string>,
                 "reset_password": <true if the user must reset the password>,
@@ -524,7 +529,7 @@ class API:
             return {
                 "sid": sid,
                 "uid": uid,
-                "user_name": user.name,
+                "name": user.name,
                 "display_name": user.display_name,
                 "role": user.role,
                 "reset_password": user.reset_password,
@@ -924,8 +929,8 @@ class API:
         if u.display_name:
             u.display_name = u.display_name.strip()
 
-            # Make sure the display name is not longer than the given display
-            # name
+            # Make sure the display name is not longer than the maximum display
+            # name length
             if len(u.display_name) > API.MAX_DISPLAY_NAME_LEN:
                 raise ValidationError("%server_error_invalid_display_name")
 
@@ -1121,6 +1126,41 @@ class API:
             # Return the generated password for display
             return password
 
+    def update_user(self, properties, uid=None, user_name=None):
+        """
+        Updates attributes of a user by merging the given properties into an
+        existing user structure.
+        """
+
+        with Transaction(self.db):
+            # Try to fetch the user, either by user name or uid
+            user = self.db.get_user(uid=uid, user_name=user_name)
+            if user is None:
+                raise NotFoundError()
+
+            # Make sure the settings we're trying to update actually exist, and,
+            # in case they do, update the corresponding value
+            for key, value in properties.items():
+                # If we're updating the password to a new password and the new
+                # password is actually different from the current password,
+                # then reset the "reset_password" flag
+                if ((key == "password")
+                        and (value.lower() != user.password.lower())):
+                    user.reset_password = False
+
+                # Update all other properties
+                if hasattr(user, key):
+                    setattr(user, key, value)
+                else:
+                    raise ValidationError()
+
+            # Coerce the updated user to make sure all new settings adhere to
+            # the rules
+            user_new = API.coerce_user(asdict(user))
+            self.db.update_user(user_new)
+
+            return asdict(user_new)
+
     ############################################################################
     # Export and import                                                        #
     ############################################################################
@@ -1230,4 +1270,3 @@ class API:
 
             # Rebuild the keywords table
             self._rebuild_keywords()
-

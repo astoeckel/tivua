@@ -107,9 +107,11 @@ button, input[type="submit"] {
 	--andreas-color: #3465a4;
 	--user-manager-color: #2e3436;
 
-	--possibly-unused: #a40000;
-	--possibly-unused-2: #4e9a06;
-	--possibly-unused-3: #ccc;
+	--error-color: #a40000;
+
+	--password-weak-color: #a40000;
+	--password-good-color: #c4a000;
+	--password-strong-color: #4e9a06;
 
 
 	--color: yellow; /*#eee*/
@@ -480,7 +482,7 @@ div.searchbox {
 }
 
 div.searchbox.error {
-	border: 2px dashed var(--possibly-unused) !important;
+	border: 2px dashed var(--error-color) !important;
 }
 
 div.searchbox:hover {
@@ -522,10 +524,10 @@ div.searchbox div.annotations span.leaf {
 
 div.searchbox div.annotations span.error {
 	font-style: normal;
-	color: var(--possibly-unused);
+	color: var(--error-color);
 	text-decoration: underline;
 	text-decoration-style: wavy;
-	text-decoration-color: var(--possibly-unused);
+	text-decoration-color: var(--error-color);
 }
 
 div.searchbox div.annotations span.binary_op,
@@ -756,7 +758,7 @@ main.login form input[type="password"] {
 select.error,
 input.error,
 div.tagger.error {
-	border: 2px dashed var(--possibly-unused) !important;
+	border: 2px dashed var(--error-color) !important;
 }
 
 label {
@@ -764,7 +766,7 @@ label {
 }
 
 span.error {
-	color: var(--possibly-unused);
+	color: var(--error-color);
 	font-weight: normal;
 	font-style: italic;
 }
@@ -1260,7 +1262,7 @@ main.preferences {
 
 main.preferences emph {
 	font-weight: bold;
-	background-color: var(--temp-password-highlight-color);
+	background-color: var(--highlight-color);
 }
 
 main.preferences section {
@@ -1353,15 +1355,15 @@ main.preferences span.strength {
 }
 
 span.strength.weak {
-	color: var(--possibly-unused);
+	color: var(--password-weak-color);
 }
 
 span.strength.good {
-	color: var(--temp-password-highlight-color);
+	color: var(--password-good-color);
 }
 
 span.strength.strong {
-	color: var(--possibly-unused-2);
+	color: var(--password-strong-color);
 	font-weight: bold;
 }
 
@@ -1379,7 +1381,7 @@ div.dialogue {
 	padding: 0rem 3rem;
 	max-width: 40rem;
 	text-align: left;
-	box-shadow: 0 0 20px var(--possibly-unused-3);
+	box-shadow: 0 0 20px var(--shadow-color);
 	line-height: 1.5em;
 }
 
@@ -1467,27 +1469,27 @@ progress::-webkit-progress-value {
 }
 
 progress.strength.weak::-moz-progress-bar {
-	background: var(--possibly-unused);
+	background: var(--password-weak-color);
 }
 
 progress.strength.weak::-webkit-progress-value {
-	background: var(--possibly-unused);
+	background: var(--password-weak-color);
 }
 
 progress.strength.good::-moz-progress-bar {
-	background: var(--temp-password-highlight-color);
+	background: var(--password-good-color);
 }
 
 progress.strength.good::-webkit-progress-value {
-	background: var(--temp-password-highlight-color);
+	background: var(--password-good-color);
 }
 
 progress.strength.strong::-moz-progress-bar {
-	background: var(--possibly-unused-2);
+	background: var(--password-strong-color);
 }
 
 progress.strength.strong::-webkit-progress-value {
-	background: var(--possibly-unused-2);
+	background: var(--password-strong-color);
 }
 
 

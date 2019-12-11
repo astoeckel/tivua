@@ -456,6 +456,7 @@ this.tivua.xhr = (function (window) {
 		"get_login_challenge": get_login_challenge,
 		"get_settings": get_settings,
 		"post_settings": post_settings,
+		"post_user": post_user,
 		"post_logout": post_logout,
 		"post_login": post_login,
 	});

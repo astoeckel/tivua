@@ -33,6 +33,8 @@ this.tivua = this.tivua || {};
 this.tivua.api = (function (window) {
 	"use strict";
 
+	const PBKDF2_COUNT = 10000;
+
 	// Module aliases
 	const utils = tivua.utils;
 	const xhr = tivua.xhr;
@@ -44,6 +46,7 @@ this.tivua.api = (function (window) {
 		cache["users"] = {};
 		cache["session_data"] = {};
 		cache["settings"] = {};
+		cache["configuration"] = {};
 	}
 	_reset_cache();
 
@@ -75,7 +78,6 @@ this.tivua.api = (function (window) {
 		function handle(data, resolve, reject) {
 			if (data && ("status" in data) && (data["status"] === "error")) {
 				if ((data["what"] === "%server_error_unauthorized")) {
-					utils.set_cookie("sid", "");
 					if (tivua.api.on_access_denied) {
 						tivua.api.on_access_denied();
 					}
@@ -112,7 +114,10 @@ this.tivua.api = (function (window) {
 	 * configuration. This includes available login methods.
 	 */
 	function get_configuration() {
-		return _err(xhr.get_configuration());
+		return _err(new Promise((resolve) => resolve()).then(() => {
+			return _cached("<no_session>", "configuration",
+				xhr.get_configuration);
+		}));
 	}
 
 	/**
@@ -308,6 +313,41 @@ this.tivua.api = (function (window) {
 		}));
 	}
 
+	function update_user(settings) {
+		return _err(get_sid().then(sid => {
+			return xhr.post_user(sid, settings).then((data) => {
+				// Update the session data cache if the current user was updated
+				if (sid in cache.session_data) {
+					const user = data.user;
+					const session = cache.session_data[sid];
+					if (cache.session_data[sid].uid === user.uid) {
+						for (let key in user) {
+							if (key in session) {
+								session[key] = user[key];
+								console.log("Updated session ", key, user[key]);
+							}
+						}
+					}
+				}
+
+				// Update data in the users list
+				if (sid in cache.users) {
+					const user = data.user;
+					const user_list = cache.users[sid];
+					if (user.uid in user_list) {
+						const user_list_user = user_list[user.uid];
+						for (let key in user) {
+							if (key in user_list_user) {
+								user_list_user[key] = user[key];
+								console.log("Updated user list user ", key, user[key]);
+							}
+						}
+					}
+				}
+			});
+		}));
+	}
+
 	/**************************************************************************
 	 * SESSION MANAGEMENT                                                     *
 	 **************************************************************************/
@@ -374,6 +414,86 @@ this.tivua.api = (function (window) {
 	}
 
 	/**
+	 * Fetches the password salt from the server and hashes the given password.
+	 */
+	function encrypt_password(password) {
+		return _err(get_configuration().then(data => {
+			const salt = sjcl.codec.hex.toBits(data.configuration.salt);
+			const hashed = sjcl.misc.pbkdf2(password, salt, PBKDF2_COUNT);
+			return {
+				"status": "success",
+				"password": sjcl.codec.hex.fromBits(hashed)
+			};
+		}));
+	}
+
+	function _post_login_internal(username, password) {
+		return xhr.get_login_challenge().then(data => {
+			return new Promise((resolve, reject) => {
+				// Make sure the given salt and challenge have the right format
+				const re = /^[0-9a-f]{64}$/;
+				let valid = ("salt" in data) && ("challenge" in data);
+				valid = valid && re.test(data.salt);
+				valid = valid && re.test(data.challenge);
+				if (!valid) {
+					reject({
+						"status": "error",
+						"what": "%invalid_server_response"
+					});
+					return;
+				}
+
+				// Convert the given salt and challenge to a bit sequence
+				const salt = sjcl.codec.hex.toBits(data["salt"]);
+				const challenge = sjcl.codec.hex.toBits(data["challenge"]);
+
+				// Hash the password with the salt and the challenge
+				let response;
+				response = sjcl.misc.pbkdf2(password, salt, PBKDF2_COUNT);
+				response = sjcl.misc.pbkdf2(response, challenge, PBKDF2_COUNT);
+
+				// Post the login attempt with the hashed password
+				return _err(xhr.post_login(
+					username.toLowerCase(),
+					sjcl.codec.hex.fromBits(challenge),
+					sjcl.codec.hex.fromBits(response)
+				)).then(resolve).catch(reject);
+			});
+		});
+	}
+
+	/**
+	 * Checks whether the given password is correct by opening and closing a
+	 * temporary session.
+	 */
+	function check_password(username, password) {
+		// Backup the OAC handler, an "access denied" error here should
+		// not result in the login dialogue to popup
+		const oac_handler = tivua.api.on_access_denied;
+		tivua.api.on_access_denied = null;
+
+		// Try to login using the given username/password combination. On
+		// success, this will create a new session which we close immediately.
+		return new Promise((resolve, reject) => {
+			_post_login_internal(username, password).then(data => {
+				return xhr.post_logout(data.session.sid).then(() => {
+					resolve(true);
+				});
+			}).catch(err => {
+				// If the error is "unauthorized", we know that the given
+				// password is not correct
+				if (err && err.what === "%server_error_unauthorized") {
+					resolve(false);
+				}
+				reject(err);
+			}).finally(() => {
+				// Restore the OAC handler
+				tivua.api.on_access_denied = oac_handler;
+			});
+		});
+	}
+
+	/**
 	 * Attempts a login. First logs the current user out, then retrieves a login
 	 * challenge, computes the password hash and sends it to the server for
 	 * verification.
@@ -389,56 +509,24 @@ this.tivua.api = (function (window) {
 		tivua.api.on_access_denied = null;
 
 		return _err(post_logout().then(() => {
-			return xhr.get_login_challenge();
-		}).then(data => {
-			return new Promise((resolve, reject) => {
-				// Make sure the given salt and challenge have the right format
-				const re = /^[0-9a-f]{64}$/;
-				let valid = ("salt" in data) && ("challenge" in data);
-				valid = valid && /^[0-9a-f]{64}$/.test(data["salt"]);
-				valid = valid && re.test(data["salt"]);
-				valid = valid && re.test(data["challenge"]);
-				if (!valid) {
-					reject({
-						"status": "error",
-						"what": "%invalid_server_response"
-					});
-					return;
-				}
-
-				// Convert the given salt and challenge to a bit sequence
-				const salt = sjcl.codec.hex.toBits(data["salt"]);
-				const challenge = sjcl.codec.hex.toBits(data["challenge"]);
-
-				// Hash the password with the salt and the challenge
-				const pbkdf2_count = 10000;
-				let response;
-				response = sjcl.misc.pbkdf2(password, salt, pbkdf2_count);
-				response = sjcl.misc.pbkdf2(response, challenge, pbkdf2_count);
-
-				// Post the login attempt with the hashed password
-				return _err(xhr.post_login(
-					username.toLowerCase(),
-					sjcl.codec.hex.fromBits(challenge),
-					sjcl.codec.hex.fromBits(response)
-				)).then(resolve).catch(reject);
-			});
-		}).then(data => {
-			return new Promise((resolve, reject) => {
-				// The _err call above already handled errors, so if we get
-				// here, the status should be "success".
-				if (data["status"] === "success") {
-					const sid = data["session"]["sid"];
-					cache["session_data"][sid] = data["session"];
-					utils.set_cookie("sid", data["session"]["sid"],
-					                 session_timeout_days);
-					resolve(data);
-				} else {
-					reject({
-						"status": "error",
-						"what": "%invalid_server_response"
-					});
-				}
+			return _post_login_internal(username, password).then(data => {
+				return new Promise((resolve, reject) => {
+					// The _err call in _post_login_internal already handled
+					// errors, so if we get here, the status should be
+					// "success".
+					if (data["status"] === "success") {
+						const sid = data["session"]["sid"];
+						cache["session_data"][sid] = data["session"];
+						utils.set_cookie("sid", data["session"]["sid"],
+										 session_timeout_days);
+						resolve(data);
+					} else {
+						reject({
+							"status": "error",
+							"what": "%invalid_server_response"
+						});
+					}
+				});
 			});
 		})).finally(() => {
 			// Restore the OAC handler
@@ -462,6 +550,9 @@ this.tivua.api = (function (window) {
 		"post_settings": post_settings,
 		"post_logout": post_logout,
 		"post_login": post_login,
+		"check_password": check_password,
+		"encrypt_password": encrypt_password,
+		"update_user": update_user,
 		"on_access_denied": null,
 	};
 })(this);
