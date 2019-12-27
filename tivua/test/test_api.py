@@ -115,7 +115,7 @@ def test_delete_user():
     with API(Database()) as api:
         # Create a user
         _, user = api.create_user("astoecke")
-        assert user.uid == 2 # First user created after the "admin" user
+        assert user["uid"] == 2 # First user created after the "admin" user
 
         # List all users
         users = api.get_user_list()
@@ -123,7 +123,7 @@ def test_delete_user():
 
         # Create a few new posts for the user
         post = api.create_post({
-            "cuid": user.uid,
+            "cuid": user["uid"],
             "content": "Foo",
             "date": 12354678,
         })
@@ -133,7 +133,7 @@ def test_delete_user():
         assert post["author"] == 2
 
         post = api.create_post({
-            "cuid": user.uid,
+            "cuid": user["uid"],
             "muid": 1,
             "author": 1,
             "content": "Foo",
@@ -147,7 +147,7 @@ def test_delete_user():
         post = api.create_post({
             "cuid": 1,
             "muid": 1,
-            "author": user.uid,
+            "author": user["uid"],
             "content": "Foo",
             "date": 12354678,
         })
@@ -160,7 +160,7 @@ def test_delete_user():
         assert(len(posts) == 3)
 
         # Delete the user
-        api.delete_user(user.uid, force=True)
+        api.delete_user(user["uid"], force=True)
         users = api.get_user_list()
         print(users)
         assert(len(users) == 2)
