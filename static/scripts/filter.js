@@ -475,6 +475,13 @@ this.tivua.filter = (function (global) {
 		}
 
 		/**
+		 * Removes duplicate nodes combined via "AND".
+		 */
+		remove_duplicates(s) {
+			return global.tivua.filter.remove_duplicates(this, s);
+		}
+
+		/**
 		 * Creates a new AST that is combined with the given node via an
 		 * implicit "and".
 		 */
@@ -807,6 +814,49 @@ this.tivua.filter = (function (global) {
 		   removes invalid zero-ary and unary AND and OR operators. */
 		ast = ast.simplify();
 		return _canonicalize_child(ast, ast.type);
+	}
+
+	/**************************************************************************
+	 * DUPLICATE ELIMINATION                                                  *
+	 **************************************************************************/
+
+	function remove_duplicates(ast, s) {
+		function _remove_duplicates(nd, filter_dict) {
+			// If this sub-tree is already in the dictionary, mark it as
+			// a NOP
+			const t = canonicalize(nd, s);
+			if (t in filter_dict) {
+				nd.type = NODE_NOP;
+				return nd;
+			}
+			filter_dict[t] = 0;
+
+			switch (nd.type) {
+				case NODE_AND:
+					// If this is an "AND" node, continue using the same filter
+					// dictionary
+					_remove_duplicates(nd.children[0], filter_dict);
+					_remove_duplicates(nd.children[1], filter_dict);
+					break;
+				case NODE_OR:
+					// Use a fresh filter dictionary on "OR" nodes
+					_remove_duplicates(nd.children[0], {});
+					_remove_duplicates(nd.children[1], {});
+					break;
+				case NODE_NOT:
+					// Use a fresh filter dictionary on "NOT" nodes
+					_remove_duplicates(nd.children[0], {});
+					break;
+				default:
+					break;
+			}
+			return nd;
+		}
+
+		/* Call the internval version of _remove_duplicates on the simplified
+		   ast, which turns the AST into a proper binary tree. */
+		ast = ast.simplify();
+		return _remove_duplicates(ast, {}).simplify();
 	}
 
 	/**************************************************************************
@@ -1331,6 +1381,7 @@ this.tivua.filter = (function (global) {
 		"parse": parse,
 		"validate": validate,
 		"canonicalize": canonicalize,
+		"remove_duplicates": remove_duplicates,
 		"autocomplete_context": autocomplete_context,
 		"serialize": serialize,
 	};

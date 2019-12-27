@@ -366,6 +366,22 @@ describe('Filter', () => {
 		});
 	});
 
+	describe('#remove_duplicates()', () => {
+		function remove_duplicates(s) {
+			const ast = filter.parse(s).remove_duplicates(s);
+			return ast.canonicalize(s);
+		}
+		it("same tag", () => {
+			assert.equal(remove_duplicates("#tag #tag"), "#tag");
+		});
+		it("OR expression", () => {
+			assert.equal(remove_duplicates("#tag || #tag"), "#tag || #tag");
+		});
+		it("duplicate OR expression", () => {
+			assert.equal(remove_duplicates("(#tag || #tag) (#tag || #tag)"), "(#tag || #tag)");
+		});
+	});
+
 	describe('#validate()', () => {
 		function validate(s) {
 			const ast = filter.parse(s).validate(s, user_list);
