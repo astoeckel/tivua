@@ -486,7 +486,7 @@ this.tivua.filter = (function (global) {
 		 * implicit "and".
 		 */
 		and(other) {
-			return ASTNode(NODE_AND, this, other);
+			return new ASTNode(NODE_AND, this, other);
 		}
 	}
 
