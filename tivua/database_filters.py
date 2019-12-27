@@ -76,15 +76,29 @@ class FilterSQL:
         self.table_subs = dict() if table_subs is None else table_subs
 
     @staticmethod
+    def _safe_sql_replace(s, src, tar):
+        expr = src.replace("$", "\\$") + "([^#])"
+        return re.sub(expr, tar + "\\1", s)
+
+
+    @staticmethod
     def combine(select_from, joins, table_subs, op, a=None, b=None, is_unary=False):
         """
         Applies either a unary operation or a binary operation to the one/two
         SQL queries.
         """
 
-        def _make_table_aliases(alias):
+        def _increment_alphabetically(s):
+            return s + a if s[-1] == "z" else s[:-1] + chr(ord(s[-1]) + 1)
+
+        def _make_table_aliases(alias, aliases):
             p = alias.split("#") if "#" in alias else [alias, ""]
-            return p[0] + "#" + p[1] + "a", p[0] + "#" + "b"
+            p_a = p[0] + "#" + p[1] + "a"
+            p_b = p[0] + "#" + p[1] + "b"
+            while (p_a in aliases) or (p_b in aliases):
+                p_a = _increment_alphabetically(p_a)
+                p_b = _increment_alphabetically(p_b)
+            return p_a, p_b
 
         def _unary_op(t):
             if is_unary:
@@ -136,12 +150,13 @@ class FilterSQL:
         sql_a = a.sql
         sql_b = b.sql
         tables = {}
-        for alias in set(a.tables.keys()) | set(b.tables.keys()):
+        aliases = set(a.tables.keys()) | set(b.tables.keys())
+        for alias in aliases:
             if (alias in a.tables) and (alias in b.tables):
-                alias_a, alias_b = _make_table_aliases(alias)
+                alias_a, alias_b = _make_table_aliases(alias, aliases)
 
-                sql_a = sql_a.replace(alias, alias_a)
-                sql_b = sql_b.replace(alias, alias_b)
+                sql_a = FilterSQL._safe_sql_replace(sql_a, alias, alias_a)
+                sql_b = FilterSQL._safe_sql_replace(sql_b, alias, alias_b)
 
                 tables[alias_a] = a.tables[alias]
                 tables[alias_b] = b.tables[alias]
@@ -248,8 +263,7 @@ class FilterSQL:
         tables, table_subs = _generate_table_aliases(tables)
         sql_suffix = self.sql
         for src, tar in table_subs.items():
-            expr = src.replace("$", "\\$") + "([^#])"
-            sql_suffix = re.sub(expr, tar + "\\1", sql_suffix)
+            sql_suffix = FilterSQL._safe_sql_replace(sql_suffix, src, tar)
 
         # Create the rest of the SQL query
         select_from_alias = table_subs["$0"]

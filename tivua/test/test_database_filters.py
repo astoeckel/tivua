@@ -115,6 +115,11 @@ def test_logical_and_filter():
     assert sql == "SELECT p.pid FROM posts AS p WHERE FALSE"
     assert params == tuple()
 
+def test_logical_and_filter_four_tags():
+    sql, params = compile_filter(FilterKeyword("test1") & FilterKeyword("test2") & FilterKeyword("test3") & FilterKeyword("test4"))
+    assert sql == "SELECT p.pid FROM posts AS p JOIN keywords AS k1 ON (k1.pid = p.pid) JOIN keywords AS k2 ON (k2.pid = p.pid) JOIN keywords AS k3 ON (k3.pid = p.pid) JOIN keywords AS k4 ON (k4.pid = p.pid) WHERE ((((k1.keyword = ?) AND (k2.keyword = ?)) AND (k3.keyword = ?)) AND (k4.keyword = ?)) GROUP BY p.pid"
+    assert params == ("test1", "test2", "test3", "test4")
+
 def test_logical_not_filter():
     sql, params = compile_filter(~FilterAuthor(4))
     assert sql == "SELECT p.pid FROM posts AS p WHERE (NOT (p.author = ?))"
