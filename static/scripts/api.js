@@ -103,7 +103,7 @@ this.tivua.api = (function (window) {
 			res[key] = cache[key][sid];
 			return res;
 		}
-		return callback().then((data) => {
+		return _err(callback()).then((data) => {
 			cache[key][sid] = data[key];
 			return data;
 		});
@@ -248,8 +248,8 @@ this.tivua.api = (function (window) {
 	 **************************************************************************/
 
 	function _update_settings_cache(sid, authorative, version, settings) {
-		/* If the response is authorative, reset the cache, otherwise use the
-		   existing cache object. */
+		// If the response is authorative, reset the cache, otherwise use the
+		// existing cache object.
 		let s_cache;
 		if (authorative && (version >= settings_version)) {
 			s_cache = cache.settings[sid] = {};
@@ -257,15 +257,15 @@ this.tivua.api = (function (window) {
 			s_cache = (sid in cache.settings) ? cache.settings[sid] : {};
 		}
 
-		/* Merge the default settings into the cache */
+		// Merge the default settings into the cache
 		for (let key in default_settings) {
 			if (!(key in s_cache)) {
 				s_cache[key] = default_settings[key];
 			}
 		}
 
-		/* Merge the server response into the cache, ignore out-of-date
-		   responses. */
+		// Merge the server response into the cache, ignore out-of-date
+		// responses.
 		let s_resp = settings.settings;
 		if (version >= settings_version) {
 			for (let key in s_resp) {
@@ -281,16 +281,16 @@ this.tivua.api = (function (window) {
 
 	function get_settings() {
 		return _err(get_sid().then(sid => {
-			/* If the settings are cached, use the settings stored in the
-			   cache. */
+			// If the settings are cached, use the settings stored in the
+			// cache.
 			if (sid in cache.settings) {
 				return {
 					"status": "success",
 					"settings": cache.settings[sid],
 				};
 			} else {
-				/* Otherwise, actually perform a request. */
-				return xhr.get_settings(sid).then(
+				// Otherwise, actually perform a request.
+				return _err(xhr.get_settings(sid)).then(
 					_update_settings_cache.bind(
 						this, sid, true, settings_version));
 			}
@@ -299,58 +299,70 @@ this.tivua.api = (function (window) {
 
 	function post_settings(settings) {
 		return _err(get_sid().then(sid => {
-			/* Merge the requested change into the settings cache. Mark this as
-			   an unauthorative update. */
+			// Merge the requested change into the settings cache. Mark this as
+			// an unauthorative update.
 			_update_settings_cache(sid, false, settings_version,
 					{"settings": settings});
 
-			/* Send the updated data to the server. The server will return the
-			   current settings. Merge those into the settings cache. */
+			// Send the updated data to the server. The server will return the
+			// current settings. Merge those into the settings cache.
 			settings_version += 1;
-			return xhr.post_settings(sid, settings).then(
+			return _err(xhr.post_settings(sid, settings)).then(
 					_update_settings_cache.bind(
 						this, sid, true, settings_version));
 		}));
 	}
 
+	function _update_user_cache(sid, data) {
+		// Update the session data cache if the current user was updated
+		if (sid in cache.session_data) {
+			const user = data.user;
+			const session = cache.session_data[sid];
+			if (cache.session_data[sid].uid === user.uid) {
+				for (let key in user) {
+					if (key in session) {
+						session[key] = user[key];
+					}
+				}
+			}
+		}
+
+		// Update data in the users list
+		if (sid in cache.users) {
+			const user = data.user;
+			const user_list = cache.users[sid];
+			if (user.uid in user_list) {
+				const user_list_user = user_list[user.uid];
+				for (let key in user) {
+					if (key in user_list_user) {
+						user_list_user[key] = user[key];
+					}
+				}
+			} else {
+				user_list[user.uid] = user;
+			}
+		}
+
+		return data;
+	}
+
 	function update_user(settings) {
 		return _err(get_sid().then(sid => {
-			return xhr.update_user(sid, settings).then((data) => {
-				// Update the session data cache if the current user was updated
-				if (sid in cache.session_data) {
-					const user = data.user;
-					const session = cache.session_data[sid];
-					if (cache.session_data[sid].uid === user.uid) {
-						for (let key in user) {
-							if (key in session) {
-								session[key] = user[key];
-							}
-						}
-					}
-				}
+			return _err(xhr.update_user(sid, settings)).then((data) =>
+				_update_user_cache(sid, data));
+		}));
+	}
 
-				// Update data in the users list
-				if (sid in cache.users) {
-					const user = data.user;
-					const user_list = cache.users[sid];
-					if (user.uid in user_list) {
-						const user_list_user = user_list[user.uid];
-						for (let key in user) {
-							if (key in user_list_user) {
-								user_list_user[key] = user[key];
-							}
-						}
-					}
-				}
-
-				return data;
-			});
+	function create_user(settings) {
+		return _err(get_sid().then(sid => {
+			return _err(xhr.create_user(sid, settings)).then((data) =>
+				_update_user_cache(sid, data));
 		}));
 	}
 
 	function delete_user(uid, force) {
 		return _err(get_sid().then(sid => {
-			return xhr.delete_user(sid, uid, force).then((data) => {
+			return _err(xhr.delete_user(sid, uid, force)).then((data) => {
 				if (data.confirmed) {
 					if (sid in cache.users && uid in cache.users[sid]) {
 						delete cache.users[sid][uid];
@@ -371,15 +383,6 @@ this.tivua.api = (function (window) {
 		}));
 	}
 
-	/**************************************************************************
-	 * USER SETTINGS                                                          *
-	 **************************************************************************/
-
-	function reset_password(uid) {
-		return _err(get_sid().then(sid => {
-			return xhr.reset_password(sid, uid | 0);
-		}));
-	}
 
 	/**************************************************************************
 	 * SESSION MANAGEMENT                                                     *
@@ -413,7 +416,7 @@ this.tivua.api = (function (window) {
 					"session": cache.session_data[sid],
 				};
 			} else {
-				return xhr.get_session_data(sid).then((session_data) => {
+				return _err(xhr.get_session_data(sid)).then((session_data) => {
 					cache.session_data[sid] = session_data.session;
 					return session_data;
 				});
@@ -587,6 +590,7 @@ this.tivua.api = (function (window) {
 		"check_password": check_password,
 		"encrypt_password": encrypt_password,
 		"update_user": update_user,
+		"create_user": create_user,
 		"delete_user": delete_user,
 		"on_access_denied": null,
 	};

@@ -433,6 +433,10 @@ this.tivua.utils = (function (window) {
 		});
 	}
 
+	function remove(node) {
+		node.parentNode.removeChild(node);
+	}
+
 	return {
 		'clear': clear,
 		'clean_whitespace': clean_whitespace,
@@ -447,6 +451,7 @@ this.tivua.utils = (function (window) {
 		'get_now_as_utc_date': get_now_as_utc_date,
 		'execute_action': execute_action,
 		'exec': exec,
+		'remove': remove,
 		'remove_event_listeners': remove_event_listeners,
 		'highlight': highlight,
 		'copy_to_clipboard': copy_to_clipboard,

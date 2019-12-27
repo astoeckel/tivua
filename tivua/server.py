@@ -326,9 +326,10 @@ def _internal_wrap_api_handler(cback,
                     obj[key] = value
             else:
                 obj[field] = res
-        except ValidationError:
+        except ValidationError as e:
             response_code = 400
-            obj = {"status": "error", "what": "%server_error_validation"}
+            what = e.args[0] if e.args else "%server_error_validation"
+            obj = {"status": "error", "what": what}
         except AuthentificationError:
             response_code = 401
             obj = {"status": "error", "what": "%server_error_unauthorized"}
@@ -445,7 +446,7 @@ def _api_post_users_update(api):
             # Allow a few more settings that can be updated
             whitelist |= set(("name", "auth_method", "role"))
 
-            # If a uid is given the admin is updating a user (potentially
+            # If a uid is given, the admin is updating a user (potentially
             # someone who is not himself). Set the UID to the given uid
             if "uid" in body:
                 # Make sure the UID is valid
@@ -476,6 +477,29 @@ def _api_post_users_update(api):
         return user
 
     return _internal_wrap_api_handler(_handler, field="user", api=api)
+
+
+def _api_post_users_create(api):
+    def _handler(req, query, match, session, body):
+        # Make sure that all required fields are set
+        if ((not "name" in body) or (not "display_name" in body)
+                or (not "role" in body) or (not "auth_method" in body)):
+            raise ValidationError()
+
+        # Use the corresponding API call to create the user. This will perform
+        # further validation
+        _, user = api.create_user(user_name=body["name"],
+                                  display_name=body["display_name"],
+                                  role=body["role"],
+                                  auth_method=body["auth_method"])
+
+        # Return the newly created user object
+        return user
+
+    return _internal_wrap_api_handler(_handler,
+                                      api=api,
+                                      field="user",
+                                      perms=Perms.CAN_ADMIN)
 
 
 def _api_post_users_delete(api):
@@ -832,6 +856,7 @@ def create_server_class(api, args):
         Route("POST", r"^/api/posts$", _api_post_posts_update(api)),
         Route("GET", r"^/api/users/list$", _api_get_users_list(api)),
         Route("POST", r"^/api/users$", _api_post_users_update(api)),
+        Route("POST", r"^/api/users/create$", _api_post_users_create(api)),
         Route("POST", r"^/api/users/delete$", _api_post_users_delete(api)),
         Route("POST", r"^/api/users/reset_password$", _api_reset_password(api)),
         Route("GET", r"^/api/keywords/list$", _api_get_keywords_list(api)),

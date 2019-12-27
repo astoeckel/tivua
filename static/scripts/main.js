@@ -165,6 +165,8 @@ this.tivua.main = (function () {
 	 * Parses the given fragment and navigates to the corresponding view.
 	 */
 	function _switch_to_fragment(api, session, root, frag, add_to_history) {
+		console.log("_switch_to_fragment", add_to_history);
+
 		add_to_history = (add_to_history === undefined) ? false : add_to_history;
 		let [view_name, params] = _decode_fragment(frag);
 		if (view_name) {
@@ -181,20 +183,22 @@ this.tivua.main = (function () {
 	 * the main view.
 	 */
 	function _switch_view(api, session, root, view_name, params, add_to_history) {
+		console.log("_switch_view", add_to_history);
+
 		// Check whether the user must reset their password. If yes,
 		// force-direct them to the preferences view
 		if (session && session.reset_password &&
-		    ["preferences", "logout", "login"].indexOf(view_name) == -1) {
+			["preferences", "logout", "login"].indexOf(view_name) == -1) {
 			return _switch_view(api, session, root, "preferences", {}, false).then(
 				events => {
 					// Go to the originally requested location once the
 					// preferences view completes
 					events.on_back = () => {
 						return _switch_view(api, session, root, view_name, params,
-											add_to_history);
+							add_to_history);
 					};
 					return events;
-			});
+				});
 		}
 
 		// Set some parameters to default values
@@ -259,7 +263,7 @@ this.tivua.main = (function () {
 			const view = root.current_view;
 			for (let key in observer) {
 				if (key in view) {
-					view[key] = () => { return null; }
+					view[key] = () => { return null; };
 				}
 			}
 		}
@@ -277,6 +281,10 @@ this.tivua.main = (function () {
 	 * Main router orchestrating the switch between individual views.
 	 */
 	function route(fragment) {
+		// Add this routing event to the history if an explicit fragment is
+		// given, i.e. we're not using window.location.hash
+		const add_to_history = !!fragment;
+
 		// Either use the provided location hash or the one we're currently
 		// navigating to
 		fragment = fragment || window.location.hash;
@@ -285,9 +293,9 @@ this.tivua.main = (function () {
 			.then(session => {
 				session = session.session; // Fetch the actual session data
 				if (fragment) {
-					_switch_to_fragment(api, session, root, fragment);
+					_switch_to_fragment(api, session, root, fragment, add_to_history);
 				} else {
-					return _switch_view(api, session, root, "list", {}, true);
+					return _switch_view(api, session, root, "list", {}, add_to_history);
 				}
 			}).catch(() => {
 				return _switch_view(api, null, root, "login");
@@ -311,7 +319,7 @@ this.tivua.main = (function () {
 		route();
 	}
 
-return {
+	return {
 		'main': main,
 		'route': route,
 	};

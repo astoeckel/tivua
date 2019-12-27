@@ -276,49 +276,64 @@
 		<template id="tmpl_user_manager_view_row">
 			<tr class="user">
 				<td><span class="colorcircle"></span></td>
-				<td><span name="lbl_display_name"></span></td>
+				<td class="display_name">
+					<span name="lbl_display_name"></span>
+					<input name="inp_display_name" placeholder="Full name"></input>
+				</td>
 				<td class="id">
 					<span name="lbl_name"></span>
-					<button class="clipboard" title="Copy the username to the clipboard"><span class="icon"></span></button>
+					<input name="inp_name" placeholder="Login name"></input>
+					<div class="button_container">
+						<button class="clipboard" title="Copy the username to the clipboard"><span class="icon"></span></button>
+					</div>
 				</td>
 				<td class="role">
-					<select name="sel_role" value="0" disabled="disabled">
-						<option value="0"></option>
+					<select name="sel_role" value="inactive">
+						<optgroup label="Suspend the user account">
+							<option value="inactive">Inactive</option>
+						</optgroup>
+						<optgroup label="Read-only access rights">
+							<option value="reader">Reader</option>
+						</optgroup>
+						<optgroup label="Normal access rights">
+							<option value="author">Author</option>
+						</optgroup>
+						<optgroup label="Elevated access rights">
+							<option value="admin">Admin</option>
+						</optgroup>
 					</select>
 				</td>
 				<td class="auth_method">
-					<select name="sel_auth_method" value="0" disabled="disabled">
-						<option value="0"></option>
+					<select name="sel_auth_method" value="password">
+						<optgroup label="Use a username and password">
+							<option value="password">Password</option>
+						</optgroup>
+						<optgroup label="Use centralised authentication">
+							<option value="cas">CAS</option>
+						</optgroup>
 					</select>
-					<button class="reset" title="Reset this user's password"><span class="icon"></span></button>
+					<div class="button_container">
+						<button class="reset" title="Reset this user's password"><span class="icon"></span></button>
+					</div>
 				</td>
 				<td class="actions">
 					<span>&nbsp;</span>
-					<button class="delete" title="Delete this user"><span class="icon"></span></button>
-					<button class="edit" title="Edit this user"><span class="icon"></span></button>
-				</td>
-			</tr>
-		</template>
-
-		<template id="tmpl_user_manager_view_row_edit">
-			<tr>
-				<td><span class="colorcircle"></span></td>
-				<td><input class="inp_display_name" value="Andreas Stöckel"></td>
-				<td><input name="inp_name" value="astoecke"></td>
-				<td class="role"><select name="sel_role"><option>Inactive</option><option>Reader</option><option>Author</option><option>Admin</option></select></td>
-				<td class="auth_method"><select name="sel_login_type"><option>Password</option><option>CAS</option></select></td>
-				<td class="actions">
-					<span>&nbsp;</span>
-					<button class="cancel" title="Discard changes"><span class="icon"></span></button>
-					<button class="apply" title="Save changes"><span class="icon"></span></button>
+					<div class="button_container">
+						<button class="edit" title="Edit this user"><span class="icon"></span></button>
+						<button class="delete" title="Delete this user"><span class="icon"></span></button>
+						<button class="save" title="Save the changes to this user"><span class="icon"></span></button>
+						<button class="cancel" title="Discard the changes"><span class="icon"></span></button>
+					</div>
 				</td>
 			</tr>
 		</template>
 
 		<template id="tmpl_user_manager_view_password_reset">
 			<span name="lbl_password"></span>
-			<button class="email" title="Compose a new email containing the username and password"><span class="icon"></span></button>
-			<button class="clipboard" title="Copy the password to the clipboard"><span class="icon"></span></button>
+			<div class="button_container">
+				<button class="clipboard" title="Copy the password to the clipboard"><span class="icon"></span></button>
+				<button class="email" title="Compose a new email containing the username and password"><span class="icon"></span></button>
+			</div>
 		</template>
 
 		<!-- GENERIC DIALOGUE -->

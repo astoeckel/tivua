@@ -104,11 +104,12 @@ button, input[type="submit"] {
 	--highlight-color: #edd400;
 	--week-color: #555753;
 	--card-footer-color: #fafafa;
-	--andreas-color: #3465a4;
 	--user-manager-color: #2e3436;
 
 	--error-color: #a40000;
 	--success-color: #4e9a06;
+	--success-background-color: #d5ebd7;
+	--success-background-highlight-color: #e2eee3;
 
 	--password-weak-color: #a40000;
 	--password-good-color: #c4a000;
@@ -170,6 +171,10 @@ a:hover {
 a:visited:hover {
 	background-color: var(--main-font-color);
 	color: var(--default-background-color) !important;
+}
+
+.copied_to_clipboard {
+	background-color: var(--highlight-color);
 }
 
 /******************************************************************************
@@ -1213,6 +1218,7 @@ main.user_manager table {
 }
 
 main.user_manager table button {
+	display: inline-block;
 	border: none !important;
 	box-shadow: none !important;
 	vertical-align: middle;
@@ -1220,6 +1226,9 @@ main.user_manager table button {
 	width: 3em;
 	height: 2em;
 	color: var(--bright-button-color);
+}
+
+main.user_manager .button_container {
 	float: right;
 }
 
@@ -1229,6 +1238,14 @@ button.reset .icon::before {
 
 button.edit .icon::before {
 	content: "\f303";
+}
+
+button.cancel .icon::before {
+	content: "\f057";
+}
+
+button.save .icon::before {
+	content: "\f058";
 }
 
 button.delete .icon::before {
@@ -1269,11 +1286,23 @@ main.user_manager table td {
 	border-bottom: 1px solid var(--box-highlight-color);
 }
 
+main.user_manager table td.display_name span.success {
+	color: var(--success-color);
+}
+
+main.user_manager table td.display_name span.success::before {
+	content: '\f00c';
+}
 
 main.user_manager table th.actions,
 main.user_manager table td.actions {
 	width: 8em;
 	text-align: right;
+}
+
+main.user_manager table td.actions span {
+	user-select: none;
+	-moz-user-select: none;
 }
 
 main.user_manager table tr.last_in_group td {
@@ -1312,6 +1341,14 @@ main.user_manager table td:first-child {
 	padding-right: 0;
 }
 
+main.user_manager table tr.success td {
+	background-color: var(--success-background-color);
+}
+
+main.user_manager table tr.success:hover td {
+	background-color: var(--success-background-highlight-color);
+}
+
 main.user_manager table tr.separator {
 	color: var(--week-color);
 	text-transform: uppercase;
@@ -1328,10 +1365,12 @@ main.user_manager table tr.separator > td {
 
 main.user_manager table td.id span,
 main.user_manager table td.auth_method span,
-main.user_manager table select {
+main.user_manager table select,
+main.user_manager table input {
 	min-width: 9em;
 }
 
+main.user_manager table input,
 main.user_manager table td.role select {
 	width: 100%;
 }
@@ -1340,6 +1379,7 @@ main.user_manager table td.auth_method select {
 	width: calc(100% - 3.5em);
 }
 
+main.user_manager input[name='inp_name'],
 main.user_manager span[name='lbl_name'],
 main.user_manager span[name='lbl_password'] {
 	font-family: monospace;

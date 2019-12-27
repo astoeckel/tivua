@@ -207,6 +207,7 @@ this.tivua.l10n = (function () {
 			"%header_users_role_reader": "Readers",
 			"%header_users_role_author": "Authors",
 			"%header_users_role_admin": "Administrators",
+			"%header_users_new_user": "New User",
 
 			"%lbl_users_auth_method_password": "Password",
 			"%lbl_users_auth_method_cas": "CAS",

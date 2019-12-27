@@ -25,7 +25,8 @@ database calls. These operations are performed by the API class.
 @author Andreas Stöckel
 """
 
-# Import 
+import sqlite3
+
 from tivua.database_dictionary import make_database_dict_class
 from tivua.database_transaction import Transaction
 
@@ -72,6 +73,9 @@ class User:
 ################################################################################
 
 class SchemaOutOfDateError(RuntimeError):
+    pass
+
+class UniqueKeyViolationError(RuntimeError):
     pass
 
 class Database:
@@ -197,7 +201,6 @@ class Database:
 
         # Open the database with isolation_level=None, which disables the commit
         # logic of the Python wrapper
-        import sqlite3
         self.conn = sqlite3.connect(self.filename, isolation_level=None)
 
         # Prepate the database for first-time use
@@ -418,11 +421,14 @@ class Database:
         Creates a new user with the given properties.
         """
         with Transaction(self) as t:
-            t.execute(
-                """
-                INSERT INTO users
-                (uid, name, display_name, role, auth_method, password, reset_password)
-                VALUES (?, ?, ?, ?, ?, ?, ?)""", astuple(user))
+            try:
+                t.execute(
+                    """
+                    INSERT INTO users
+                    (uid, name, display_name, role, auth_method, password, reset_password)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)""", astuple(user))
+            except sqlite3.IntegrityError:
+                raise UniqueKeyViolationError()
             return t.lastrowid
 
     def update_user(self, user):
@@ -431,11 +437,14 @@ class Database:
             user = astuple(user)
 
             # Update the user row
-            t.execute(
-                """
-                UPDATE users SET name=?, display_name=?, role=?, auth_method=?,
-                                 password=?, reset_password=?
-                             WHERE uid=?""", user[1:] + (user[0],))
+            try:
+                t.execute(
+                    """
+                    UPDATE users SET name=?, display_name=?, role=?, auth_method=?,
+                                    password=?, reset_password=?
+                                WHERE uid=?""", user[1:] + (user[0],))
+            except sqlite3.IntegrityError:
+                raise UniqueKeyViolationError()
             return t.lastrowid
 
     def delete_user(self, uid):

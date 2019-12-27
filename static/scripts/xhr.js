@@ -137,6 +137,10 @@ this.tivua.xhr = (function () {
 		return xhr_fetch_json('POST', 'api/users', session, settings);
 	}
 
+	function create_user(session, settings) {
+		return xhr_fetch_json('POST', 'api/users/create', session, settings);
+	}
+
 	function delete_user(session, uid, force) {
 		return xhr_fetch_json('POST', 'api/users/delete', session, {
 			"uid": parseInt(uid),
@@ -172,6 +176,7 @@ this.tivua.xhr = (function () {
 			"get_settings": get_settings,
 			"post_settings": post_settings,
 			"update_user": update_user,
+			"create_user": create_user,
 			"delete_user": delete_user,
 			"reset_password": reset_password,
 			"post_logout": post_logout,

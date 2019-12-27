@@ -39,7 +39,7 @@ logger = logging.getLogger(__name__)
 import re, os, json
 from dataclasses import astuple, asdict
 
-from tivua.database import Transaction, Post, User
+from tivua.database import Transaction, Post, User, UniqueKeyViolationError
 from tivua.database_filters import FilterUID, FilterAuthor
 
 
@@ -919,9 +919,9 @@ class API:
             raise ValidationError("%server_error_invalid_uid")
 
         # One of name and display_name is mandatory
-        if (u.name is None) and (u.display_name is None):
+        if (not u.name) and (not u.display_name):
             raise ValidationError("%server_error_no_name")
-        elif u.name is None:
+        elif not u.name:
             u.name = API.make_username(u.display_name)
 
         # Strip the name and the display name
@@ -988,7 +988,7 @@ class API:
             res[user.uid] = user_dict
         return res
 
-    def create_user(self, user_name, display_name="", role="inactive"):
+    def create_user(self, user_name, display_name="", role="inactive", auth_method="password"):
         """
         Creates a new user with the given user name and display name.
         """
@@ -997,7 +997,8 @@ class API:
         user = API.coerce_user({
             "name": user_name,
             "display_name": display_name,
-            "role": role
+            "role": role,
+            "auth_method": auth_method,
         })
 
         with Transaction(self.db):
@@ -1010,11 +1011,11 @@ class API:
             # only caused by there being a duplicate user name
             try:
                 user.uid = self.db.create_user(user)
-            except:
+            except UniqueKeyViolationError:
                 raise ConflictError()
 
         # Return the newly created user object
-        return password, user
+        return password, asdict(user)
 
     def delete_user(self, uid=None, user_name=None, force=False):
         """
@@ -1157,7 +1158,10 @@ class API:
             # Coerce the updated user to make sure all new settings adhere to
             # the rules
             user_new = API.coerce_user(asdict(user))
-            self.db.update_user(user_new)
+            try:
+                self.db.update_user(user_new)
+            except UniqueKeyViolationError:
+                raise ConflictError()
 
             return asdict(user_new)
 
