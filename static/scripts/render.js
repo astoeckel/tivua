@@ -55,7 +55,7 @@ this.tivua.render = (function (window) {
 
 			this.allowedTags = {
 				'a': {
-					"href": url_sanitizer
+					"href": url_sanitizer,
 				},
 				'p': null,
 				'span': null,
@@ -112,6 +112,12 @@ this.tivua.render = (function (window) {
 						copy.setAttribute(attr.name, result);
 					}
 				}
+			}
+
+			// Inject "target=_blank" and "rel=external" into "a" tags
+			if (node_name == 'a') {
+				copy.setAttribute('rel', 'external');
+				copy.setAttribute('target', '_blank');
 			}
 
 			// recursively sanitize child nodes
