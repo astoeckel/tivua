@@ -181,48 +181,67 @@ this.tivua.view.cards = (function() {
 	 * @param post is the datastructure containing the posts's content.
 	 * @param users is a map from uids onto the user information.
 	 */
-	function _create_card_view_card(post, users) {
-		/* Fetch the posts' author */
-		const user = users[post["author"]];
+	function _create_card_view_card(post, users, create_filter_callback) {
+		// Fetch the posts' author
+		const user = users[post.author];
 
 		const color_bg = colors.author_id_to_color(user.uid, true);
 		const color_fg = colors.author_id_to_color(user.uid, false);
 
 		const tmpl = utils.import_template('tmpl_card_view_card');
-
-		/* Set the metadata */
 		const div_meta = tmpl.querySelector(".meta");
-		const span_date = tmpl.querySelector(".meta .date");
-		const span_author = tmpl.querySelector(".meta .author");
 
+		// Set the author
+		const span_author = tmpl.querySelector(".meta .author");
+		if (post.author > 0) {
+			span_author.classList.add("link");
+			span_author.addEventListener('click', create_filter_callback('author', user.name));
+		}
 		span_author.innerText = user.display_name;
-		span_date.innerText = utils.format_date(post["date"]);
+
+		// Set the date
+		let date_parts = utils.format_date(post.date).split("/");
+		const span_date = tmpl.querySelector(".meta .date");
+		for (let i = 0; i < 3; i++) {
+			let span = document.createElement('span');
+			span.classList.add('link');
+			if (i > 0) {
+				span_date.appendChild(document.createTextNode("/"));
+			}
+			span.appendChild(document.createTextNode(date_parts[i]));
+			span.addEventListener('click', create_filter_callback('date', date_parts.slice(0, i + 1).join("/")));
+			span_date.appendChild(span);
+		}
 		div_meta.setAttribute("style", `color: ${color_fg}; background-color: ${color_bg};`);
 
-		/* Update the content */
+		// Clicking on span_author should update the filter
+		// Update the content
 		const div_entry = tmpl.querySelector(".entry");
 		const div_content_placeholder = tmpl.querySelector(".content");
-		const div_content = tivua.render(post["content"]);
+		const div_content = tivua.render(post.content);
 		div_content.setAttribute("class", "content");
 		div_entry.replaceChild(div_content, div_content_placeholder);
 
-		/* Show extra data if there is any to be shown */
+		// Show extra data if there is any to be shown
 		const has_keywords = post.keywords.length > 0;
 		const has_history_info =
-			   (post.cuid != post.author) || (post.muid != post.author)
-			|| ((post.revision > 0) && ((post.mtime - post.ctime) > (24 * 3600)));
+			(post.cuid != post.author) || (post.muid != post.author) ||
+			((post.revision > 0) && ((post.mtime - post.ctime) > (24 * 3600)));
 
 		const div_extra = tmpl.querySelector(".extra");
 		const span_tags = tmpl.querySelector(".extra .tags");
 		const span_history = tmpl.querySelector(".extra .history");
 
-		/* Display keywords if there are any keywords associated with the post */
+		// Display keywords if there are any keywords associated with the post
 		if (has_keywords) {
 			for (let keyword of post.keywords) {
 				const span_tag = document.createElement("span");
-				span_tag.setAttribute('class', "tag");
+				span_tag.classList.add('tag');
+				span_tag.classList.add('link');
 				span_tag.innerText = keyword;
 				span_tag.style.backgroundColor = color_bg;
+				span_tag.addEventListener('click',
+					create_filter_callback('tag', keyword));
 				span_tags.appendChild(span_tag);
 			}
 		} else {
@@ -307,6 +326,39 @@ this.tivua.view.cards = (function() {
 	}
 
 	/**
+	 * Adds the given "filter_name:filter_value" pair to the filter expression.
+	 */
+	function _combine_filter(events, settings, filter, filter_name, filter_value) {
+		// Assemble the new filter expression
+		if (filter_value.indexOf(" ") >= 0) {
+			filter_value = "\"" + filter_value.replace("\"", "\\\"") + "\"";
+		}
+		let filter_new;
+		if (filter_name == "tag") {
+			filter_new = "#" + filter_value;
+		} else {
+			filter_new = filter_name + ":" + filter_value;
+		}
+		console.log(filter_new);
+
+		// Either append the new filter to the existing filter or just use the
+		// new one if there is no existing filter
+		let combined;
+		if (!filter) {
+			combined = filter_new;
+		} else {
+			const ast_old = tivua.filter.parse(filter);
+			const ast_new = tivua.filter.parse(filter_new).detach_from_string();
+			combined = ast_old.and(ast_new).remove_duplicates(filter).canonicalize(filter);
+		}
+
+		// Navigate to the combined filter
+		if (combined != filter) {
+			events.on_navigate(0, settings.posts_per_page, combined);
+		}
+	}
+
+	/**
 	 * Displays the card view.
 	 */
 	function show_card_view(api, root, events, session, settings, users, start, filter) {
@@ -371,6 +423,11 @@ this.tivua.view.cards = (function() {
 					filter_words.push(stemmed);
 				}
 			}
+		}
+
+		// Function called to add a new filter expression to the current filter
+		function create_filter_callback(filter_name, filter_value) {
+			return (event) => _combine_filter(events, settings, filter, filter_name, filter_value);
 		}
 
 		// Determine whether the user can edit the entires
@@ -446,8 +503,8 @@ this.tivua.view.cards = (function() {
 				main.appendChild(container);
 
 				for (let post of posts_) {
-					/* Create the card itself */
-					const card = _create_card_view_card(post, users);
+					// Create the card itself
+					const card = _create_card_view_card(post, users, create_filter_callback);
 
 					/* If a text filter is active, highlight matched words */
 					if (filter_words.length) {

@@ -1060,6 +1060,14 @@ main.cards div.entry > div.extra {
 	background-color: var(--card-footer-color);
 }
 
+main.cards span.link {
+	cursor: pointer;
+}
+
+main.cards span.link:hover {
+	text-decoration: underline;
+}
+
 main.cards div.entry > div.extra > span.tags {
 	display: block;
 }
