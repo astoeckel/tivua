@@ -80,7 +80,6 @@ def _handle_vfs(vfs, vfs_filename=None, vfs_content_type=None):
     """
     Creates a handler that resolves a file in the virtual filesystem.
     """
-
     def _handler(req, query=None, match=None, head=False):
         # If no vfs_filename has been specified, check whether the user-provided
         # file is stored in the vfs
@@ -143,11 +142,9 @@ def _handle_fs(document_root, static_filename=None):
 
         # Force caching of non-html files
         if filename.endswith(".woff2"):
-            req.send_header('Cache-control',
-                            'public,max-age=31536000')
+            req.send_header('Cache-control', 'public,max-age=31536000')
         elif not filename.endswith(".html"):
-            req.send_header('Cache-control',
-                            'public,max-age=86400')
+            req.send_header('Cache-control', 'public,max-age=86400')
 
         # Set the correct content type
         req.send_header('Content-type', mimetype(filename))
@@ -230,6 +227,7 @@ DEFAULT_MAX_BODY_LENGTH = 8 * 1024
 # Maximum length of HTTP POST requests updating or creating Tivua posts
 POST_MAX_BODY_LENGTH = 128 * 1024
 
+
 def _internal_api_get_session(api, req):
     """
     Checks whether the Authorization header in the given request corresponds to
@@ -248,6 +246,7 @@ def _internal_api_get_session(api, req):
 
     # Fetch the session data from the API
     return api.get_session_data(authorization[1].strip().lower())
+
 
 def _internal_wrap_api_handler(cback,
                                field=None,
@@ -277,7 +276,6 @@ def _internal_wrap_api_handler(cback,
            maximum upload size prevents users from exhausting memory.
     @param api is a reference at the api instance.
     """
-
     def _handler(req, query=None, match=None, head=False):
         # Copy the response code from the outside
         response_code = code
@@ -328,9 +326,10 @@ def _internal_wrap_api_handler(cback,
                     obj[key] = value
             else:
                 obj[field] = res
-        except ValidationError:
+        except ValidationError as e:
             response_code = 400
-            obj = {"status": "error", "what": "%server_error_validation"}
+            what = e.args[0] if e.args else "%server_error_validation"
+            obj = {"status": "error", "what": what}
         except AuthentificationError:
             response_code = 401
             obj = {"status": "error", "what": "%server_error_unauthorized"}
@@ -366,16 +365,21 @@ def _api_error(code, msg=None):
     def _handler(req, query, match, session, body):
         return msg
 
-    return _internal_wrap_api_handler(
-        _handler, field="what", status="error", code=code,
-        perms=Perms.NONE, ignore_body=True)
+    return _internal_wrap_api_handler(_handler,
+                                      field="what",
+                                      status="error",
+                                      code=code,
+                                      perms=Perms.NONE,
+                                      ignore_body=True)
 
 
 def _api_get_configuration(api):
     def _handler(req, query, match, session, body):
         return api.get_configuration_object()
 
-    return _internal_wrap_api_handler(_handler, field="configuration", perms=Perms.NONE)
+    return _internal_wrap_api_handler(_handler,
+                                      field="configuration",
+                                      perms=Perms.NONE)
 
 
 def _api_get_session(api):
@@ -400,11 +404,13 @@ def _api_post_login(api):
             raise ValidationError()
 
         # Try to login using a username password combination
-        return api.login_method_username_password(
-            body['name'], body['challenge'], body['response'])
+        return api.login_method_username_password(body['name'],
+                                                  body['challenge'],
+                                                  body['response'])
 
-    return _internal_wrap_api_handler(
-        _handler, field='session', perms=Perms.NONE)
+    return _internal_wrap_api_handler(_handler,
+                                      field='session',
+                                      perms=Perms.NONE)
 
 
 def _api_post_logout(api):
@@ -440,7 +446,7 @@ def _api_post_users_update(api):
             # Allow a few more settings that can be updated
             whitelist |= set(("name", "auth_method", "role"))
 
-            # If a uid is given the admin is updating a user (potentially
+            # If a uid is given, the admin is updating a user (potentially
             # someone who is not himself). Set the UID to the given uid
             if "uid" in body:
                 # Make sure the UID is valid
@@ -473,6 +479,55 @@ def _api_post_users_update(api):
     return _internal_wrap_api_handler(_handler, field="user", api=api)
 
 
+def _api_post_users_create(api):
+    def _handler(req, query, match, session, body):
+        # Make sure that all required fields are set
+        if ((not "name" in body) or (not "display_name" in body)
+                or (not "role" in body) or (not "auth_method" in body)):
+            raise ValidationError()
+
+        # Use the corresponding API call to create the user. This will perform
+        # further validation
+        _, user = api.create_user(user_name=body["name"],
+                                  display_name=body["display_name"],
+                                  role=body["role"],
+                                  auth_method=body["auth_method"])
+
+        # Return the newly created user object
+        return user
+
+    return _internal_wrap_api_handler(_handler,
+                                      api=api,
+                                      field="user",
+                                      perms=Perms.CAN_ADMIN)
+
+
+def _api_post_users_delete(api):
+    def _handler(req, query, match, session, body):
+        # Validate the request
+        try:
+            uid = int(body["uid"])
+            force = bool(body["force"])
+        except:
+            raise ValidationError()
+
+        if uid <= 0:
+            raise ValidationError()
+
+        # Try to delete the user
+        if not api.delete_user(uid=uid, force=force):
+            return {
+                "force_required": True,
+                "confirmed": False,
+            }
+        else:
+            return {
+                "confirmed": True,
+            }
+
+    return _internal_wrap_api_handler(_handler, api=api, perms=Perms.CAN_ADMIN)
+
+
 def _api_get_posts_list(api):
     def _handler(req, query, match, session, body):
         # Validate the arguments
@@ -494,12 +549,9 @@ def _api_get_posts_list(api):
 
         # Execute the query
         return {
-            "posts": api.get_post_list(
-                start=start,
-                limit=limit,
-                filter=filter),
-            "total": api.get_total_post_count(
-                filter=filter),
+            "posts": api.get_post_list(start=start, limit=limit,
+                                       filter=filter),
+            "total": api.get_total_post_count(filter=filter),
         }
 
     return _internal_wrap_api_handler(_handler, api=api)
@@ -509,8 +561,8 @@ def _api_post_posts_create(api):
     def _handler(req, query, match, session, body):
         # Make sure there is no pid, cuid, ctime, muid, mtime in the body.
         # These fields should only be set by the server
-        if (("pid" in body) or ("cuid" in body) or ("ctime" in body) or
-            ("muid" in body) or ("mtime" in body)):
+        if (("pid" in body) or ("cuid" in body) or ("ctime" in body)
+                or ("muid" in body) or ("mtime" in body)):
             raise ValidationError()
 
         # Set the cuid, ctime, muid, mtime to the initial values
@@ -521,7 +573,10 @@ def _api_post_posts_create(api):
         return api.create_post(body)
 
     return _internal_wrap_api_handler(
-        _handler, field="post", api=api, perms=Perms.CAN_WRITE,
+        _handler,
+        field="post",
+        api=api,
+        perms=Perms.CAN_WRITE,
         max_post_body_length=POST_MAX_BODY_LENGTH)
 
 
@@ -529,8 +584,8 @@ def _api_post_posts_update(api):
     def _handler(req, query, match, session, body):
         # Make sure there is no pid, cuid, ctime, muid, mtime in the body.
         # These fields should only be set by the server
-        if (("pid" in body) or ("cuid" in body) or ("ctime" in body) or
-            ("muid" in body) or ("mtime" in body)):
+        if (("pid" in body) or ("cuid" in body) or ("ctime" in body)
+                or ("muid" in body) or ("mtime" in body)):
             raise ValidationError()
 
         # Set the pid
@@ -547,7 +602,10 @@ def _api_post_posts_update(api):
         return api.update_post(body)
 
     return _internal_wrap_api_handler(
-        _handler, field="post", api=api, perms=Perms.CAN_WRITE,
+        _handler,
+        field="post",
+        api=api,
+        perms=Perms.CAN_WRITE,
         max_post_body_length=POST_MAX_BODY_LENGTH)
 
 
@@ -559,8 +617,10 @@ def _api_post_posts_delete(api):
             raise ValidationError()
         return api.delete_post(pid)
 
-    return _internal_wrap_api_handler(
-        _handler, field="post", api=api, perms=Perms.CAN_WRITE)
+    return _internal_wrap_api_handler(_handler,
+                                      field="post",
+                                      api=api,
+                                      perms=Perms.CAN_WRITE)
 
 
 def _api_get_post(api):
@@ -582,9 +642,28 @@ def _api_get_post(api):
 
 def _api_get_users_list(api):
     def _handler(req, query, match, session, body):
-        return api.get_user_list()
+        is_admin = Perms.lookup_role_permissions(
+            session["role"]) & Perms.CAN_ADMIN
+        return api.get_user_list(include_credentials=is_admin)
 
     return _internal_wrap_api_handler(_handler, field="users", api=api)
+
+
+def _api_reset_password(api):
+    def _handler(req, query, match, session, body):
+        # Validate the arguments
+        try:
+            uid = int(body["uid"])
+        except:
+            raise ValidationError()
+
+        # Try to reset the password
+        return api.reset_user_password(uid=uid)
+
+    return _internal_wrap_api_handler(_handler,
+                                      field="password",
+                                      api=api,
+                                      perms=Perms.CAN_ADMIN)
 
 
 def _api_get_keywords_list(api):
@@ -608,7 +687,6 @@ class Route:
     user-request. The callback may return "True" or "None" if the request was
     handled, or "False", if the request was not handled.
     """
-
     def __init__(self, method, path, callback):
         """
         Constructor of the Route class.
@@ -652,7 +730,6 @@ class Router:
     The Router manages a collection of Route objects and directs incoming
     requests to the routes.
     """
-
     def __init__(self, routes):
         """
         Initialises the router with the given set of routes.
@@ -779,6 +856,9 @@ def create_server_class(api, args):
         Route("POST", r"^/api/posts$", _api_post_posts_update(api)),
         Route("GET", r"^/api/users/list$", _api_get_users_list(api)),
         Route("POST", r"^/api/users$", _api_post_users_update(api)),
+        Route("POST", r"^/api/users/create$", _api_post_users_create(api)),
+        Route("POST", r"^/api/users/delete$", _api_post_users_delete(api)),
+        Route("POST", r"^/api/users/reset_password$", _api_reset_password(api)),
         Route("GET", r"^/api/keywords/list$", _api_get_keywords_list(api)),
 
         # Unkown API requests
@@ -806,4 +886,3 @@ def create_server_class(api, args):
             router.exec(self)
 
     return Server
-

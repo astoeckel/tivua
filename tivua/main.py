@@ -323,7 +323,7 @@ def main_user(args):
                     display_name=args.display_name)
                 print(("Successfully created user #{} \"{}\" with role \"{}\". " +
                        "The initial password is \"{}\".").format(
-                            user.uid, name, args.role, password))
+                            user["uid"], name, args.role, password))
             elif cmd == "delete":
                 if not api.delete_user(user_name=name, force=args.force):
                     print("WARNING: This user contributed content. Deleting "

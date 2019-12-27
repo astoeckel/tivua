@@ -104,18 +104,16 @@ button, input[type="submit"] {
 	--highlight-color: #edd400;
 	--week-color: #555753;
 	--card-footer-color: #fafafa;
-	--andreas-color: #3465a4;
 	--user-manager-color: #2e3436;
 
 	--error-color: #a40000;
+	--success-color: #4e9a06;
+	--success-background-color: #d5ebd7;
+	--success-background-highlight-color: #e2eee3;
 
 	--password-weak-color: #a40000;
 	--password-good-color: #c4a000;
 	--password-strong-color: #4e9a06;
-
-
-	--color: yellow; /*#eee*/
-
 }
 
 /******************************************************************************
@@ -173,6 +171,10 @@ a:hover {
 a:visited:hover {
 	background-color: var(--main-font-color);
 	color: var(--default-background-color) !important;
+}
+
+.copied_to_clipboard {
+	background-color: var(--highlight-color);
 }
 
 /******************************************************************************
@@ -292,6 +294,10 @@ select {
 	padding-left: 0.25rem;
 	padding-right: 1.25rem;
 	background: url("data:image/svg+xml;utf8,%3Csvg%20width%3D'4mm'%20height%3D'2.6mm'%20version%3D'1.1'%20viewBox%3D'0%200%202.6%202.6'%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%3E%3Cg%20transform%3D'translate(-1.3%20-2)'%3E%3Cpath%20d%3D'm1.3%202%201.3%202.6%201.3-2.6z'%20fill%3D'%23333'%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E") no-repeat right var(--box-highlight-color);
+}
+
+select:disabled {
+	background: url("data:image/svg+xml;utf8,%3Csvg%20width%3D'4mm'%20height%3D'2.6mm'%20version%3D'1.1'%20viewBox%3D'0%200%202.6%202.6'%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%3E%3Cg%20transform%3D'translate(-1.3%20-2)'%3E%3Cpath%20d%3D'm1.3%202%201.3%202.6%201.3-2.6z'%20fill%3D'%23999'%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E") no-repeat right var(--box-highlight-color);
 }
 
 input.password.revealed {
@@ -1190,29 +1196,82 @@ main.editor label[for="inp_date"] {
  ******************************************************************************/
 
 main.user_manager {
-	overflow: auto;
+	padding: 5rem 0 0 0;
+	height: 100%;
+	margin: 0 auto;
+	box-sizing: border-box;
 	display: flex;
-	flex-direction: row;
-	align-items: stretch;
-	justify-content: left;
-	padding: 5rem 0 4rem 0;
+	max-width: 120rem;
+	box-shadow: 0 0 5px var(--shadow-color);
 }
 
-.colorcircle {
-	display: inline-block;
-	width: 1em;
-	height: 1em;
-	border-radius: 1em;
-	background-color: var(--andreas-color);
-	vertical-align: middle;
+main.user_manager div.container {
+	flex: 1 1 auto;
+	overflow: auto;
 }
 
 main.user_manager table {
+	position: relative;
 	flex: 1 0 0;
 	width: 100%;
+	table-layout: fixed;
+}
+
+main.user_manager table button {
+	display: inline-block;
+	border: none !important;
+	box-shadow: none !important;
+	vertical-align: middle;
+	background: transparent;
+	width: 3em;
+	height: 2em;
+	color: var(--bright-button-color);
+}
+
+main.user_manager .button_container {
+	float: right;
+}
+
+button.reset .icon::before {
+	content: "\f0e2";
+}
+
+button.edit .icon::before {
+	content: "\f303";
+}
+
+button.cancel .icon::before {
+	content: "\f057";
+}
+
+button.save .icon::before {
+	content: "\f058";
+}
+
+button.delete .icon::before {
+	content: "\f2ed";
+}
+
+button.clipboard .icon::before {
+	content: "\f328";
+}
+
+button.email .icon::before {
+	content: "\f658";
+}
+
+button.clipboard.error .icon {
+	color: var(--error-color);
+}
+
+button.clipboard.success .icon {
+	color: var(--success-color);
 }
 
 main.user_manager table th {
+	position: sticky;
+	top: 0;
+	z-index: 1;
 	background-color: var(--user-manager-color);
 	font-weight: bold;
 	color: var(--default-background-color);
@@ -1223,24 +1282,107 @@ main.user_manager table th {
 main.user_manager table th,
 main.user_manager table td {
 	text-align: left;
-	padding: 1rem;
-	border-bottom: 1px solid var(--box-highlight-color)/*#f3f3f3*/;
+	padding: 1em;
+	border-bottom: 1px solid var(--box-highlight-color);
+}
+
+main.user_manager table td.display_name span.success {
+	color: var(--success-color);
+}
+
+main.user_manager table td.display_name span.success::before {
+	content: '\f00c';
+}
+
+main.user_manager table th.actions,
+main.user_manager table td.actions {
+	width: 8em;
+	text-align: right;
+}
+
+main.user_manager table td.actions span {
+	user-select: none;
+	-moz-user-select: none;
+}
+
+main.user_manager table tr.last_in_group td {
+	border-bottom: 1px solid transparent;
 }
 
 main.user_manager table td {
 	background-color: var(--default-background-color);
 }
 
-main.user_manager table tr:nth-child(2) td {
-	background-color: var(--card-footer-color);
+main.user_manager table tr.user:hover td {
+	background-color: #f9f9f9;
 }
-
 
 main.user_manager table th > span,
 main.user_manager table td > span {
+	display: inline-block;
 	box-sizing: border-box;
-	padding: 0.5rem;
+	padding: 0.5em;
+	line-height: 1em;
 	border: transparent 2px solid;
+}
+
+main.user_manager table td > span.colorcircle {
+	display: inline-block;
+	width: 1em;
+	height: 1em;
+	border-radius: 1em;
+	vertical-align: middle;
+}
+
+
+main.user_manager table th:first-child,
+main.user_manager table td:first-child {
+	width: 1em;
+	padding-right: 0;
+}
+
+main.user_manager table tr.success td {
+	background-color: var(--success-background-color);
+}
+
+main.user_manager table tr.success:hover td {
+	background-color: var(--success-background-highlight-color);
+}
+
+main.user_manager table tr.separator {
+	color: var(--week-color);
+	text-transform: uppercase;
+}
+
+main.user_manager table tr.separator > td {
+	padding-top: 1.5rem;
+	position: sticky;
+	z-index: 1;
+	top: calc(4em + 4px);
+	font-weight: bold;
+	background-color: var(--default-background-color);
+}
+
+main.user_manager table td.id span,
+main.user_manager table td.auth_method span,
+main.user_manager table select,
+main.user_manager table input {
+	min-width: 9em;
+}
+
+main.user_manager table input,
+main.user_manager table td.role select {
+	width: 100%;
+}
+
+main.user_manager table td.auth_method select {
+	width: calc(100% - 3.5em);
+}
+
+main.user_manager input[name='inp_name'],
+main.user_manager span[name='lbl_name'],
+main.user_manager span[name='lbl_password'] {
+	font-family: monospace;
 }
 
 
@@ -1491,8 +1633,6 @@ progress.strength.strong::-moz-progress-bar {
 progress.strength.strong::-webkit-progress-value {
 	background: var(--password-strong-color);
 }
-
-
 
 div.dialogue > div.buttons > progress {
 	flex: 1 0 auto;

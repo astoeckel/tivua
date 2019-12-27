@@ -56,6 +56,13 @@ this.tivua.view.menu = (function() {
 		const span_user_name = main.querySelector(".user_name");
 		span_user_name.innerText = session.display_name;
 
+		/* Hide the "Manage users" button if the current user is not an
+		   administrator */
+		const a_users = main.querySelector("a[href='#users']");
+		if (session.role != "admin") {
+			a_users.style.display = "none";
+		}
+
 		/* Query the current view preferences (list or card view) and mark the
 		   buttons accordingly. */
 		const btn_card_view = main.querySelector("#btn_card_view");

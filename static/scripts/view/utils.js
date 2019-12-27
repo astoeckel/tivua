@@ -57,7 +57,11 @@ this.tivua.view.utils = (function() {
 		// Focus the overlay
 		div_overlay.focus();
 		div_overlay["close"] = () => {
-			root.removeChild(div_overlay);
+			try {
+				root.removeChild(div_overlay);
+			} catch (e) {
+				console.error(e); // Node was not found, don't despair!
+			}
 		};
 		return div_overlay;
 	}
