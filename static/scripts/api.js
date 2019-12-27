@@ -570,6 +570,40 @@ this.tivua.api = (function (window) {
 		});
 	}
 
+	/**************************************************************************
+	 * PERMISSION HELPER FUNCTIONS                                            *
+	 **************************************************************************/
+
+	function _get_perms(obj) {
+		const permission_map = {
+			"admin": [1, 1, 1],
+			"author": [1, 1, 0],
+			"reader": [1, 0, 0],
+			"inactive": [0, 0, 0],
+		};
+
+		if ("role" in obj) {
+			obj = obj.role;
+		}
+
+		if (obj in permission_map) {
+			return permission_map[obj];
+		}
+
+		return permission_map.inactive;
+	}
+
+	function can_read(session_or_role) {
+		return !!_get_perms(session_or_role)[0];
+	}
+
+	function can_write(session_or_role) {
+		return !!_get_perms(session_or_role)[1];
+	}
+
+	function can_admin(session_or_role) {
+		return !!_get_perms(session_or_role)[2];
+	}
 
 	return {
 		"get_sid": get_sid,
@@ -593,5 +627,8 @@ this.tivua.api = (function (window) {
 		"create_user": create_user,
 		"delete_user": delete_user,
 		"on_access_denied": null,
+		"can_read": can_read,
+		"can_write": can_write,
+		"can_admin": can_admin,
 	};
 })(this);

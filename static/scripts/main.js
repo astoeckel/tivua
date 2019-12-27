@@ -165,8 +165,6 @@ this.tivua.main = (function () {
 	 * Parses the given fragment and navigates to the corresponding view.
 	 */
 	function _switch_to_fragment(api, session, root, frag, add_to_history) {
-		console.log("_switch_to_fragment", add_to_history);
-
 		add_to_history = (add_to_history === undefined) ? false : add_to_history;
 		let [view_name, params] = _decode_fragment(frag);
 		if (view_name) {
@@ -183,7 +181,13 @@ this.tivua.main = (function () {
 	 * the main view.
 	 */
 	function _switch_view(api, session, root, view_name, params, add_to_history) {
-		console.log("_switch_view", add_to_history);
+		// Make sure the user has the right permissions to view this screen.
+		// Otherwise kindly redirect them to the login screen.
+		if ((view_name == "users" && !api.can_admin(session)) ||
+			(view_name == "add" && !api.can_write(session)) ||
+			(view_name != "login" && !api.can_read(session))) {
+			view_name = 'login';
+		}
 
 		// Check whether the user must reset their password. If yes,
 		// force-direct them to the preferences view

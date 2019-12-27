@@ -1017,8 +1017,8 @@ main.cards div.entry > div.meta > button.edit::before {
 	color: var(--default-background-color);
 }
 
-main.cards div.entry:hover > div.meta > button.edit::before,
-main.cards div.entry > div.meta > button.edit:focus::before {
+main.cards div.entry:hover > div.meta > button.edit:not(:disabled)::before,
+main.cards div.entry > div.meta > button.edit:not(:disabled):focus::before {
 	opacity: 1;
 }
 

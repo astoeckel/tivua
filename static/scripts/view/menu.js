@@ -59,7 +59,7 @@ this.tivua.view.menu = (function() {
 		/* Hide the "Manage users" button if the current user is not an
 		   administrator */
 		const a_users = main.querySelector("a[href='#users']");
-		if (session.role != "admin") {
+		if (!api.can_admin(session)) {
 			a_users.style.display = "none";
 		}
 

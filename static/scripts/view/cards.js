@@ -270,17 +270,22 @@ this.tivua.view.cards = (function() {
 	 * Builds the "skeleton" of the card view. This includes the header bar
 	 * (including the menu button and search box) and the footer.
 	 */
-	function _build_card_view_skeleton(api, root, settings, users) {
-		/* Create the main card view elements */
+	function _build_card_view_skeleton(api, root, session, settings, users) {
+		// Create the main card view elements
 		const view = utils.import_template('tmpl_card_view');
 		const main = view.querySelector("main");
 		const div_search = view.querySelector(".search");
 
-		/* Implement the "add" action */
+		// Implement the "add" action
 		const btn_add = view.getElementById("btn_add");
 		btn_add.addEventListener('click', utils.exec("#add"));
 
-		/* Implement the "menu" button */
+		// Hide the "add" button if the user does not have sufficient rights
+		if (!api.can_write(session)) {
+			utils.remove(btn_add);
+		}
+
+		// Implement the "menu" button
 		const btn_menu = view.querySelector("#btn_menu");
 		btn_menu.addEventListener("click", () => {
 			const div_cntr = document.createElement("div");
@@ -295,7 +300,7 @@ this.tivua.view.cards = (function() {
 			});
 		});
 
-		/* Create the search box instance */
+		// Create the search box instance
 		components.searchbox.create(api, div_search, main, users);
 
 		return [view, main];
@@ -304,10 +309,10 @@ this.tivua.view.cards = (function() {
 	/**
 	 * Displays the card view.
 	 */
-	function show_card_view(api, root, events, settings, users, start, filter) {
-		/* Since the card view is being updated quite often (especially when
-		   using the filters), we only re-create the skeleton if the current
-		   root container is not already showing the card view. */
+	function show_card_view(api, root, events, session, settings, users, start, filter) {
+		// Since the card view is being updated quite often (especially when
+		// using the filters), we only re-create the skeleton if the current
+		// root container is not already showing the card view.
 		let view = root, main = null;
 		let old_main = root.querySelector("main.cards");
 		if (old_main) {
@@ -318,10 +323,10 @@ this.tivua.view.cards = (function() {
 			/* Move the autocompletion box to the new main element */
 			main.appendChild(old_main.querySelector(".autocomplete-suggestions"));
 		} else {
-			[view, main] = _build_card_view_skeleton(api, root, settings, users);
+			[view, main] = _build_card_view_skeleton(api, root, session, settings, users);
 		}
 
-		/* Update the search box */
+		// Update the search box
 		const searchbox = view.querySelector("div.searchbox");
 		if (filter != searchbox.get_filter()) {
 			searchbox.set_filter(filter);
@@ -330,10 +335,10 @@ this.tivua.view.cards = (function() {
 			events.on_navigate(0, settings["posts_per_page"], filter);
 		};
 
-		/* Either open the view in "list" or "card" view */
+		// Either open the view in "list" or "card" view
 		main.classList.toggle("continuous", settings["view"] == "list");
 
-		/* Compute the query range */
+		// Compute the query range
 		const card_view_posts_per_page = settings["posts_per_page"];
 		let s0 = 0, s1 = -1, s0ext = 0, s1ext = -1;
 		if (card_view_posts_per_page > 0) {
@@ -343,19 +348,19 @@ this.tivua.view.cards = (function() {
 			s1ext = s1 + CARD_VIEW_OVERLAP;
 		}
 
-		/* Serialize the filter if one is given, extract the search terms for
-		   highlighting. Apply the Porter Stemming algorithm to each search
-		   term, because the DB is doing this internally as well. */
+		// Serialize the filter if one is given, extract the search terms for
+		// highlighting. Apply the Porter Stemming algorithm to each search
+		// term, because the DB is doing this internally as well.
 		let filter_obj = null, filter_words = [];
 		if (filter) {
 			const ast = tivua.filter.parse(filter).validate(filter, users);
 			if (!ast.get_first_error()) {
-				/* Serialize the AST for sending it to the server */
+				// Serialize the AST for sending it to the server
 				filter_obj = ast.serialize();
 
-				/* Fetch all words in the query. If the stemming algorithm
-				   changes the word's suffix (e.g. terry => terri), include the
-				   original word as well. */
+				// Fetch all words in the query. If the stemming algorithm
+				// changes the word's suffix (e.g. terry => terri), include the
+				// original word as well.
 				filter_words = [];
 				for (let word of ast.words()) {
 					word = word.toLowerCase();
@@ -368,7 +373,10 @@ this.tivua.view.cards = (function() {
 			}
 		}
 
-		/* Query the posts in the computed range */
+		// Determine whether the user can edit the entires
+		const can_write = api.can_write(session);
+
+		// Query the posts in the computed range
 		const query = api.get_post_list(s0ext, s1ext - s0ext, filter_obj);
 		return query.then((response) => {
 			// Fetch the response parts
@@ -451,8 +459,13 @@ this.tivua.view.cards = (function() {
 
 					/* Hook up the edit button */
 					const btn_edit = card.querySelector(".meta > button");
-					btn_edit.addEventListener(
-						'click', utils.exec("#edit,id=" + post.pid));
+					if (can_write) {
+						btn_edit.addEventListener(
+							'click', utils.exec("#edit,id=" + post.pid));
+					} else {
+						btn_edit.setAttribute('disabled', 'disabled');
+					}
+
 					container.appendChild(card);
 				}
 			}
@@ -468,8 +481,8 @@ this.tivua.view.cards = (function() {
 				}
 			}
 
-			/* Actually show the card view, either by just replacing the
-			   "old_main" element or replacing the entire view */
+			// Actually show the card view, either by just replacing the
+			// "old_main" element or replacing the entire view.
 			if (old_main) {
 				old_main.parentNode.replaceChild(main, old_main);
 				for (let overlay of root.querySelectorAll(".overlay")) {
@@ -496,13 +509,15 @@ this.tivua.view.cards = (function() {
 		// Fetch the user settings and the list of users and build the card
 		// view
 		const promises = [
+			api.get_session_data(),
 			api.get_settings(),
 			api.get_user_list(),
 		];
 		return Promise.all(promises).then((data) => {
-			const settings = data[0].settings;
-			const users = data[1].users;
-			return show_card_view(api, root, events, settings, users, start, filter);
+			const session = data[0].session;
+			const settings = data[1].settings;
+			const users = data[2].users;
+			return show_card_view(api, root, events, session, settings, users, start, filter);
 		});
 	}
 
