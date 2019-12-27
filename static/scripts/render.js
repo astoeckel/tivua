@@ -82,7 +82,7 @@ this.tivua.render = (function (window) {
 			};
 		}
 
-		sanitizeNode(node, top_level=false) {
+		sanitizeNode(node, top_level = false) {
 			const node_name = node.nodeName.toLowerCase();
 			const node_type = node.nodeType;
 			if (node_type == document.TEXT_NODE) {
@@ -96,7 +96,7 @@ this.tivua.render = (function (window) {
 			if (is_invalid) {
 				copy = document.createDocumentFragment();
 				const bad_tag = document.createElement('span');
-				bad_tag.innerText = '<'+node_name+'>';
+				bad_tag.innerText = '<' + node_name + '>';
 				bad_tag.classList.add('error');
 				copy.appendChild(bad_tag);
 			} else {
@@ -130,9 +130,9 @@ this.tivua.render = (function (window) {
 			}
 			if (is_invalid) {
 				const bad_tag = document.createElement('span');
-				bad_tag.innerText = '</'+node_name+'>';
+				bad_tag.innerText = '</' + node_name + '>';
 				bad_tag.classList.add('error');
-				copy.appendChild(bad_tag);				
+				copy.appendChild(bad_tag);
 			}
 			return copy;
 		}
@@ -152,9 +152,9 @@ this.tivua.render = (function (window) {
 	// Assumes that there is a "$" at state.src[pos]
 	function _is_valid_delim(state, pos) {
 		var prevChar, nextChar,
-		    max = state.posMax,
-		    can_open = true,
-		    can_close = true;
+			max = state.posMax,
+			can_open = true,
+			can_close = true;
 
 		prevChar = pos > 0 ? state.src.charCodeAt(pos - 1) : -1;
 		nextChar = pos + 1 <= max ? state.src.charCodeAt(pos + 1) : -1;
@@ -162,16 +162,16 @@ this.tivua.render = (function (window) {
 		// Check non-whitespace conditions for opening and closing, and
 		// check that closing delimeter isn't followed by a number
 		if (prevChar === 0x20/* " " */ || prevChar === 0x09/* \t */ ||
-		        (nextChar >= 0x30/* "0" */ && nextChar <= 0x39/* "9" */)) {
-		    can_close = false;
+			(nextChar >= 0x30/* "0" */ && nextChar <= 0x39/* "9" */)) {
+			can_close = false;
 		}
 		if (nextChar === 0x20/* " " */ || nextChar === 0x09/* \t */) {
-		    can_open = false;
+			can_open = false;
 		}
 
 		return {
-		    can_open: can_open,
-		    can_close: can_close
+			can_open: can_open,
+			can_close: can_close
 		};
 	}
 
@@ -182,9 +182,9 @@ this.tivua.render = (function (window) {
 
 		res = _is_valid_delim(state, state.pos);
 		if (!res.can_open) {
-		    if (!silent) { state.pending += "$"; }
-		    state.pos += 1;
-		    return true;
+			if (!silent) { state.pending += "$"; }
+			state.pos += 1;
+			return true;
 		}
 
 		// First check for and bypass all properly escaped delimieters
@@ -193,86 +193,86 @@ this.tivua.render = (function (window) {
 		// we have found an opening delimieter already.
 		start = state.pos + 1;
 		match = start;
-		while ( (match = state.src.indexOf("$", match)) !== -1) {
-		    // Found potential $, look for escapes, pos will point to
-		    // first non escape when complete
-		    pos = match - 1;
-		    while (state.src[pos] === "\\") { pos -= 1; }
+		while ((match = state.src.indexOf("$", match)) !== -1) {
+			// Found potential $, look for escapes, pos will point to
+			// first non escape when complete
+			pos = match - 1;
+			while (state.src[pos] === "\\") { pos -= 1; }
 
-		    // Even number of escapes, potential closing delimiter found
-		    if ( ((match - pos) % 2) == 1 ) { break; }
-		    match += 1;
+			// Even number of escapes, potential closing delimiter found
+			if (((match - pos) % 2) == 1) { break; }
+			match += 1;
 		}
 
 		// No closing delimter found.  Consume $ and continue.
 		if (match === -1) {
-		    if (!silent) { state.pending += "$"; }
-		    state.pos = start;
-		    return true;
+			if (!silent) { state.pending += "$"; }
+			state.pos = start;
+			return true;
 		}
 
 		// Check if we have empty content, ie: $$.  Do not parse.
 		if (match - start === 0) {
-		    if (!silent) { state.pending += "$$"; }
-		    state.pos = start + 1;
-		    return true;
+			if (!silent) { state.pending += "$$"; }
+			state.pos = start + 1;
+			return true;
 		}
 
 		// Check for valid closing delimiter
 		res = _is_valid_delim(state, match);
 		if (!res.can_close) {
-		    if (!silent) { state.pending += "$"; }
-		    state.pos = start;
-		    return true;
+			if (!silent) { state.pending += "$"; }
+			state.pos = start;
+			return true;
 		}
 
 		if (!silent) {
-		    token         = state.push('math_inline', 'math', 0);
-		    token.markup  = "$";
-		    token.content = state.src.slice(start, match);
+			token = state.push('math_inline', 'math', 0);
+			token.markup = "$";
+			token.content = state.src.slice(start, match);
 		}
 
 		state.pos = match + 1;
 		return true;
 	}
 
-	function _math_block(state, start, end, silent){
+	function _math_block(state, start, end, silent) {
 		var firstLine, lastLine, next, lastPos, found = false, token,
-		    pos = state.bMarks[start] + state.tShift[start],
-		    max = state.eMarks[start];
+			pos = state.bMarks[start] + state.tShift[start],
+			max = state.eMarks[start];
 
-		if(pos + 2 > max){ return false; }
-		if(state.src.slice(pos,pos+2)!=='$$'){ return false; }
+		if (pos + 2 > max) { return false; }
+		if (state.src.slice(pos, pos + 2) !== '$$') { return false; }
 
 		pos += 2;
-		firstLine = state.src.slice(pos,max);
+		firstLine = state.src.slice(pos, max);
 
-		if(silent){ return true; }
-		if(firstLine.trim().slice(-2)==='$$'){
-		    // Single line expression
-		    firstLine = firstLine.trim().slice(0, -2);
-		    found = true;
+		if (silent) { return true; }
+		if (firstLine.trim().slice(-2) === '$$') {
+			// Single line expression
+			firstLine = firstLine.trim().slice(0, -2);
+			found = true;
 		}
 
-		for(next = start; !found; ){
+		for (next = start; !found;) {
 
-		    next++;
+			next++;
 
-		    if(next >= end){ break; }
+			if (next >= end) { break; }
 
-		    pos = state.bMarks[next]+state.tShift[next];
-		    max = state.eMarks[next];
+			pos = state.bMarks[next] + state.tShift[next];
+			max = state.eMarks[next];
 
-		    if(pos < max && state.tShift[next] < state.blkIndent){
-		        // non-empty line with negative indent should stop the list:
-		        break;
-		    }
+			if (pos < max && state.tShift[next] < state.blkIndent) {
+				// non-empty line with negative indent should stop the list:
+				break;
+			}
 
-		    if(state.src.slice(pos,max).trim().slice(-2)==='$$'){
-		        lastPos = state.src.slice(0,max).lastIndexOf('$$');
-		        lastLine = state.src.slice(pos,lastPos);
-		        found = true;
-		    }
+			if (state.src.slice(pos, max).trim().slice(-2) === '$$') {
+				lastPos = state.src.slice(0, max).lastIndexOf('$$');
+				lastLine = state.src.slice(pos, lastPos);
+				found = true;
+			}
 
 		}
 
@@ -281,9 +281,9 @@ this.tivua.render = (function (window) {
 		token = state.push('math_block', 'math', 0);
 		token.block = true;
 		token.content = ((firstLine && firstLine.trim() ? firstLine + '\n' : '')
-		    + state.getLines(start + 1, next, state.tShift[start], true)
-		    + (lastLine && lastLine.trim() ? lastLine : ''));
-		token.map = [ start, state.line ];
+			+ state.getLines(start + 1, next, state.tShift[start], true)
+			+ (lastLine && lastLine.trim() ? lastLine : ''));
+		token.map = [start, state.line];
 		token.markup = '$$';
 		return true;
 	}
@@ -291,11 +291,11 @@ this.tivua.render = (function (window) {
 	function _escape_html(s) {
 		// https://stackoverflow.com/a/6234804
 		return s
-		     .replace(/&/g, "&amp;")
-		     .replace(/</g, "&lt;")
-		     .replace(/>/g, "&gt;")
-		     .replace(/"/g, "&quot;")
-		     .replace(/'/g, "&#039;");
+			.replace(/&/g, "&amp;")
+			.replace(/</g, "&lt;")
+			.replace(/>/g, "&gt;")
+			.replace(/"/g, "&quot;")
+			.replace(/'/g, "&#039;");
 	}
 
 	/**************************************************************************
@@ -308,9 +308,10 @@ this.tivua.render = (function (window) {
 		'typographer': true,
 	});
 
+	// Inject the math renderer
 	markdown.inline.ruler.after('escape', 'math_inline', _math_inline);
 	markdown.block.ruler.after('blockquote', 'math_block', _math_block, {
-		alt: [ 'paragraph', 'reference', 'blockquote', 'list' ]
+		alt: ['paragraph', 'reference', 'blockquote', 'list']
 	});
 	markdown.renderer.rules.math_inline = (tokens, idx) => {
 		return "<code class=\"math\">" + _escape_html(tokens[idx].content) + "</code>";
