@@ -529,7 +529,7 @@ class Database:
                     flt_compiled = filter.compile()
 
                 # Compile the filter and extract the SQL and parameters
-                flt_sql, flt_params, flt_alias = filter.compile().emit(keys)
+                flt_sql, flt_params, flt_alias = flt_compiled.emit(keys)
 
                 # Construct the complete SQL and parameters
                 sql = """{} ORDER BY {}.date DESC LIMIT ? OFFSET ?""".format(
