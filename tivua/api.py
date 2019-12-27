@@ -181,6 +181,10 @@ class API:
         if not ("login_method_cas" in config):
             config["login_method_cas"] = False
 
+        # Setup the logo configuration
+        if not ("login_logo" in config):
+            config["login_logo"] = "images/branding/logo.svg"
+
     def _init_users(self):
         """
         If there is no administrative user, creates one. An administrative user

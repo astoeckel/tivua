@@ -124,7 +124,10 @@ def _handle_fs(document_root, static_filename=None):
         # file is stored in the vfs
         filename = None
         if static_filename:
-            filename = os.path.join(document_root, static_filename)
+            if not os.path.isabs(static_filename):
+                filename = os.path.join(document_root, static_filename)
+            else:
+                filename = static_filename
         elif match:
             filename = os.path.join(document_root, match[0][1:])
 
@@ -132,9 +135,10 @@ def _handle_fs(document_root, static_filename=None):
         if (not filename) or (not os.path.isfile(filename)):
             return False
 
-        # Make sure the file is truely a child of the document root
+        # If the file path was assembled from user input, make sure the file is
+        # truely a child of the document root
         filename = os.path.realpath(filename)
-        if (not filename.startswith(document_root)):
+        if (not static_filename) and (not filename.startswith(document_root)):
             return False
 
         # Send the header
@@ -834,6 +838,10 @@ def create_server_class(api, args):
         # sources are requested
         Route("GET", r"^/(extern|scripts|styles)/(?!(.*(\.min\.js|\.min\.css)|dict/|fonts/)).*$", _handle_error(404)) \
             if no_dev else None,
+
+        # Re-route requests to the login logo
+        Route("GET", r"^/images/branding/logo.svg$",
+            _handle_fs(root, api.db.configuration["login_logo"])),
 
         # Re-route the request for the favicon to the images subfolder
         Route("GET", r"^/favicon\.ico$", _handle_fs(root, "images/favicon.ico")),
