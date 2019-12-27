@@ -226,7 +226,9 @@ this.tivua.view.user_manager = (function() {
 		const sel_auth_method = tr.querySelector('select[name=sel_auth_method]');
 		user.display_name = inp_display_name.value.trim();
 		user.name = inp_name.value.trim();
-		user.role = sel_role.value;
+		if (uid != session.uid) {
+			user.role = sel_role.value;
+		}
 		user.auth_method = sel_auth_method.value;
 
 		// Either create or update the user
@@ -433,6 +435,11 @@ this.tivua.view.user_manager = (function() {
 			utils.remove(btn_edit);
 			utils.remove(lbl_name);
 			utils.remove(lbl_display_name);
+
+			// Do not allow the admin user to change their own role
+			if (user.uid == session.uid) {
+				sel_role.setAttribute('disabled', 'disabled');
+			}
 		} else {
 			if (user.auth_method != 'password') {
 				utils.remove(btn_reset_password);
