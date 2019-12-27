@@ -65,10 +65,6 @@ this.tivua.api = (function (window) {
 	   cache. */
 	let settings_version = 0;
 
-	/* Used to make sure that only the newest requested settings from the server
-	   are used */
-	let setings_version = 0;
-
 	/**
 	 * The internal _err function is used to promote server-side errors to
 	 * client-side errors. Triggers events on certain errors, such as
