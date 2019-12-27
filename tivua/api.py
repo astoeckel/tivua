@@ -966,6 +966,9 @@ class API:
                 "uid": 0,
                 "name": "[deleted]",
                 "display_name": "[deleted]",
+                "role": "inactive",
+                "auth_method": "password",
+                "reset_password": 0,
             }
         }
 

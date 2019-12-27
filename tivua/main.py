@@ -204,6 +204,31 @@ def create_parser():
 
     return parser
 
+################################################################################
+# HELPER FUNCTIONS                                                             #
+################################################################################
+
+def print_table(f, header, values):
+    # Get the maximum coloumn widths
+    widths = list(map(len, map(str, header)))
+    for value in values:
+        for i in range(len(widths)):
+            widths[i] = max(len(str(value[i])), widths[i])
+
+    def print_row(values, trafo=lambda s: s):
+        for i, value in enumerate(values):
+            s = trafo(str(value))
+            if i > 0:
+                f.write("| ")
+            f.write(s + " " * (widths[i] - len(s) + 1))
+        f.write("\n");
+
+    print_row(header, lambda s: s.upper())
+    f.write("-" * (sum(widths) + (len(widths) - 1) * 3 + 1) + "\n")
+
+    for value in values:
+        print_row(value)
+
 
 ################################################################################
 # MAIN PROGRAM                                                                 #
@@ -306,16 +331,32 @@ def main_user(args):
     """
     Contains the "user" sub-programs.
     """
+    import sys
     import tivua.api
+    from tivua.database import User
+    from dataclasses import fields, astuple
 
     api = _init(args)
     cmd = args.user_command
     with api:
         try:
             if cmd == "list":
-                print(api.get_user_list())
+                # Fetch all user properties (skip the "password" field, which is
+                # not returned by get_user_list)
+                headers = list(
+                    filter(lambda x: x != "password",
+                    map(lambda x: x.name, fields(User))))
+
+                # Read the user properties in order
+                users = list(map(lambda x: [x[1][key] for key in headers],
+                     sorted(filter(lambda x: x[1]["uid"] > 0,
+                        api.get_user_list(True).items()))))
+
+                # Print a nice table
+                print_table(sys.stdout, headers, users)
             else:
                 name = args.name 
+
             if cmd == "add":
                 password, user = api.create_user(
                     user_name=name,
@@ -359,6 +400,7 @@ def main_config(args):
     Contains the "config" sub-programs.
     """
     import tivua.api
+    import sys
 
     api = _init(args)
     db_dict = api.db.configuration
@@ -367,9 +409,8 @@ def main_config(args):
     with api:
         try:
             if cmd == "list":
-                for key, value in db_dict.items():
-                    print(key, value)
-                
+                print_table(sys.stdout, ("Key", "Value"), db_dict.items())
+
             elif cmd == "get":
                 print(db_dict[args.option])
                 
