@@ -29,7 +29,7 @@
 
 this.tivua = this.tivua || {};
 this.tivua.view = this.tivua.view || {};
-this.tivua.view.cards = (function() {
+this.tivua.view.cards = (function () {
 	"use strict";
 
 	// Module aliases
@@ -40,7 +40,7 @@ this.tivua.view.cards = (function() {
 
 	// Number of additional posts queried at the beginning and the end of the
 	// current page to ensure that full weeks are displayed.
-	const CARD_VIEW_OVERLAP = 25; 
+	const CARD_VIEW_OVERLAP = 25;
 
 	// Possible page counts in the select box. Negative value stands for "all"
 	// posts.
@@ -50,7 +50,7 @@ this.tivua.view.cards = (function() {
 	 * Updates the pagination elements on the card view.
 	 */
 	function _update_card_view_pagination(api, root, events, settings, view,
-			total, start, i0, i1, filter) {
+		total, start, i0, i1, filter) {
 		const l10n = tivua.l10n;
 
 		/* Function accessing the posts_per_page setting */
@@ -73,8 +73,8 @@ this.tivua.view.cards = (function() {
 		if (total > 0) {
 			view.querySelector("#lbl_post").innerText =
 				l10n.translate((total == 1) ?
-						"%msg_cards_post_count_singular" :
-						"%msg_cards_post_count_plural")
+					"%msg_cards_post_count_singular" :
+					"%msg_cards_post_count_plural")
 					.replace("{start}", i0)
 					.replace("{end}", i1)
 					.replace("{total}", total);
@@ -138,13 +138,13 @@ this.tivua.view.cards = (function() {
 		});
 
 		// Update the first/next buttons
-		const btn_page_first  = utils.remove_event_listeners(
+		const btn_page_first = utils.remove_event_listeners(
 			view.querySelector("#btn_page_first"));
 		const btn_page_prev = utils.remove_event_listeners(
 			view.querySelector("#btn_page_prev"));
 		const btn_page_next = utils.remove_event_listeners(
 			view.querySelector("#btn_page_next"));
-		const btn_page_last  = utils.remove_event_listeners(
+		const btn_page_last = utils.remove_event_listeners(
 			view.querySelector("#btn_page_last"));
 		if (page <= 0) {
 			btn_page_first.setAttribute("disabled", "disabled");
@@ -248,10 +248,10 @@ this.tivua.view.cards = (function() {
 			span_tags.style.display = 'none';
 		}
 
-		/* Display information about the post history if the post author is not
-		   equal to the person who commited the post or the change timestamp is
-		   larger than the listed date (i.e. the post was changed after the
-		   fact)*/
+		// Display information about the post history if the post author is not
+		// equal to the person who commited the post or the change timestamp is
+		// larger than the listed date (i.e. the post was changed after the
+		// fact)
 		if (has_history_info) {
 			const l10n = tivua.l10n;
 			span_history.innerText =
@@ -262,7 +262,7 @@ this.tivua.view.cards = (function() {
 			span_history.style.display = 'none';
 		}
 
-		/* Hide the extra information if it is not needed */
+		// Hide the extra information if it is not needed
 		if (!(has_history_info || has_keywords)) {
 			div_extra.style.display = 'none';
 		}
@@ -384,7 +384,7 @@ this.tivua.view.cards = (function() {
 			searchbox.set_filter(filter);
 		}
 		searchbox.on_search = (filter) => {
-			events.on_navigate(0, settings["posts_per_page"], filter);
+			events.on_navigate(0, settings.posts_per_page, filter);
 		};
 
 		// Either open the view in "list" or "card" view
@@ -506,7 +506,7 @@ this.tivua.view.cards = (function() {
 					// Create the card itself
 					const card = _create_card_view_card(post, users, create_filter_callback);
 
-					/* If a text filter is active, highlight matched words */
+					// If a text filter is active, highlight matched words
 					if (filter_words.length) {
 						utils.highlight(
 							card.querySelector(".content"),
@@ -514,7 +514,7 @@ this.tivua.view.cards = (function() {
 							true);
 					}
 
-					/* Hook up the edit button */
+					// Hook up the edit button
 					const btn_edit = card.querySelector(".meta > button");
 					if (can_write) {
 						btn_edit.addEventListener(
