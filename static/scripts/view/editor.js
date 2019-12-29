@@ -254,11 +254,38 @@ this.tivua.view.editor = (function() {
 
 				// Go to the previous page
 				events.on_back();
+			}).catch((e) => {
+				// Close the overlay
+				div_overlay.close();
+
+				// Handy function used to show a dialogue
+				const show_dialogue = (title, message) => {
+					let dialogue = [null];
+					dialogue[0] = view.utils.show_dialogue(root, title, message, [
+						{
+							"type": "button",
+							"icon": "edit",
+							"caption": "Continue editing",
+							"role": "cancel",
+							"callback": () => {
+								dialogue[0].close();
+							}
+						}
+					]);
+				};
+
+				if (e.what == "%server_error_too_large") {
+					show_dialogue("📜 Entry is too long", "It looks like your entry is a little longer than the limit defined in Tivua (128KiB).\n\nPlease shorten it a bit, would you?");
+				} else if (e.what == "%server_error_conflict") {
+					show_dialogue("🔒 Edit conflict", "The entry was modified while you made your changes.\n\nPlease make a copy of your updates and apply them to the current version of the entry.");
+				} else {
+					view.utils.show_error_dialogue(root, e);
+				}
 			});
 		});
 
 		tivua.spellcheck.init().then(typo => {
-			tivua.spellcheck.start(editor, typo)
+			tivua.spellcheck.start(editor, typo);
 		});
 
 		/* Require confirmation if any change is made */
