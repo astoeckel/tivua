@@ -89,7 +89,7 @@ this.tivua.view.user_manager = (function() {
 
 		// Show a dialogue asking for confirmation
 		const title = l10n.translate("%users_hdr_confirm_reset_password");
-		const msg = l10n.translate("$users_msg_confirm_reset_password")
+		const msg = l10n.translate("%users_msg_confirm_reset_password")
 			.replace("{name}", user.display_name)
 			.replace("{id}", user.name);
 		const dialogue = [null];

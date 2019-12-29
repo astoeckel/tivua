@@ -93,7 +93,7 @@ this.tivua.main = (function () {
 				return (api, root) => {
 					return api.post_logout().then(() => {
 						return view.utils.show_dialogue(root,
-							"%logout_title", "%logout_message",
+							"%logout_hdr", "%logout_msg",
 							[{
 								"type": "delay",
 								"value": 3,
