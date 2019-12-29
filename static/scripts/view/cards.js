@@ -340,7 +340,6 @@ this.tivua.view.cards = (function () {
 		} else {
 			filter_new = filter_name + ":" + filter_value;
 		}
-		console.log(filter_new);
 
 		// Either append the new filter to the existing filter or just use the
 		// new one if there is no existing filter
