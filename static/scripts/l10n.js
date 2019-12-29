@@ -47,7 +47,11 @@ this.tivua.l10n = (function () {
 			return dict[str];
 		}
 		if (fallback_dict && str in fallback_dict) {
+			console.warn("No translation found for \"" + str + "\"; using fallback");
 			return fallback_dict[str];
+		}
+		if (str.charAt(0) == "%") {
+			console.warn("No translation and no fallback found for \"" + str + "\"");
 		}
 		return str.toLocaleString();
 	}
