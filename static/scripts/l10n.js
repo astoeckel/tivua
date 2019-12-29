@@ -58,16 +58,30 @@ this.tivua.l10n = (function () {
 	 * translate_dom_tree() to translate the same DOM tree multiple times.
 	 */
 	function translate_dom_tree(nd, ignore_original_text = false) {
+		function set_text_content(nd, text) {
+			// If this text node is the only child of the parent node and the
+			// text contains linebreaks, update the inner text of the parent
+			// instead of the text node itself.
+			if ((nd.nodeType == nd.TEXT_NODE) &&
+				(nd.parentNode.firstChild == nd) &&
+				(nd.parentNode.lastChild == nd) &&
+				(text.indexOf("\n") >= 0)) {
+				nd.parentNode.innerText = text;
+			} else {
+				nd.textContent = text;
+			}
+		}
+
 		// Translate or attribute value nodes
 		if (nd.nodeType == nd.TEXT_NODE || nd.nodeType == nd.ATTRIBUTE_NODE) {
 			if (nd.originalTextContent && ignore_original_text) {
 				nd.originalTextContent = null;
 			}
 			if (nd.originalTextContent) {
-				nd.textContent = translate(nd.originalTextContent);
+				set_text_content(nd, translate(nd.originalTextContent));
 			} else if (nd.textContent.length > 0 && nd.textContent.charAt(0) == '%') {
 				nd.originalTextContent = nd.textContent;
-				nd.textContent = translate(nd.textContent);
+				set_text_content(nd, translate(nd.textContent));
 			}
 		}
 
