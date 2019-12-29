@@ -19,10 +19,9 @@
  */
 
 this.tivua = this.tivua || {};
-this.tivua.l10n = (function () {
+this.tivua.l10n_data = (function () {
 	"use strict";
-
-	const l10n_data = {
+	return {
 		"en-US": {
 			// Language metadata
 			"%_language_name":
@@ -268,86 +267,4 @@ this.tivua.l10n = (function () {
 				"Sie wurden erfolgreich abgemeldet. Sie werden nun auf die Startseite weitergeleitet.",
 		},
 	}
-
-	let locale = {
-		"default_locale": tivua.utils.get_cookie("locale") || "en-US",
-		"current_locale": tivua.utils.get_cookie("locale") || "en-US",
-		"fallback_locale": "en-US"
-	};
-
-	function translate(str) {
-		let dict = l10n_data[locale.fallback_locale];
-		let fallback_dict = dict;
-		if (locale.current_locale in l10n_data) {
-			dict = l10n_data[locale.current_locale];
-		}
-		if (dict && str in dict) {
-			return dict[str];
-		}
-		if (fallback_dict && str in fallback_dict) {
-			return fallback_dict[str];
-		}
-		return str.toLocaleString();
-	}
-
-	/**
-	 * Function used to translate a DOM tree. Attatches the
-	 * "originalTextContent" to all nodes that have been translated. This allows
-	 * translate_dom_tree() to translate the same DOM tree multiple times.
-	 */
-	function translate_dom_tree(nd, ignore_original_text=false)
-	{
-		// Translate or attribute value nodes
-		if (nd.nodeType == nd.TEXT_NODE || nd.nodeType == nd.ATTRIBUTE_NODE) {
-			if (nd.originalTextContent && ignore_original_text) {
-				nd.originalTextContent = null;
-			}
-			if (nd.originalTextContent) {
-				nd.textContent = translate(nd.originalTextContent)
-			} else if (nd.textContent.length > 0 && nd.textContent.charAt(0) == '%') {
-				nd.originalTextContent = nd.textContent;
-				nd.textContent = translate(nd.textContent)
-			}
-		}
-
-		// Iterate over all attributes
-		if (nd.attributes) {
-			for (let attribute of nd.attributes) {
-				translate_dom_tree(attribute, ignore_original_text);
-			}
-		}
-
-		// Iterate over all children
-		if (nd.childNodes) {
-			for (let child of nd.childNodes) {
-				translate_dom_tree(child, ignore_original_text);
-			}
-		}
-	}
-
-	function set_node_text(nd, text) {
-		nd.innerText = text;
-		translate_dom_tree(nd, true);
-	}
-
-	// Sets the locale to the given locale and re-translates the current
-	// document body.
-	function set_locale(locale_name) {
-		tivua.utils.set_cookie("locale", locale_name);
-		locale.current_locale = locale_name;
-		translate_dom_tree(document.getElementsByTagName("body")[0]);
-	}
-
-	function get_locale() {
-		return locale.current_locale;
-	}
-
-	return {
-		"data": l10n_data,
-		"translate": translate,
-		"translate_dom_tree": translate_dom_tree,
-		"set_locale": set_locale,
-		"get_locale": get_locale,
-		"set_node_text": set_node_text
-	};
 })();
