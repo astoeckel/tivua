@@ -88,8 +88,8 @@ this.tivua.view.user_manager = (function() {
 		const user = users[uid];
 
 		// Show a dialogue asking for confirmation
-		const title = l10n.translate("Confirm password reset");
-		const msg = l10n.translate("Are you sure you want to reset the password for user \"{name}\" ({id})?\n\nThis user will no longer be able to log into Tivua until you send them the newly generated password, which will be displayed once you confirm this message.\n\nNote: This action will not end a user's active sessions. Set their role to \"Inactive\" to prevent them from accessing Tivua.")
+		const title = l10n.translate("%users_hdr_confirm_reset_password");
+		const msg = l10n.translate("$users_msg_confirm_reset_password")
 			.replace("{name}", user.display_name)
 			.replace("{id}", user.name);
 		const dialogue = [null];
@@ -99,7 +99,7 @@ this.tivua.view.user_manager = (function() {
 			msg, [{
 				"type": "button",
 				"icon": "confirm",
-				"caption": "Yes, reset password",
+				"caption": "%users_lbl_confirm_reset_password_yes",
 				"callback": () => {
 					const div_overlay = view.utils.show_loading_overlay(root);
 					api.reset_password(uid).then((data) => {
@@ -113,9 +113,9 @@ this.tivua.view.user_manager = (function() {
 						btn_clipboard.addEventListener('click', _copy_to_clipboard);
 						btn_email.addEventListener('click', () => {
 							const url = window.location.toString().split("#")[0];
-							const subject = l10n.translate('New password for the Tivua instance at {url}')
+							const subject = l10n.translate("%users_msg_email_subject")
 								.replace("{url}", url);
-							const body = l10n.translate('Hi {name},\n\nyour Tivua password has been reset. Find a new temporary password below. You will be prompted to set a new password the first time you log in; please do so as soon as possible.\n\nURL:      {url}\nLogin:    {user}\nPassword: {password}\n\nLet me know in case you have any questions!\n\nBest,\n{current_user}\n')
+							const body = l10n.translate("%users_msg_email_body")
 								.replace("{name}", user.display_name.split(" ")[0])
 								.replace("{url}", url)
 								.replace("{user}", user.name)
@@ -138,7 +138,7 @@ this.tivua.view.user_manager = (function() {
 				"type": "button",
 				"icon": "cancel",
 				"role": "cancel",
-				"caption": "Cancel",
+				"caption": "%users_lbl_confirm_reset_password_cancel",
 				"callback": () => { dialogue[0].close(); },
 			}]);
 	}
@@ -159,13 +159,13 @@ this.tivua.view.user_manager = (function() {
 		let title = "";
 		let msg = "";
 		if (force) {
-			title = l10n.translate("⚠ This user contributed content");
-			msg = l10n.translate("The user \"{name}\" ({id}) contributed content, which will be owned by the special \"[deleted]\" user after the deletion.\n\nAre you REALLY sure you want to delete this user?\n\nThis action cannot be undone. Consider marking the user as \"Inactive\" instead.")
+			title = l10n.translate("%users_hdr_confirm_delete_2");
+			msg = l10n.translate("%users_msg_confirm_delete_2")
 				.replace("{name}", user.display_name)
 				.replace("{id}", user.name);
 		} else {
-			title = l10n.translate("⚠ Confirm user deletion");
-			msg = l10n.translate("Are you sure you want to delete the user \"{name}\" ({id})?\n\nThis action cannot be undone. Consider marking the user as \"Inactive\" instead.")
+			title = l10n.translate("%users_hdr_confirm_delete_1");
+			msg = l10n.translate("%users_msg_confirm_delete_1")
 				.replace("{name}", user.display_name)
 				.replace("{id}", user.name);
 		}
@@ -177,7 +177,7 @@ this.tivua.view.user_manager = (function() {
 			{
 				"type": "button",
 				"icon": "delete",
-				"caption": "Yes, delete user",
+				"caption": "%users_lbl_confirm_delete_yes",
 				"callback": () => {
 					const div_overlay = view.utils.show_loading_overlay(root);
 					api.delete_user(uid, force).then((data) => {
@@ -203,7 +203,7 @@ this.tivua.view.user_manager = (function() {
 				"type": "button",
 				"icon": "cancel",
 				"role": "cancel",
-				"caption": "Cancel",
+				"caption": "%users_lbl_confirm_delete_cancel",
 				"callback": () => { dialogue[0].close(); },
 			}]);
 	}
@@ -476,7 +476,7 @@ this.tivua.view.user_manager = (function() {
 		btn_add.addEventListener('click', () => {
 			_reset_edit_rows(api, root, users, session, config, tbody);
 
-			const header = _create_user_header("%header_users_new_user");
+			const header = _create_user_header("%users_hdr_users_new_user");
 			const tr = header.querySelector('tr');
 			tr.classList.add('new_user');
 			tbody.appendChild(header);
@@ -504,7 +504,7 @@ this.tivua.view.user_manager = (function() {
 			// Insert headers for each role
 			if (current_role !== user.role) {
 				current_role = user.role;
-				tbody.appendChild(_create_user_header("%header_users_role_" + user.role));
+				tbody.appendChild(_create_user_header("%users_hdr_users_" + user.role));
 			}
 
 			// Append the row to the table

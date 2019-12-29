@@ -44,28 +44,28 @@
 				<main class="login">
 					<div class="header">
 						<img src="images/branding/logo.svg"/>
-						<h1>%sign_in</h1>
+						<h1>%login_hdr</h1>
 						<div id="lbl_msg"></div>
 					</div>
 					<div class="container">
 						<div id="pg_login_sel_method" class="page">
-							<button id="btn_cas" class="preferred">%via_cas<span>%via_cas_descr</span></button>
-							<button id="btn_username_password">%via_username_password<span>%via_username_password_descr</span></button>
-							<div id="lbl_no_method"><p><strong>%error</strong></p><p>%error_msg_no_login_methods</p></div>
+							<button id="btn_cas" class="preferred">%login_lbl_via_cas<span>%login_lbl_via_cas_descr</span></button>
+							<button id="btn_username_password">%login_lbl_via_username_password<span>%login_lbl_via_username_password_descr</span></button>
+							<div id="lbl_no_method"><p><strong>%login_lbl_error</strong></p><p>%login_msg_no_login_methods</p></div>
 						</div>
 						<div id="pg_login_username_password" class="page">
 							<form id="frm_username_password">
-								<label for="username">%username<span class="error"></span></label>
+								<label for="username">%login_lbl_username<span class="error"></span></label>
 								<input id="username" type="text"/>
-								<label for="password">%password<span class="error"></span></label>
+								<label for="password">%login_lbl_password<span class="error"></span></label>
 								<input class="password" id="password" type="password"/>
-								<input id="btn_login" type="submit" value="%login"/>
-								<button id="btn_username_password_back">%back</button>
+								<input id="btn_login" type="submit" value="%login_lbl_login"/>
+								<button id="btn_username_password_back">%login_lbl_back</button>
 							</form>
 						</div>
 					</div>
 					<select id="language"></select>
-					<div class="copyright">%copyright_string_begin<a href="https://www.gnu.org/licenses/agpl-3.0.en.html">AGPL 3.0</a>%copyright_string_middle<a href="https://github.com/astoeckel/tivua/">https://github.com/astoeckel/tivua/</a>%copyright_string_end</div>
+					<div class="copyright">%login_lbl_copyright_string_begin<a href="https://www.gnu.org/licenses/agpl-3.0.en.html">AGPL 3.0</a>%login_lbl_copyright_string_middle<a href="https://github.com/astoeckel/tivua/">https://github.com/astoeckel/tivua/</a>%login_lbl_copyright_string_end</div>
 				</main>
 			</div>
 		</template>
@@ -76,8 +76,8 @@
 				<div class="annotations"></div>
 				<div class="input">
 					<span class="icon"></span>
-					<input name="inp_search" spellcheck="false" placeholder="Filter by author, date, or content">
-					<button name="btn_clear" class="icon" title="Clear the currently active filter"></button>
+					<input name="inp_search" spellcheck="false" placeholder="%search_plc_filter">
+					<button name="btn_clear" class="icon" title="%search_tip_clear"></button>
 				</div>
 			</div>
 		</template>
@@ -85,19 +85,19 @@
 		<!-- CARD VIEW -->
 		<template id="tmpl_card_view">
 			<header>
-				<button id="btn_add" title="Add a new diary entry"><span class="icon"></span><span class="caption">Add entry</span></button>
+				<button id="btn_add" title="%cards_tip_add"><span class="icon"></span><span class="caption">%cards_lbl_add</span></button>
 				<div class="search"></div>
-				<button id="btn_menu" class="subtle" title="%tooltip_menu"><span class="icon"></span></button>
+				<button id="btn_menu" class="subtle" title="%cards_tip_menu"><span class="icon"></span></button>
 			</header>
 			<main class="cards"></main>
 			<footer>
 				<div id="lbl_post"></div>
 				<div>
-					<button id="btn_page_first" title="First page"><span class="icon"></span></button>
-					<button id="btn_page_prev" title="Previous page"><span class="icon"></span></button>
-					<select id="sel_page" title="Jump to page"></select>
-					<button id="btn_page_next" title="Next page"><span class="icon"></span></button>
-					<button id="btn_page_last" title="Last page"><span class="icon"></span></button>
+					<button id="btn_page_first" title="%cards_tip_first"><span class="icon"></span></button>
+					<button id="btn_page_prev" title="%cards_tip_previous""><span class="icon"></span></button>
+					<select id="sel_page" title="%cards_tip_jump"></select>
+					<button id="btn_page_next" title="%cards_tip_next"><span class="icon"></span></button>
+					<button id="btn_page_last" title="%cards_tip_last"><span class="icon"></span></button>
 				</div>
 				<div>
 					<select id="sel_entry_count"></select>
@@ -111,7 +111,7 @@
 				<hr/>
 				<span class="week"></span>
 				<hr/>
-				<span class="date_from"></span>&nbsp;to&nbsp;<span class="date_to"></span>
+				<span class="date_from"></span>%cards_lbl_week_to<span class="date_to"></span>
 				<hr/>
 				<span class="year"></span>
 				<hr/>
@@ -137,39 +137,39 @@
 		<!-- MAIN VIEW - NO ENTRIES MESSAGE -->
 		<template id="tmpl_card_view_welcome">
 			<div class="message">
-				<h1><span>🐣</span>%header_cards_welcome</h1>
-				<span>%msg_cards_welcome</span>
+				<h1><span>🐣</span>%cards_hdr_welcome</h1>
+				<span>%cards_msg_welcome</span>
 			</div>
 		</template>
 
 		<template id="tmpl_card_view_no_results">
 			<div class="message">
-				<h1><span>🔍</span>%header_cards_no_results</h1>
-				<span>%msg_cards_no_results</span>
+				<h1><span>🔍</span>%cards_hdr_no_results</h1>
+				<span>%cards_msg_no_results</span>
 			</div>
 		</template>
 
 		<!-- EDITOR VIEW -->
 		<template id="tmpl_editor_view">
 			<header>
-				<button id="btn_back" class="subtle" title="Back to the main view"><span class="icon"></span></button>
-				<h1>%header_new_entry</h1>
-				<button id="btn_delete" class="subtle" title="Delete this entry"><span class="icon"></span><span class="caption">%btn_delete</span></button>
-				<button id="btn_save" title="Create new entry"><span class="icon"></span><span class="caption">%btn_create_and_save</span></button>
+				<button id="btn_back" class="subtle" title="%editor_tip_back"><span class="icon"></span></button>
+				<h1>%editor_hdr_new</h1>
+				<button id="btn_delete" class="subtle" title="%editor_tip_delete"><span class="icon"></span><span class="caption">%editor_lbl_delete</span></button>
+				<button id="btn_save" title="%editor_tip_create_and_save"><span class="icon"></span><span class="caption">%editor_lbl_create_and_save</span></button>
 			</header>
 
 			<main class="editor">
 				<div class="row">
-					<label for="sel_author">%lbl_author<span class="error"></span></label>
-					<label for="inp_date">%lbl_date<span class="error"></span></label>
+					<label for="sel_author">%editor_lbl_author<span class="error"></span></label>
+					<label for="inp_date">%editor_lbl_date<span class="error"></span></label>
 				</div>
 				<div class="row">
-					<select id="sel_author" placeholder="%placeholder_name"></select>
-					<input type="date" id="inp_date" placeholder="%placeholder_date">
+					<select id="sel_author"></select>
+					<input type="date" id="inp_date" placeholder="%editor_plc_date">
 				</div>
-				<label for="inp_keywords">%lbl_keywords<span class="error"></span></label>
-				<input id="inp_keywords" placeholder="%placeholder_keywords">
-				<label for="inp_content">%lbl_content<span class="error"></span></label>
+				<label for="inp_keywords">%editor_lbl_keywords<span class="error"></span></label>
+				<input id="inp_keywords">
+				<label for="inp_content">%editor_lbl_content<span class="error"></span></label>
 				<textarea id="inp_content"></textarea>
 			</main>
 		</template>
@@ -177,61 +177,61 @@
 		<!-- PREFERENCES -->
 		<template id="tmpl_preferences">
 			<header>
-				<button id="btn_back" class="subtle" title="Back to the main view"><span class="icon"></span></button>
-				<h1>Preferences</h1>
-				<button name="btn_save" title="%msg_done"><span class="icon"></span><span class="caption">Save changes</span></button>
+				<button id="btn_back" class="subtle" title="%prefs_tip_back"><span class="icon"></span></button>
+				<h1>%prefs_hdr</h1>
+				<button name="btn_save" title="%prefs_tip_save"><span class="icon"></span><span class="caption">%prefs_lbl_save</span></button>
 			</header>
 
 			<main class="preferences">
 				<form id="frm_preferences" autocomplete="off">
 					<button style="display:none"></button> <!-- Since this a form, submitting the form will trigger the "onclick" event of the first button. Add an empty button to capture this. -->
 					<section name="sec_force_change_password">
-						<h1>⚠ Please enter a new password</h1>
-						<p><emph>You're currently using a temporary password. Before you can continue to use Tivua, you must set a new password.</emph></p>
-						<p>Please contact your administrator in case you ever forget your password.</p>
+						<h1>%prefs_hdr_reset_password</h1>
+						<p><emph>%prefs_msg_reset_password_1</emph></p>
+						<p>%prefs_msg_reset_password_2</p>
 					</section>
 					<section name="sec_user_details">
-						<h1>User details</h1>
-						<p>This section shows your login name and allows you to edit your display name.</p>
-						<label for="inp_user_name"><span>Login name</span>This is the user name you use for signing into Tivua. Please contact your administrator if you would like to change your login name.</label>
+						<h1>%prefs_hdr_user_details</h1>
+						<p>%prefs_msg_user_details</p>
+						<label for="inp_user_name"><span>%prefs_hdr_login_name</span>%prefs_msg_login_name</label>
 						<div class="row">
 							<input id="inp_user_name" tabindex="1" disabled />
 						</div>
-						<label for="inp_display_name"><span>Display name<span class="error"></span></span>This is how your name will be displayed to yourself and other users.</label>
+						<label for="inp_display_name"><span>%prefs_hdr_display_name<span class="error"></span></span>%prefs_msg_display_name</label>
 						<div class="row">
 							<input id="inp_display_name" tabindex="2"/>
 						</div>
 					</section>
 					<section name="sec_password">
-						<h1>Password</h1>
-						<p>This section allows you to change your password. To change your password, type in your current password and confirm your new password twice.</p>
-						<label for="password"><span>Current password<span class="error"></span></span>To confirm that you want to change your password, type in your current password.</label>
+						<h1>%prefs_hdr_password</h1>
+						<p>%prefs_msg_password</p>
+						<label for="password"><span>%prefs_hdr_current_password<span class="error"></span></span>%prefs_msg_current_password</label>
 						<input id="inp_user_name_hidden" style="display: none" disabled />
 						<div class="row password">
 							<input class="password" id="password" type="password" tabindex="3" autocomplete="off"/>
-							<button title="Reveal/hide password" class="hidden" tabindex="7"><span class="icon"></span></button>
+							<button title="%prefs_tip_password_toggle" class="hidden" tabindex="7"><span class="icon"></span></button>
 						</div>
-						<label for="password_new"><span>New password<span class="error"></span></span>Type in your new password. Your password must be at least eight characters long. It may contain arbitrary letters, digits, and symbols, but not whitespace.</label>
+						<label for="password_new"><span>%prefs_hdr_new_password<span class="error"></span></span>%prefs_msg_new_password</label>
 						<div class="row password">
 							<input class="password" id="password_new" type="password" tabindex="4" autocomplete="new-password"/>
-							<button title="Reveal/hide password" class="hidden" tabindex="8"><span class="icon"></span></button>
+							<button title="%prefs_tip_password_toggle" class="hidden" tabindex="8"><span class="icon"></span></button>
 						</div>
 						<div class="row">
 							<progress id="prg_password_strength" value="0" max="100"></progress>
 						</div>
 						<div class="row">
-							<span>Password strength:</span>
-							<span id="lbl_password_strength" class="strength">No password entered</span>
+							<span>%prefs_lbl_password_strength</span>
+							<span id="lbl_password_strength" class="strength">%prefs_lbl_password_strength_none</span>
 						</div>
-						<label for="password_new_repeat"><span>Repeat new password<span class="error"></span></span>Repeat your new password.</label>
+						<label for="password_new_repeat"><span>%prefs_hdr_repeat_password<span class="error"></span></span>%prefs_msg_repeat_password</label>
 						<div class="row password">
 							<input class="password" id="password_new_repeat" type="password" tabindex="5" autocomplete="new-password"/>
-							<button title="Reveal/hide password" class="hidden" tabindex="9"><span class="icon"></span></button>
+							<button title="%prefs_tip_password_toggle" class="hidden" tabindex="9"><span class="icon"></span></button>
 						</div>
 					</section>
 					<section>
 						<div class="buttons">
-							<button name="btn_save" tabindex="6"><span class="icon"></span><span class="caption">Save changes</span></button>
+							<button name="btn_save" tabindex="6" title="%prefs_tip_save"><span class="icon"></span><span class="caption">%prefs_lbl_save</span></button>
 						</div>
 					</section>
 				</form>
@@ -241,9 +241,9 @@
 		<!-- USER EDITOR -->
 		<template id="tmpl_user_manager_view">
 			<header>
-				<button id="btn_back" class="subtle" title="Back to the main view"><span class="icon"></span></button>
-				<h1>Manage Users</h1>
-				<button id="btn_add" title="Add user"><span class="icon"></span><span class="caption">Add user</span></button>
+				<button id="btn_back" class="subtle" title="%users_lbl_back"><span class="icon"></span></button>
+				<h1>%users_hdr</h1>
+				<button id="btn_add" title="%users_tip_add"><span class="icon"></span><span class="caption">%users_lbl_add</span></button>
 			</header>
 
 			<main class="user_manager">
@@ -252,10 +252,10 @@
 						<thead>
 							<tr>
 								<th></th>
-								<th><span>Name</span></th>
-								<th><span>ID</span></th>
-								<th class="role"><span>Role</span></th>
-								<th class="auth_method"><span>Login</span></th>
+								<th><span>%users_lbl_name</span></th>
+								<th><span>%users_lbl_id</span></th>
+								<th class="role"><span>%users_lbl_role</span></th>
+								<th class="auth_method"><span>%users_lbl_auth_method</span></th>
 								<th class="actions"></th>
 							</tr>
 						</thead>
@@ -278,51 +278,51 @@
 				<td><span class="colorcircle"></span></td>
 				<td class="display_name">
 					<span name="lbl_display_name"></span>
-					<input name="inp_display_name" placeholder="Full name"></input>
+					<input name="inp_display_name" placeholder="%users_plc_display_name"></input>
 				</td>
 				<td class="id">
 					<span name="lbl_name"></span>
-					<input name="inp_name" placeholder="Login name"></input>
+					<input name="inp_name" placeholder="%users_plc_name"></input>
 					<div class="button_container">
-						<button class="clipboard" title="Copy the username to the clipboard"><span class="icon"></span></button>
+						<button class="clipboard" title="%users_tip_name_clipboard"><span class="icon"></span></button>
 					</div>
 				</td>
 				<td class="role">
 					<select name="sel_role" value="inactive">
-						<optgroup label="Suspend the user account">
-							<option value="inactive">Inactive</option>
+						<optgroup label="%users_hdr_inactive">
+							<option value="inactive">%users_lbl_inactive</option>
 						</optgroup>
-						<optgroup label="Read-only access rights">
-							<option value="reader">Reader</option>
+						<optgroup label="%users_hdr_reader">
+							<option value="reader">%users_lbl_reader</option>
 						</optgroup>
-						<optgroup label="Normal access rights">
-							<option value="author">Author</option>
+						<optgroup label="%users_hdr_author">
+							<option value="author">%users_lbl_author</option>
 						</optgroup>
-						<optgroup label="Elevated access rights">
-							<option value="admin">Admin</option>
+						<optgroup label="%users_hdr_admin">
+							<option value="admin">%users_lbl_admin</option>
 						</optgroup>
 					</select>
 				</td>
 				<td class="auth_method">
 					<select name="sel_auth_method" value="password">
-						<optgroup label="Use a username and password">
-							<option value="password">Password</option>
+						<optgroup label="%users_hdr_password">
+							<option value="password">%users_lbl_password</option>
 						</optgroup>
-						<optgroup label="Use centralised authentication">
-							<option value="cas">CAS</option>
+						<optgroup label="%users_hdr_cas">
+							<option value="cas">%users_lbl_cas</option>
 						</optgroup>
 					</select>
 					<div class="button_container">
-						<button class="reset" title="Reset this user's password"><span class="icon"></span></button>
+						<button class="reset" title="%users_tip_reset_password"><span class="icon"></span></button>
 					</div>
 				</td>
 				<td class="actions">
 					<span>&nbsp;</span>
 					<div class="button_container">
-						<button class="edit" title="Edit this user"><span class="icon"></span></button>
-						<button class="delete" title="Delete this user"><span class="icon"></span></button>
-						<button class="save" title="Save the changes to this user"><span class="icon"></span></button>
-						<button class="cancel" title="Discard the changes"><span class="icon"></span></button>
+						<button class="edit" title="%users_tip_edit_user"><span class="icon"></span></button>
+						<button class="delete" title="%users_tip_delete_user"><span class="icon"></span></button>
+						<button class="save" title="%users_tip_save_user"><span class="icon"></span></button>
+						<button class="cancel" title="%users_tip_discard_changes"><span class="icon"></span></button>
 					</div>
 				</td>
 			</tr>
@@ -331,8 +331,8 @@
 		<template id="tmpl_user_manager_view_password_reset">
 			<span name="lbl_password"></span>
 			<div class="button_container">
-				<button class="clipboard" title="Copy the password to the clipboard"><span class="icon"></span></button>
-				<button class="email" title="Compose a new email containing the username and password"><span class="icon"></span></button>
+				<button class="clipboard" title="%users_tip_password_clipboard"><span class="icon"></span></button>
+				<button class="email" title="%users_tip_email"><span class="icon"></span></button>
 			</div>
 		</template>
 
@@ -351,18 +351,18 @@
 				<div class="menu">
 					<h1 class="user">
 						<span class="user_name"></span>
-						<span class="user_emblem" title="%lbl_menu_close"><span class="user_initials"></span></span>
+						<span class="user_emblem" title="%menu_tip_close"><span class="user_initials"></span></span>
 					</h1>
 					<div class="view_buttons">
-						<button id="btn_card_view"><span class="icon"></span><span class="caption">%lbl_card_view</span></button>
-						<button id="btn_list_view"><span class="icon"></span><span class="caption">%lbl_list_view</span></button>
+						<button id="btn_card_view"><span class="icon"></span><span class="caption">%menu_lbl_card_view</span></button>
+						<button id="btn_list_view"><span class="icon"></span><span class="caption">%menu_lbl_list_view</span></button>
 					</div>
 					<ul>
-						<li><a href="#users"><span class="icon"></span><span class="caption">%lbl_menu_user_manager</span></a></li>
-						<li><a href="#preferences"><span class="icon"></span><span class="caption">%lbl_menu_preferences</span></a></li>
-						<li><a href="#help"><span class="icon"></span><span class="caption">%lbl_menu_help</span></a></li>
-						<li><a href="#logout"><span class="icon"></span><span class="caption">%lbl_menu_logout</span></a></li>
-						<li><a href="#" class="close"><span class="icon"></span><span class="caption">%lbl_menu_close</span></a></li>
+						<li><a href="#users"><span class="icon"></span><span class="caption">%menu_lbl_user_manager</span></a></li>
+						<li><a href="#preferences"><span class="icon"></span><span class="caption">%menu_lbl_preferences</span></a></li>
+						<!--<li><a href="#help"><span class="icon"></span><span class="caption">%menu_lbl_help</span></a></li>-->
+						<li><a href="#logout"><span class="icon"></span><span class="caption">%menu_lbl_logout</span></a></li>
+						<li><a href="#" class="close"><span class="icon"></span><span class="caption">%menu_lbl_close</span></a></li>
 					</ul>
 				</div>
 			</div>

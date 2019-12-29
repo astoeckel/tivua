@@ -58,7 +58,7 @@ this.tivua.view.editor = (function() {
 
 		view.utils.update_error_state(btn_save, 'author', valid);
 		sel_author.classList.toggle('error', !valid);
-		l10n.set_node_text(span_author_error, valid ? '' : '%err_author');
+		l10n.set_node_text(span_author_error, valid ? '' : '%editor_err_author');
 		return valid;
 	}
 
@@ -66,7 +66,7 @@ this.tivua.view.editor = (function() {
 		const valid = tivua.utils.string_to_utc_date(inp_date.value) !== null;
 		view.utils.update_error_state(btn_save, 'date', valid);
 		inp_date.classList.toggle('error', !valid);
-		tivua.l10n.set_node_text(span_date_error, valid ? '' : '%err_date_format');
+		tivua.l10n.set_node_text(span_date_error, valid ? '' : '%editor_err_date_format');
 		return valid;
 	}
 
@@ -78,7 +78,7 @@ this.tivua.view.editor = (function() {
 		}
 		view.utils.update_error_state(btn_save, 'keywords', valid);
 		inp_keywords_wrapper.classList.toggle('error', !valid);
-		tivua.l10n.set_node_text(span_keywords_error, valid ? '': '%err_keywords');
+		tivua.l10n.set_node_text(span_keywords_error, valid ? '': '%editor_err_keywords');
 		return valid;
 	}
 
@@ -131,8 +131,8 @@ this.tivua.view.editor = (function() {
 		   existing post. */
 		const create_post = !post;
 		if (post) {
-			l10n.set_node_text(main.querySelector("h1"), "%header_edit_entry");
-			l10n.set_node_text(main.querySelector("#btn_save .caption"), "%btn_save");
+			l10n.set_node_text(main.querySelector("h1"), "%editor_hdr_edit");
+			l10n.set_node_text(main.querySelector("#btn_save .caption"), "%editor_lbl_save");
 
 			sel_author.value = post["author"];
 			inp_date.value = utils.format_date(post["date"], "-");
@@ -192,12 +192,12 @@ this.tivua.view.editor = (function() {
 		/* Hook up the delete button */
 		btn_delete.addEventListener("click", function () {
 			const dialogue = {"instance": null};
-			dialogue.instance = view.utils.show_dialogue(root, "%header_confirm_delete", "%msg_confim_delete",
+			dialogue.instance = view.utils.show_dialogue(root, "%editor_hdr_confirm_delete", "%editor_msg_confirm_delete",
 			[
 				{
 					"type": "button",
 					"icon": "delete",
-					"caption": "%msg_confirm_delete_yes",
+					"caption": "%editor_lbl_confirm_delete_yes",
 					"callback": () => {
 						const div_overlay = view.utils.show_loading_overlay(root);
 						api.delete_post(post['pid']).then(() => {
@@ -208,7 +208,7 @@ this.tivua.view.editor = (function() {
 				},
 				{
 					"type": "button",
-					"caption": "%msg_confirm_delete_no",
+					"caption": "%editor_lbl_confirm_delete_no",
 					"icon": "cancel",
 					"callback": () => dialogue.instance.close(),
 					"role": "cancel"
@@ -275,9 +275,9 @@ this.tivua.view.editor = (function() {
 				};
 
 				if (e.what == "%server_error_too_large") {
-					show_dialogue("📜 Entry is too long", "It looks like your entry is a little longer than the limit defined in Tivua (128KiB).\n\nPlease shorten it a bit, would you?");
+					show_dialogue("%editor_hdr_too_long", "%editor_msg_too_long");
 				} else if (e.what == "%server_error_conflict") {
-					show_dialogue("🔒 Edit conflict", "The entry was modified while you made your changes.\n\nPlease make a copy of your updates and apply them to the current version of the entry.");
+					show_dialogue("%editor_hdr_conflict", "%editor_msg_conflict");
 				} else {
 					view.utils.show_error_dialogue(root, e);
 				}

@@ -215,13 +215,13 @@ describe('Filter', () => {
 			assert.equal(parse("(a"), "((((a))))");
 		});
 		it("invalid filter expression 1", () => {
-			assert.equal(parse("#(b)"), "((ERROR(%err_expected_string) AND (((b)))))");
+			assert.equal(parse("#(b)"), "((ERROR(%filter_err_expected_string) AND (((b)))))");
 		});
 		it("invalid filter expression 2", () => {
-			assert.equal(parse("(a) :foo b"), "((((a)) AND (ERROR(%err_unexpected_colon) AND (foo AND (b)))))");
+			assert.equal(parse("(a) :foo b"), "((((a)) AND (ERROR(%filter_err_unexpected_colon) AND (foo AND (b)))))");
 		});
 		it("invalid filter expression 3", () => {
-			assert.equal(parse("(a) OR :foo b"), "((((a))) OR ((ERROR(%err_unexpected_colon) AND (foo AND (b)))))");
+			assert.equal(parse("(a) OR :foo b"), "((((a))) OR ((ERROR(%filter_err_unexpected_colon) AND (foo AND (b)))))");
 		});
 	});
 
@@ -281,13 +281,13 @@ describe('Filter', () => {
 			assert.equal(parse("(a"), "a");
 		});
 		it("invalid filter expression 1", () => {
-			assert.equal(parse("#(b)"), "(ERROR(%err_expected_string) AND b)");
+			assert.equal(parse("#(b)"), "(ERROR(%filter_err_expected_string) AND b)");
 		});
 		it("invalid filter expression 2", () => {
-			assert.equal(parse("(a) :foo b"), "(a AND (ERROR(%err_unexpected_colon) AND (foo AND b)))");
+			assert.equal(parse("(a) :foo b"), "(a AND (ERROR(%filter_err_unexpected_colon) AND (foo AND b)))");
 		});
 		it("invalid filter expression 3", () => {
-			assert.equal(parse("(a) OR :foo b"), "(a OR (ERROR(%err_unexpected_colon) AND (foo AND b)))");
+			assert.equal(parse("(a) OR :foo b"), "(a OR (ERROR(%filter_err_unexpected_colon) AND (foo AND b)))");
 		});
 		it("invalid filter expression 4", () => {
 			assert.equal(parse("&& || !"), "NOP");
@@ -389,14 +389,14 @@ describe('Filter', () => {
 		}
 		it("invalid filter expression", () => {
 			assert.deepEqual(validate("foo:bar"),
-				["ERROR(%err_invalid_filter_expression)",
+				["ERROR(%filter_err_invalid_filter_expression)",
 				 "foo:bar"]);
 		});
 		it("resolve user", () => {
 			assert.deepEqual(validate("user:jdoe"),
 				["user:jdoe", "user:jdoe"]);
 			assert.deepEqual(validate("user:0"),
-				["ERROR(%err_user_not_found)", "user:0"]);
+				["ERROR(%filter_err_user_not_found)", "user:0"]);
 			assert.deepEqual(validate("user:1"),
 				["user:jdoe", "user:jdoe"]);
 			assert.deepEqual(validate("user:jd"),

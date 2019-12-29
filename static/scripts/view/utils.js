@@ -232,18 +232,18 @@ this.tivua.view.utils = (function() {
 			if (res.needs_confirmation) {
 				const dialogue = {"instance": null};
 				dialogue.instance = show_dialogue(root ? root : document.body,
-					"%header_confirm",
-					"%msg_confirm",
+					"%back_hdr_confirm",
+					"%back_msg_confirm",
 					[
 						{
 							"type": "button",
 							"icon": "confirm",
-							"caption": "%msg_confirm_yes",
+							"caption": "%back_lbl_confirm_yes",
 							"callback": () => window.history.back(),
 						},
 						{
 							"type": "button",
-							"caption": "%msg_confirm_no",
+							"caption": "%back_lbl_confirm_no",
 							"icon": "cancel",
 							"callback": () => dialogue.instance.close(),
 							"role": "cancel"

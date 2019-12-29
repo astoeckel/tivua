@@ -674,7 +674,7 @@ class API:
 
         # There must be either a ctime or a date
         if (p.ctime is None) and (p.date is None):
-            raise ValueError("%server_error_equire_date_or_ctime")
+            raise ValidationError("%server_error_require_date_or_ctime")
         elif p.ctime is None:
             p.ctime = p.date
         elif p.date is None:

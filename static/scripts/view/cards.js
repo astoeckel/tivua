@@ -73,24 +73,25 @@ this.tivua.view.cards = (function () {
 		if (total > 0) {
 			view.querySelector("#lbl_post").innerText =
 				l10n.translate((total == 1) ?
-					"%msg_cards_post_count_singular" :
-					"%msg_cards_post_count_plural")
+					"%cards_lbl_post_count_singular" :
+					"%cards_lbl_post_count_plural")
 					.replace("{start}", i0)
 					.replace("{end}", i1)
 					.replace("{total}", total);
 		} else {
 			view.querySelector("#lbl_post").innerText =
-				l10n.translate("%msg_cards_no_posts");
+				l10n.translate("%cards_lbl_no_posts");
 		}
 
 		/* Update the page select box */
 		const sel_page = utils.remove_event_listeners(
 			view.querySelector("#sel_page"));
 		utils.clear(sel_page); /* Delete all old pages */
+		let page_str = l10n.translate("%cards_lbl_page")
 		for (let i = 0; i < Math.max(n_pages, page + 1); i++) {
 			const sel_page_option = document.createElement("option");
 			sel_page_option.setAttribute("value", i);
-			sel_page_option.innerText = "Page " + (i + 1);
+			sel_page_option.innerText = page_str.replace("{}", i + 1);
 			sel_page.appendChild(sel_page_option);
 		}
 		sel_page.value = page;
@@ -110,9 +111,9 @@ this.tivua.view.cards = (function () {
 			const val = CARD_VIEW_POSTS_PER_PAGE_LIST[i];
 			sel_entry_count_option.setAttribute("value", val);
 			if (val == -1) {
-				sel_entry_count_option.innerText = "All posts";
+				sel_entry_count_option.innerText = l10n.translate("%cards_lbl_all_posts");
 			} else {
-				sel_entry_count_option.innerText = val + " per page";
+				sel_entry_count_option.innerText = l10n.translate("%cards_lbl_per_page").replace("{}", val);
 			}
 			sel_entry_count.appendChild(sel_entry_count_option);
 		}
@@ -255,9 +256,9 @@ this.tivua.view.cards = (function () {
 		if (has_history_info) {
 			const l10n = tivua.l10n;
 			span_history.innerText =
-				l10n.translate("%msg_post_history")
-					.replace("%date", utils.format_local_date(post.mtime, "/"))
-					.replace("%author", users[post.muid].display_name);
+				l10n.translate("%cards_msg_post_history")
+					.replace("{date}", utils.format_local_date(post.mtime, "/"))
+					.replace("{author}", users[post.muid].display_name);
 		} else {
 			span_history.style.display = 'none';
 		}

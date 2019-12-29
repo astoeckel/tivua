@@ -76,19 +76,19 @@ this.tivua.view.preferences = (function () {
 
 		/* If the password is too short, display a corresponding warning */
 		if (passw.length == 0) {
-			l10n.set_node_text(lbl_strength, "No password entered");
+			l10n.set_node_text(lbl_strength, "%prefs_lbl_password_strength_none");
 			lbl_strength.setAttribute('class', 'strength');
 		} else if (passw.length < 8) {
-			l10n.set_node_text(lbl_strength, "Too short");
+			l10n.set_node_text(lbl_strength, "%prefs_lbl_password_strength_too_short");
 			lbl_strength.setAttribute('class', 'strength weak');
 		} else if (score > 90) {
-			l10n.set_node_text(lbl_strength, "Strong");
+			l10n.set_node_text(lbl_strength, "%prefs_lbl_password_strength_strong");
 			lbl_strength.setAttribute('class', 'strength strong');
 		} else if (score > 60) {
-			l10n.set_node_text(lbl_strength, "Good");
+			l10n.set_node_text(lbl_strength, "%prefs_lbl_password_strength_good");
 			lbl_strength.setAttribute('class', 'strength good');
 		} else {
-			l10n.set_node_text(lbl_strength, "Weak");
+			l10n.set_node_text(lbl_strength, "%prefs_lbl_password_strength_weak");
 			lbl_strength.setAttribute('class', 'strength weak');
 		}
 		prg_strength.setAttribute('class', lbl_strength.getAttribute('class'));
@@ -111,9 +111,9 @@ this.tivua.view.preferences = (function () {
 		const name = inp_display_name.value;
 		const valid = (name.length > 0) && (name.length <= 32);
 		if (!valid && name.length == 0) {
-			l10n.set_node_text(lbl_error, 'Display name cannot be blank');
+			l10n.set_node_text(lbl_error, "%prefs_err_no_display_name");
 		} else if (!valid) {
-			l10n.set_node_text(lbl_error, 'Display name too long');
+			l10n.set_node_text(lbl_error, "%prefs_err_display_name_too_long");
 		} else {
 			l10n.set_node_text(lbl_error, '');
 		}
@@ -139,7 +139,7 @@ this.tivua.view.preferences = (function () {
 			// Display an error message informing the user about what is wrong with
 			// the password;
 			if (!valid && passw.length > 0) {
-				l10n.set_node_text(lbl_error, 'Shorter than 8 characters or has whitespace');
+				l10n.set_node_text(lbl_error, "%prefs_err_invalid_password");
 				if (is_final) {
 					inp_password.focus();
 				}
@@ -191,7 +191,7 @@ this.tivua.view.preferences = (function () {
 		// show a corresponding error message
 		if (passw.length == 0 && is_required) {
 			_mark_error(inp_password, lbl_password_error,
-				'This field is required', false);
+				"%prefs_err_field_required", false);
 			if (is_final) {
 				inp_password.focus();
 				return false;
@@ -204,9 +204,9 @@ this.tivua.view.preferences = (function () {
 			passw_new.indexOf(passw) >= 0 || passw.indexOf(passw_new) >= 0)) {
 			valid = false;
 			if (passw === passw_new) {
-				l10n.set_node_text(lbl_password_new_error, 'Password must be new');
+				l10n.set_node_text(lbl_password_new_error, "%prefs_err_password_not_new");
 			} else {
-				l10n.set_node_text(lbl_password_new_error, 'Password must be significantly different');
+				l10n.set_node_text(lbl_password_new_error, "%prefs_err_password_not_significantly_new");
 			}
 			inp_password_new.classList.toggle('error', true);
 			inp_password_new.classList.toggle('ok', false);
@@ -218,7 +218,7 @@ this.tivua.view.preferences = (function () {
 			return _mark_error(
 				inp_password_new_repeat,
 				lbl_password_new_repeat_error,
-				'Passwords do not match');
+				"%prefs_err_passwords_do_not_match");
 		}
 
 		// If this is the final check before submitting the form, make sure the
@@ -228,19 +228,19 @@ this.tivua.view.preferences = (function () {
 				return _mark_error(
 					inp_password,
 					lbl_password_error,
-					'Enter your current password');
+					"%prefs_err_enter_current_password");
 			}
 			if (passw_new.length == 0) {
 				return _mark_error(
 					inp_password_new,
 					lbl_password_new_error,
-					'Enter a new password');
+					"%prefs_err_enter_new_password");
 			}
 			if (passw_new_repeat.length == 0) {
 				return _mark_error(
 					inp_password_new_repeat,
 					lbl_password_new_repeat_error,
-					'Repeat the new password');
+					"%prefs_err_repeat_password");
 			}
 		}
 
@@ -382,7 +382,7 @@ this.tivua.view.preferences = (function () {
 						inp_password.classList.toggle('ok', true);
 						return true;
 					} else {
-						l10n.set_node_text(lbl_password_error, 'Password is incorrect');
+						l10n.set_node_text(lbl_password_error, "%prefs_err_password_incorrect");
 						inp_password.focus();
 						inp_password.classList.toggle('error', true);
 						inp_password.classList.toggle('ok', false);

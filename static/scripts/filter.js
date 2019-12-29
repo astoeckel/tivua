@@ -570,7 +570,7 @@ this.tivua.filter = (function (global) {
 				v2 = this._parse_word();
 				if (!v2) {
 					v1.end = err_token.end;
-					return this._error_node("%err_expected_string", v1);
+					return this._error_node("%filter_err_expected_string", v1);
 				}
 			}
 			if (v1 && v2) {
@@ -613,11 +613,11 @@ this.tivua.filter = (function (global) {
 				    (this.peek().type == TOKEN_END)) {
 					node.token_paren_close = this.consume();
 				} else {
-					node.children.push(this._error_node("%err_expected_paren_close", this.peek()));
+					node.children.push(this._error_node("%filter_err_expected_paren_close", this.peek()));
 				}
 				return node;
 			} else if (this.peek().type == TOKEN_COLON) {
-				return this._error_node("%err_unexpected_colon", this.consume());
+				return this._error_node("%filter_err_unexpected_colon", this.consume());
 			}
 			return this._parse_not_expr();
 		}
@@ -963,7 +963,7 @@ this.tivua.filter = (function (global) {
 			/* Error out with the corresponding error messages if the user
 			   could not be resolved. */
 			if (!match_uid) {
-				return _error_node(nd, "%err_user_not_found");
+				return _error_node(nd, "%filter_err_user_not_found");
 			}
 
 			/* Otherwise store the uid in the node and replace the text with the
@@ -984,7 +984,7 @@ this.tivua.filter = (function (global) {
 			if ((value.length < KEYWORDS_MIN_LEN) ||
 				(value.length > KEYWORDS_MAX_LEN) ||
 				(value.match(KEYWORDS_SPLIT_RE))) {
-				return _error_node(nd, "%err_invalid_keyword");
+				return _error_node(nd, "%filter_err_invalid_keyword");
 			}
 
 			/* Set the filter type and return the keyword */
@@ -996,7 +996,7 @@ this.tivua.filter = (function (global) {
 			const value = _get_text(nd.value);
 			const match = value.match(DATE_RE);
 			if (!match) {
-				return _error_node(nd, "%err_invalid_date");
+				return _error_node(nd, "%filter_err_invalid_date");
 			}
 
 			/* Canonicalise the year, month, and date */
@@ -1010,7 +1010,7 @@ this.tivua.filter = (function (global) {
 				}
 			}
 			if ((typeof mm === "string") && !mm.match(/^[0-9]+$/)) {
-				return _error_node(nd, "%err_invalid_date");
+				return _error_node(nd, "%filter_err_invalid_date");
 			}
 
 			/* Make sure we valid integers */
@@ -1020,12 +1020,12 @@ this.tivua.filter = (function (global) {
 			mm = has_mm ? parseInt(mm) : 1;
 			dd = has_dd ? parseInt(dd) : 1;
 			if (isNaN(yy) || isNaN(mm) || isNaN(dd)) {
-				return _error_node(nd, "%err_invalid_date");
+				return _error_node(nd, "%filter_err_invalid_date");
 			}
 
 			/* Make sure the year, day and month are valid */
 			if (yy < 0 || mm < 1 || dd < 1 || mm > 12 || dd > 31) {
-				return _error_node(nd, "%err_invalid_date");
+				return _error_node(nd, "%filter_err_invalid_date");
 			}
 
 			/* If the year is smaller than 100, treat it as describing a date
@@ -1049,7 +1049,7 @@ this.tivua.filter = (function (global) {
 			if ((start_date_canon.getUTCFullYear() != yy) ||
 				(start_date_canon.getUTCMonth() != mm - 1) ||
 				(start_date_canon.getUTCDate() != dd)) {
-				return _error_node(nd, "%err_invalid_date");
+				return _error_node(nd, "%filter_err_invalid_date");
 			}
 
 			/* Compute the end date -- either add exactly one day, month or
@@ -1095,7 +1095,7 @@ this.tivua.filter = (function (global) {
 				case "date":
 					return _validate_date(nd);
 				default:
-					return _error_node(nd, "%err_invalid_filter_expression");
+					return _error_node(nd, "%filter_err_invalid_filter_expression");
 			}
 		}
 		return _validate(ast);
