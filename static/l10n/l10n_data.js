@@ -46,6 +46,8 @@ this.tivua.l10n_data = (function () {
 			"%login_lbl_copyright_string_begin": "Tivua. © 2019, Andreas Stöckel. Licensed under the ",
 			"%login_lbl_copyright_string_middle": ". Report bugs at ",
 			"%login_lbl_copyright_string_end": ".",
+			"%login_err_enter_username": "Enter a username",
+			"%login_err_enter_password": "Enter a password",
 
 			/* Search box */
 			"%search_plc_filter": "Filter by author, date, or content",
@@ -271,6 +273,8 @@ this.tivua.l10n_data = (function () {
 			"%login_lbl_copyright_string_begin": "Tivua. © 2019, Andreas Stöckel. Lizensiert unter der ",
 			"%login_lbl_copyright_string_middle": ". Berichten Sie Bugs unter ",
 			"%login_lbl_copyright_string_end": ".",
+			"%login_err_enter_username": "Benutzername fehlt",
+			"%login_err_enter_password": "Passwort fehlt",
 
 			/* Search box */
 			"%search_plc_filter": "Nach Autor, Datum, oder Inhalt filtern",

@@ -127,8 +127,8 @@ this.tivua.view.login = (function() {
 			inp_username.classList.toggle("error", !has_username);
 			inp_password.classList.toggle("error", !has_password);
 
-			l10n.set_node_text(lbl_err_username, has_username ? "" : "%error_msg_enter_username");
-			l10n.set_node_text(lbl_err_password, has_password ? "" : "%error_msg_enter_password");
+			l10n.set_node_text(lbl_err_username, has_username ? "" : "%login_err_enter_username");
+			l10n.set_node_text(lbl_err_password, has_password ? "" : "%login_err_enter_password");
 		}
 
 		// Remove buttons that are not available right now
